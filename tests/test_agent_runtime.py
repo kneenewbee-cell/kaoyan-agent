@@ -74,11 +74,129 @@ class AgentRuntimeTest(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(agent_runtime.classify_subject_heuristic(text), "math")
 
-    def test_subject_classifier_uses_llm_for_ambiguous_input(self) -> None:
+    def test_subject_classifier_requires_evidence_for_ambiguous_input(self) -> None:
         client = FakeClient([fake_response(content='{"subject":"english","reason":"用户问题本身模糊，需要按历史判断"}')])
         subject = agent_runtime.classify_subject("这道题怎么做？", [], client=client)
-        self.assertEqual(subject, "english")
+        self.assertEqual(subject, "unsupported")
+        self.assertIsNotNone(agent_runtime.pop_last_clarification())
         self.assertEqual(len(client.chat.completions.calls), 1)
+
+    def test_route_payload_includes_image_context_only_for_image_input(self) -> None:
+        image_context = {
+            "ocr_text": "设函数 f(x)=x^2，求导数。",
+            "visual_summary": "图片是一道含函数公式的题目。",
+            "subject_hint": "math",
+            "confidence": 0.9,
+            "reason": "包含函数和求导要求",
+        }
+        client = FakeClient([fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"OCR显示为数学题","clarification":null}')])
+        route = agent_runtime.route_with_llm("怎么做？", [], [], client, has_images=True, image_context=image_context)
+        payload = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+        self.assertEqual(route.subject, "math")
+        self.assertEqual(payload["image_context"]["ocr_text"], image_context["ocr_text"])
+
+        plain_client = FakeClient([fake_response(content='{"subject":"unsupported","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"无图片","clarification":null}')])
+        agent_runtime.route_with_llm("怎么做？", [], [], plain_client, has_images=False)
+        plain_payload = json.loads(plain_client.chat.completions.calls[0]["messages"][1]["content"])
+        self.assertNotIn("image_context", plain_payload)
+
+    def test_image_context_counts_as_subject_routing_evidence(self) -> None:
+        image_context = {
+            "ocr_text": "计算极限 lim x->0 sin x / x",
+            "visual_summary": "图片包含数学公式。",
+            "subject_hint": "math",
+            "confidence": 0.88,
+            "reason": "包含极限公式",
+        }
+        self.assertTrue(
+            agent_runtime.subject_has_routing_evidence(
+                "math",
+                "怎么做？",
+                [],
+                [],
+                has_images=True,
+                image_context=image_context,
+            )
+        )
+
+    def test_image_context_flows_into_runtime_messages(self) -> None:
+        image_context = {
+            "ocr_text": "设函数 f(x)=x^2，求 f'(x)。",
+            "visual_summary": "图片是一道求导题。",
+            "subject_hint": "math",
+            "confidence": 0.92,
+            "reason": "包含函数和导数符号",
+        }
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"OCR显示为数学题","clarification":null}'),
+            fake_response(tool_calls=[{"name": "direct_math_tool", "arguments": {"x": 1}}]),
+        ])
+        direct_tool = agent_runtime.ToolSpec(
+            name="direct_math_tool",
+            description="direct",
+            parameters=agent_runtime.json_schema({"x": {"type": "integer"}}, ["x"]),
+            func=lambda args: "direct answer",
+            return_mode="direct",
+        )
+        with patch("agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
+            "agent_runtime.select_tools",
+            return_value={"direct_math_tool": direct_tool},
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "怎么做？",
+                session_id="unit_image_context_flow",
+                image_paths=[Path("missing.png")],
+                client=client,
+                persist=False,
+            )
+
+        route_payload = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+        tool_loop_user_text = "\n".join(
+            str(message.get("content") or "")
+            for message in client.chat.completions.calls[1]["messages"]
+            if message.get("role") == "user"
+        )
+        self.assertEqual(route_payload["image_context"]["ocr_text"], image_context["ocr_text"])
+        self.assertIn("本轮图片预识别结果", tool_loop_user_text)
+        self.assertIn(image_context["ocr_text"], tool_loop_user_text)
+        self.assertEqual(result.answer, "direct answer")
+
+    def test_image_only_input_uses_image_context_for_routing(self) -> None:
+        image_context = {
+            "ocr_text": "计算不定积分 \\int x dx。",
+            "visual_summary": "图片只有一道积分题，没有额外用户文字。",
+            "subject_hint": "math",
+            "confidence": 0.93,
+            "reason": "包含积分公式",
+        }
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"图片OCR显示为数学积分题","clarification":null}'),
+            fake_response(tool_calls=[{"name": "direct_math_tool", "arguments": {"x": 1}}]),
+        ])
+        direct_tool = agent_runtime.ToolSpec(
+            name="direct_math_tool",
+            description="direct",
+            parameters=agent_runtime.json_schema({"x": {"type": "integer"}}, ["x"]),
+            func=lambda args: "direct answer",
+            return_mode="direct",
+        )
+        with patch("agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
+            "agent_runtime.select_tools",
+            return_value={"direct_math_tool": direct_tool},
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "",
+                session_id="unit_image_only_context_flow",
+                image_paths=[Path("missing.png")],
+                client=client,
+                persist=False,
+            )
+
+        route_payload = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+        self.assertEqual(route_payload["user_input"], "")
+        self.assertEqual(route_payload["image_context"]["ocr_text"], image_context["ocr_text"])
+        self.assertEqual(result.subject, "math")
+        self.assertEqual(result.answer, "direct answer")
 
     def test_math_tool_registry_has_composite_skill_and_precise_boundary(self) -> None:
         tools = agent_runtime.build_math_tools()
@@ -248,6 +366,47 @@ class AgentRuntimeTest(unittest.TestCase):
         step_names = [step["name"] for step in result.metrics["steps"]]
         self.assertIn("route_classifier", step_names)
         self.assertNotIn("followup_route_classifier", step_names)
+
+    def test_explicit_new_exam_request_is_not_remounted_as_followup(self) -> None:
+        session_id = "unit2_explicit_exam_independent"
+        kaoyan_agent.save_session(session_id, {
+            "session_id": session_id,
+            "turns": [
+                {
+                    "turn_id": 1,
+                    "user_query": "17 year question 1",
+                    "assistant_answer": "Please clarify the subject.",
+                },
+            ],
+        })
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":true,"followup_category":"contextual_nonstep_followup","parent_turn_id":1,"parent_turn_ids":[1],"reason":"tries to continue history"}'),
+            fake_response(tool_calls=[{
+                "name": "direct_math_tool",
+                "arguments": {"x": 1},
+            }]),
+        ])
+        direct_tool = agent_runtime.ToolSpec(
+            name="direct_math_tool",
+            description="direct",
+            parameters=agent_runtime.json_schema({"x": {"type": "integer"}}, ["x"]),
+            func=lambda args: "direct answer",
+            return_mode="direct",
+        )
+        with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
+            "agent_runtime.select_tools",
+            return_value={"direct_math_tool": direct_tool},
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "2018 math1 question 3",
+                session_id=session_id,
+                client=client,
+                persist=False,
+            )
+
+        self.assertEqual(result.answer, "direct answer")
+        self.assertEqual(result.tool_calls[0]["name"], "direct_math_tool")
+        self.assertNotIn("llm_dag_followup_final", [step["name"] for step in result.metrics["steps"]])
 
     def test_llm_classified_step_followup_is_not_forced_to_answer_math_followup(self) -> None:
         session_id = "unit2_step_followup_not_forced"

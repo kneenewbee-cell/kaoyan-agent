@@ -112,13 +112,21 @@ ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 J
 
 规则：
 - 如果 subject_locked=true，必须沿用 subject_hint；如果 followup_locked=true，必须沿用 followup_hint。
+- 学科判定只能依据明确学科证据：当前输入中的明确学科关键词，或最近历史中稳定一致的学科上下文。
+- 年份、题号、分值、问法、做题意图、步骤口吻、真题外观等只说明用户在提问，不能作为具体学科证据。
+- 如果当前输入缺少明确学科关键词，且最近历史也不足以稳定继承学科，必须判为 unsupported，并给 clarification 追问能够区分学科的信息。
+- 不允许因为输入看起来像考研真题、题目解析或求解请求，就默认归到数学或任何具体学科。
 - 当前输入有明确学科关键词时，以当前输入为准，不被历史覆盖。
+- 如果 has_images=true 且提供 image_context，必须把 image_context.ocr_text 和 visual_summary 作为本轮输入上下文一起判断；不要只根据 user_input 判断。
+- image_context.subject_hint 只是图片内容线索，不是强制锁定；当 confidence 较高且 OCR/视觉内容一致时可以采用。
+- 如果图片 OCR 显示为数学题、政治材料、英语文本或时政材料，即使 user_input 只有“怎么做/讲一下/这题”，也应结合图片内容判定对应学科。
+- 如果 image_context 仍无法提供足够学科证据，再输出 unsupported + clarification；不要根据图片文件名判断学科。
 - 当前输入很省略时，如“这个呢”“还成立吗”“我说的是...”“不是这个”，优先从最近历史继承学科并定位 parent。
 - 数学步骤追问，如“这一步怎么来的”“第 2 步为什么”，判为 step_followup。
 - 非步骤追问，如条件替换、概念澄清、继续解释、反驳上一轮，判为 weak_nonstep_followup 或 contextual_nonstep_followup。
 - 多对象追问，如“这两个区别”“第二个呢”，可以返回多个 parent_turn_ids。
 - 如果无法确定 parent，但明显是追问，followup_category 设为 ambiguous，并给 clarification。
-- 只有当前输入和历史都无法确定学科时，subject 才能是 unsupported。
+- subject=unsupported 表示学科证据不足，不是错误状态；此时 followup_category 仍应按输入本身判断，通常为 independent 或 ambiguous。
 - parent_turn_id 和 parent_turn_ids 只能来自给定历史 turn_id；独立问题 parent_turn_id=null 且 parent_turn_ids=[]。
 """
 
@@ -1178,6 +1186,7 @@ def route_with_llm(
     followup_hint: str | None = None,
     followup_locked: bool = False,
     has_images: bool = False,
+    image_context: dict[str, Any] | None = None,
 ) -> RouteDecision:
     candidate_text = "\n\n".join(
         f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
@@ -1193,6 +1202,8 @@ def route_with_llm(
         "followup_hint": followup_hint,
         "followup_locked": followup_locked,
     }
+    if has_images and image_context:
+        payload["image_context"] = image_context
     response = client.chat.completions.create(
         model=legacy_agent.load_settings().global_model,
         messages=[
@@ -1232,7 +1243,14 @@ def route_with_llm(
 _last_clarification: str | None = None
 
 
-def classify_subject(user_input: str, history: list[dict[str, str]], has_images: bool = False, client: Any | None = None, metrics: RuntimeMetrics | None = None) -> str:
+def classify_subject(
+    user_input: str,
+    history: list[dict[str, str]],
+    has_images: bool = False,
+    client: Any | None = None,
+    metrics: RuntimeMetrics | None = None,
+    image_context: dict[str, Any] | None = None,
+) -> str:
     heuristic = classify_subject_heuristic(user_input, has_images, history)
     if heuristic:
         return heuristic
@@ -1246,15 +1264,19 @@ def classify_subject(user_input: str, history: list[dict[str, str]], has_images:
         metrics,
         followup_hint=classify_followup_heuristic(user_input, history),
         has_images=has_images,
+        image_context=image_context,
     )
     if route.clarification:
         global _last_clarification
         _last_clarification = route.clarification
+    if not subject_has_routing_evidence(route.subject, user_input, history, [], has_images, image_context):
+        _last_clarification = build_ambiguous_clarification(user_input, history)
+        return "unsupported"
     return route.subject
 
 
 def should_use_unified_route(has_images: bool, recent_turns: list[dict[str, Any]]) -> bool:
-    return context_followup_tools_enabled() and not has_images and bool(recent_turns)
+    return context_followup_tools_enabled() and bool(recent_turns)
 
 
 def turns_to_messages(turns: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -1295,6 +1317,37 @@ def infer_subject_from_turns(turns: list[dict[str, Any]]) -> str | None:
     return None
 
 
+def subject_has_routing_evidence(
+    subject: str,
+    user_input: str,
+    history: list[dict[str, str]],
+    recent_turns: list[dict[str, Any]],
+    has_images: bool = False,
+    image_context: dict[str, Any] | None = None,
+) -> bool:
+    if subject == "unsupported":
+        return True
+    if has_images and image_context:
+        image_subject = str(image_context.get("subject_hint") or "unknown")
+        try:
+            confidence = float(image_context.get("confidence", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        image_text = "\n".join([
+            str(image_context.get("ocr_text") or ""),
+            str(image_context.get("visual_summary") or ""),
+        ])
+        if image_subject == subject and confidence >= 0.55:
+            return True
+        if classify_subject_heuristic(image_text) == subject:
+            return True
+    route_history = [*history, *turns_to_messages(recent_turns)]
+    heuristic = classify_subject_heuristic(user_input, has_images=has_images, history=route_history)
+    if heuristic == subject:
+        return True
+    return infer_subject_from_turns(recent_turns) == subject
+
+
 def build_route_decision(
     user_input: str,
     history: list[dict[str, str]],
@@ -1302,13 +1355,14 @@ def build_route_decision(
     has_images: bool,
     client: Any,
     metrics: RuntimeMetrics,
+    image_context: dict[str, Any] | None = None,
 ) -> RouteDecision:
     route_history = [*history, *turns_to_messages(recent_turns)]
     subject_hint = classify_subject_heuristic(user_input, has_images=has_images, history=route_history)
     if subject_hint is None:
         subject_hint = infer_subject_from_turns(recent_turns)
     followup_hint = classify_followup_heuristic(user_input, route_history)
-    return route_with_llm(
+    route = route_with_llm(
         user_input,
         route_history,
         recent_turns,
@@ -1317,9 +1371,17 @@ def build_route_decision(
         subject_hint=subject_hint,
         subject_locked=bool(subject_hint),
         followup_hint=followup_hint,
-        followup_locked=False,
+        followup_locked=followup_hint == "independent",
         has_images=has_images,
+        image_context=image_context,
     )
+    has_parent_context = route.is_followup and bool(route.parent_turn_ids)
+    if not has_parent_context and not subject_has_routing_evidence(route.subject, user_input, history, recent_turns, has_images, image_context):
+        route.subject = "unsupported"
+        route.clarification = build_ambiguous_clarification(user_input, history)
+        route.parent_turn_id = None
+        route.parent_turn_ids = []
+    return route
 
 
 def pop_last_clarification() -> str | None:
@@ -1357,6 +1419,58 @@ def filter_tools_for_request(tools: dict[str, ToolSpec], user_input: str, has_im
         return tools
     blocked = {"solve_exam_question", "show_math_exam_question", "show_math_exam_answer"}
     return {name: spec for name, spec in tools.items() if name not in blocked}
+
+
+def build_image_context_text(image_context: dict[str, Any] | None) -> str:
+    if not image_context:
+        return ""
+    parts = [
+        "本轮图片预识别结果（供路由和作答参考，不是用户原话）：",
+        f"- 学科线索：{image_context.get('subject_hint') or 'unknown'}",
+        f"- 置信度：{image_context.get('confidence', 0.0)}",
+    ]
+    reason = str(image_context.get("reason") or "").strip()
+    if reason:
+        parts.append(f"- 判断依据：{reason}")
+    visual_summary = str(image_context.get("visual_summary") or "").strip()
+    if visual_summary:
+        parts.append(f"- 视觉概述：{visual_summary}")
+    ocr_text = str(image_context.get("ocr_text") or "").strip()
+    if ocr_text:
+        parts.append(f"- OCR 文本：\n{ocr_text}")
+    return "\n".join(parts)
+
+
+def recognize_image_context(
+    image_paths: list[Path],
+    user_input: str,
+    client: Any,
+    metrics: RuntimeMetrics,
+) -> dict[str, Any] | None:
+    if not image_paths:
+        return None
+    started = time.perf_counter()
+    try:
+        image_context = legacy_agent.recognize_images_for_routing(image_paths, user_input, client=client)
+    except Exception as exc:
+        metrics.add_step("image_routing_ocr", started, ok=False, error=str(exc), image_count=len(image_paths))
+        return {
+            "ocr_text": "",
+            "visual_summary": "",
+            "subject_hint": "unknown",
+            "confidence": 0.0,
+            "reason": f"image_routing_ocr_error:{exc}",
+        }
+    metrics.llm_calls += 1
+    metrics.add_step(
+        "image_routing_ocr",
+        started,
+        ok=True,
+        image_count=len(image_paths),
+        subject_hint=image_context.get("subject_hint"),
+        confidence=image_context.get("confidence"),
+    )
+    return image_context
 
 
 def make_client() -> Any:
@@ -1561,6 +1675,7 @@ def run_standard_message_loop(
 
     history = read_recent_md_messages(session_id)
     recent_turns = legacy_agent.load_session(session_id).get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
+    image_context = recognize_image_context(image_paths, user_input, client, metrics) if image_paths else None
     followup_route_decision: dict[str, Any] | None = None
     route_decision: RouteDecision | None = None
     step_started = time.perf_counter()
@@ -1573,11 +1688,19 @@ def run_standard_message_loop(
                 bool(image_paths),
                 client,
                 metrics,
+                image_context=image_context,
             )
             subject = route_decision.subject
             followup_route_decision = route_decision.followup_route()
         else:
-            subject = classify_subject(user_input, history, has_images=bool(image_paths), client=client, metrics=metrics)
+            subject = classify_subject(
+                user_input,
+                history,
+                has_images=bool(image_paths),
+                client=client,
+                metrics=metrics,
+                image_context=image_context,
+            )
     except Exception as exc:
         metrics.add_step("route_classifier", step_started, subject="error", error=str(exc))
         result = RuntimeResult(
@@ -1632,7 +1755,12 @@ def run_standard_message_loop(
         return result
 
     if image_paths:
-        user_input = f"{user_input}\n\n本轮上传图片路径：{json.dumps([str(path) for path in image_paths], ensure_ascii=False)}"
+        image_context_text = build_image_context_text(image_context)
+        image_parts = [user_input]
+        if image_context_text:
+            image_parts.append(image_context_text)
+        image_parts.append(f"本轮上传图片路径：{json.dumps([str(path) for path in image_paths], ensure_ascii=False)}")
+        user_input = "\n\n".join(part for part in image_parts if part)
 
     if (
         context_followup_tools_enabled()

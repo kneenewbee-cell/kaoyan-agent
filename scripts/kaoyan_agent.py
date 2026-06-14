@@ -38,6 +38,24 @@ QWEN_VL_OCR_PROMPT = """你是考研数学图片 OCR 节点。
 看不清的符号用 [不确定: ...] 标出。输出 Markdown。"""
 
 
+IMAGE_ROUTING_OCR_PROMPT = """你是考研助手的通用图片预识别节点。
+只做 OCR、图像内容概述和学科线索判断；不要解题，不要回答用户问题。
+图片可能是数学题、政治材料、英语文本、时政截图、表格、图形或其他内容。
+不要根据文件名判断学科；只依据图片可见内容和用户文字补充。
+
+只输出 JSON：
+{"ocr_text":"图片中可识别的文字、公式、题干、选项或材料原文","visual_summary":"非文字视觉信息概述，如图像/表格/坐标轴/材料版式","subject_hint":"math|politics|english|current_affairs|unknown","confidence":0.0,"reason":"一句话说明"}
+
+规则：
+- subject_hint 只是线索；证据不足时用 unknown。
+- 数学题常见证据：函数、极限、积分、矩阵、概率、几何图形、坐标轴、公式推导、选择/填空/解答题数学表达。
+- 政治常见证据：马克思主义、中国特色社会主义、毛中特、史纲、思修、政策理论材料。
+- current_affairs 常见证据：近期会议、政策、领导人活动、国际国内新闻热点。
+- english 常见证据：英文阅读、完形、翻译、写作题、英语选项或长段英文。
+- 看不清的内容在 ocr_text 中用 [不确定: ...] 标出。
+"""
+
+
 QWEN_MATH_SOLVER_PROMPT = """你是严谨的考研数学解题节点。
 要求：
 1. 严格基于输入题目和工具上下文，不要编造题目条件。
@@ -462,6 +480,53 @@ def ocr_images_with_qwenvl(image_paths: list[Path], user_query: str) -> str:
         temperature=0,
     )
     return response.choices[0].message.content or ""
+
+
+def recognize_images_for_routing(image_paths: list[Path], user_query: str, client: Any | None = None) -> dict[str, Any]:
+    settings = load_settings()
+    client = client or make_client()
+    image_list = "\n".join(f"{index}. {path}" for index, path in enumerate(image_paths, start=1))
+    content: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "text": (
+                f"用户文字补充：{user_query}\n\n"
+                f"图片顺序：\n{image_list or '无'}\n\n"
+                "请输出 JSON，用于后续学科分类、追问判定和父节点定位。"
+            ),
+        }
+    ]
+    for path in image_paths:
+        if not path.exists():
+            raise FileNotFoundError(f"图片不存在：{path}")
+        content.append({"type": "image_url", "image_url": {"url": image_to_data_url(path)}})
+    response = client.chat.completions.create(
+        model=settings.vl_model,
+        messages=[
+            {"role": "system", "content": IMAGE_ROUTING_OCR_PROMPT},
+            {"role": "user", "content": content},
+        ],
+        temperature=0,
+    )
+    raw = response.choices[0].message.content or "{}"
+    try:
+        data = parse_json_object(raw)
+    except Exception:
+        data = {"ocr_text": raw, "visual_summary": "", "subject_hint": "unknown", "confidence": 0.0, "reason": "image_routing_json_parse_failed"}
+    subject_hint = str(data.get("subject_hint") or "unknown")
+    if subject_hint not in {"math", "politics", "english", "current_affairs", "unknown"}:
+        subject_hint = "unknown"
+    try:
+        confidence = float(data.get("confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    return {
+        "ocr_text": str(data.get("ocr_text") or "").strip(),
+        "visual_summary": str(data.get("visual_summary") or "").strip(),
+        "subject_hint": subject_hint,
+        "confidence": max(0.0, min(1.0, confidence)),
+        "reason": str(data.get("reason") or "").strip(),
+    }
 
 
 def build_coze_current_affairs_prompt(user_query: str) -> str:
