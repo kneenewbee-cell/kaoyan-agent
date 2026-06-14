@@ -1,0 +1,1819 @@
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Iterable
+
+from dotenv import load_dotenv
+
+import kaoyan_agent as legacy_agent
+
+ROOT = Path(__file__).resolve().parents[1]
+SESSION_MD_DIR = ROOT / "data" / "runtime" / "sessions_md"
+REQUEST_LOG_DIR = ROOT / "data" / "runtime" / "logs"
+SHORT_TERM_TURNS = 15
+MAX_TOOL_ROUNDS = 8
+ROUTING_HISTORY_TURNS = 6
+FOLLOWUP_DAG_LOOKBACK = ROUTING_HISTORY_TURNS
+FOLLOWUP_EMPTY_ROOT_ID = 0
+DAG_FOLLOWUP_MAX_TOKENS = 900
+
+
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def context_followup_tools_enabled() -> bool:
+    return env_flag("ENABLE_CONTEXT_FOLLOWUP_TOOLS", default=False)
+
+
+CONTEXT_FOLLOWUP_PROMPT = f"""非步骤追问规则：
+- “那如果...呢”“换成...还成立吗”“第一个/第二个题的余项”“总结一下”“改得更简洁”等不是步骤追问时，不要硬切到 explain_math_step。
+- 这类问题应优先使用 answer_math_followup / summarize_math_solution / rewrite_math_answer；answer_math_followup 会由 runtime 根据最近 {FOLLOWUP_DAG_LOOKBACK} 个 turn 的 DAG 溯源结果补齐 root_context 与 followup_context。
+- 当前轮显式给出的参数覆盖历史参数；没有显式修改的函数、展开点、目标点、阶数、误差要求应从历史继承。
+- 执行性很弱的非步骤追问（例如“这个呢”“为什么成立”“继续”“那如果换成...”）默认先指向上一轮；如果历史中存在多个可能 root，且最近 {FOLLOWUP_DAG_LOOKBACK} 轮仍不足以定位，先请用户澄清。
+"""
+
+
+MAIN_SYSTEM_PROMPT = """你是考研小助手，当前优先服务数学问答。
+
+角色定义：
+- 你是严谨、可核验、面向学习过程的考研助教。
+- 你应该先理解用户真实意图，再选择工具；不确定时先追问澄清。
+- 数学题、真题、步骤解释、符号解释、图片题 OCR 等任务，优先使用工具，不要编造数据或标准答案。
+
+通用行为准则：
+- 只基于用户输入、对话历史、工具返回和本地题库作答。
+- 工具能查到的数据，以工具结果为准；工具失败时说明失败原因，不要假装查到了。
+- 用户问概念时可以直接解释；用户问真题、答案、步骤、局部推导时必须调用对应工具。
+- 工具返回数学解法后，最终回复要忠实整理工具结果，不得自行引入新的区域设定、积分边界或“纠错”叙述。
+- 输出给用户时不要暴露内部 tool_call JSON、日志路径、路由细节或模型调度细节。
+
+追问处理规则：
+- 每次调用时都会附带最近 15 轮用户消息和助手回复，这些历史是原文上下文，禁止提前改写历史。
+- 当用户提到“第 x 步”“这一步怎么来的”“这里为什么”“上面那个式子”“它/这个/那一步”等细节追问时，必须调用 explain_math_step 或对应学科工具。
+- 处理步骤追问时，要从历史中定位原始解题过程作为 context，而不是只看上一轮回复。
+- 如果追问省略了函数、展开点、参数、题目编号等，应继承其 root 对话中的相关参数；本轮显式修改的参数优先。
+- 如果指代不明，或者历史中存在多个可能 root，必须请用户澄清。
+
+学科路由规则：
+- 先通过轻量学科分类器动态加载工具列表，减少无关工具干扰。
+- 当前只完整实现数学；英语、政治完整真题等未接入时应直接说明。
+- 数学真题优先使用 solve_exam_question / show_math_exam_question / show_math_exam_answer。
+- 普通数学题使用 solve_general_math；图片数学题先 ocr_math_image，再解题。
+- solve_exam_question 会自动识别本地题库题图；不要忽略工具返回的 OCR 文本。
+- 上传图片时，图片文件名只能作为弱线索，不能据此断定年份、科目、题号或真题来源。
+- 只有用户文本明确给出年份、科目和题号时，才允许按真题调用 solve_exam_question / show_math_exam_question / show_math_exam_answer；否则图片题一律先 OCR，再作为普通数学题处理。
+"""
+
+
+SUBJECT_CLASSIFIER_PROMPT = """判断用户输入属于哪个学科。如果输入信息充分可以确定学科，输出：
+{"subject":"math|current_affairs|politics|english|unsupported","reason":"一句话","clarification":null}
+
+如果用户输入明显模糊、缺少关键信息导致无法确定学科，不要直接判 unsupported，而是输出：
+{"subject":"unsupported","reason":"一句话","clarification":"向用户追问的一句话"}
+
+核心规则——历史优先：
+- 当前输入中学科关键词充分的，以当前输入为准。
+- 当前输入本身没有明确的学科关键词时（如「这道题」「一两金子」「它还成立吗」「讲一下」等），必须优先从传入的 recent_history 中推断学科。如果最近几轮历史有清晰一致的学科（如连续多轮都是政治经济学讨论或连续多轮都是数学解题），应当继承那个学科，不要判 unsupported。
+- 只有当前输入和历史都无法确定学科时，才判 unsupported 并输出 clarification 追问。
+
+clarification 追问规则：
+- 只追问最关键的 1-2 个缺失信息
+- 给用户提供可选的例子或范围
+- 语气友好
+
+优先级：
+- 明确数学、考研数学、计算、证明、极限、积分、矩阵、概率、泰勒、余项、步骤追问 -> math
+- 时政、近期热点、新闻政策 -> current_affairs
+- 考研政治非实时知识点 -> politics
+- 考研英语 -> english
+- 无明确学科关键词时 -> 从近期历史推断；历史也不明确 -> unsupported + clarification
+- 图片文件名只能作为弱线索
+"""
+
+
+ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 JSON，不回答问题。
+
+任务：根据当前输入、最近 {ROUTING_HISTORY_TURNS} 轮历史和 hints，同时判断学科、是否追问、追问类型和父节点。
+
+输出 JSON：
+{{"subject":"math|current_affairs|politics|english|unsupported","is_followup":true/false,"followup_category":"independent|step_followup|weak_nonstep_followup|contextual_nonstep_followup|ambiguous","parent_turn_id":number|null,"parent_turn_ids":[number],"reason":"一句话","clarification":string|null}}
+
+规则：
+- 如果 subject_locked=true，必须沿用 subject_hint；如果 followup_locked=true，必须沿用 followup_hint。
+- 当前输入有明确学科关键词时，以当前输入为准，不被历史覆盖。
+- 当前输入很省略时，如“这个呢”“还成立吗”“我说的是...”“不是这个”，优先从最近历史继承学科并定位 parent。
+- 数学步骤追问，如“这一步怎么来的”“第 2 步为什么”，判为 step_followup。
+- 非步骤追问，如条件替换、概念澄清、继续解释、反驳上一轮，判为 weak_nonstep_followup 或 contextual_nonstep_followup。
+- 多对象追问，如“这两个区别”“第二个呢”，可以返回多个 parent_turn_ids。
+- 如果无法确定 parent，但明显是追问，followup_category 设为 ambiguous，并给 clarification。
+- 只有当前输入和历史都无法确定学科时，subject 才能是 unsupported。
+- parent_turn_id 和 parent_turn_ids 只能来自给定历史 turn_id；独立问题 parent_turn_id=null 且 parent_turn_ids=[]。
+"""
+
+
+ROUTE_CLASSIFIER_PROMPT += (
+    "\n补充规则：像“六阶呢”“七阶呢”“更高阶呢”“下一项呢”这类是在追问上一轮展开式、近似阶数或余项，"
+    "不是在问第六步/第七步，优先判为 weak_nonstep_followup 并定位上一轮 parent。"
+)
+
+
+@dataclass
+class RuntimeMetrics:
+    request_id: str
+    session_id: str
+    subject: str = "unsupported"
+    started_at: float = field(default_factory=time.perf_counter)
+    total_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    llm_calls: int = 0
+    tool_calls: int = 0
+    tool_success: int = 0
+    tool_errors: int = 0
+    steps: list[dict[str, Any]] = field(default_factory=list)
+    progress_callback: Callable[[dict[str, Any]], None] | None = field(default=None, repr=False, compare=False)
+
+    def add_step(self, name: str, started: float, **extra: Any) -> None:
+        item = {
+            "name": name,
+            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+        }
+        item.update(extra)
+        self.steps.append(item)
+        if self.progress_callback:
+            try:
+                self.progress_callback({
+                    "type": "step",
+                    "request_id": self.request_id,
+                    "session_id": self.session_id,
+                    "step": item,
+                    "elapsed_ms": round((time.perf_counter() - self.started_at) * 1000, 2),
+                })
+            except Exception:
+                pass
+
+    def as_dict(self) -> dict[str, Any]:
+        elapsed_ms = round((time.perf_counter() - self.started_at) * 1000, 2)
+        success_rate = self.tool_success / self.tool_calls if self.tool_calls else 1.0
+        return {
+            "request_id": self.request_id,
+            "session_id": self.session_id,
+            "subject": self.subject,
+            "elapsed_ms": elapsed_ms,
+            "llm_calls": self.llm_calls,
+            "tool_calls": self.tool_calls,
+            "tool_success": self.tool_success,
+            "tool_errors": self.tool_errors,
+            "tool_success_rate": round(success_rate, 4),
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "steps": self.steps,
+        }
+
+
+@dataclass
+class RuntimeResult:
+    answer: str
+    subject: str
+    messages: list[dict[str, Any]]
+    tool_calls: list[dict[str, Any]]
+    metrics: dict[str, Any]
+    extra_memory: dict[str, Any] | None = None
+
+
+@dataclass
+class RouteDecision:
+    subject: str = "unsupported"
+    is_followup: bool = False
+    followup_category: str = "independent"
+    parent_turn_id: int | None = None
+    parent_turn_ids: list[int] = field(default_factory=list)
+    reason: str = ""
+    clarification: str | None = None
+
+    def followup_route(self) -> dict[str, Any]:
+        return {
+            "category": self.followup_category,
+            "parent_turn_id": self.parent_turn_id,
+            "parent_turn_ids": self.parent_turn_ids,
+            "reason": self.reason,
+            "clarification": self.clarification,
+        }
+
+
+@dataclass
+class ToolSpec:
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    func: Callable[[dict[str, Any]], Any]
+    return_mode: str = "synthesize"
+
+    def openai_schema(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
+
+
+def now_id() -> str:
+    return datetime.now().strftime("%Y%m%d%H%M%S%f")
+
+
+def safe_session_id(session_id: str) -> str:
+    return legacy_agent.safe_session_id(session_id)
+
+
+def md_session_path(session_id: str) -> Path:
+    return SESSION_MD_DIR / f"{safe_session_id(session_id)}.md"
+
+
+def read_recent_md_messages(session_id: str, max_turns: int = SHORT_TERM_TURNS) -> list[dict[str, str]]:
+    path = md_session_path(session_id)
+    if path.exists():
+        text = path.read_text(encoding="utf-8")
+        turns = re.split(r"(?m)^## Turn .*$", text)[1:]
+        messages: list[dict[str, str]] = []
+        for turn in turns[-max_turns:]:
+            user_match = re.search(r"(?s)### User\s*(.*?)\s*### Assistant", turn)
+            assistant_match = re.search(r"(?s)### Assistant\s*(.*)$", turn)
+            if user_match:
+                user_content = user_match.group(1).strip()
+                if user_content:
+                    messages.append({"role": "user", "content": user_content})
+            if assistant_match:
+                assistant_content = assistant_match.group(1).strip()
+                if assistant_content:
+                    messages.append({"role": "assistant", "content": assistant_content})
+        if messages:
+            return messages
+
+    json_session = legacy_agent.load_session(session_id)
+    turns = json_session.get("turns", [])[-max_turns:]
+    messages: list[dict[str, str]] = []
+    for turn in turns:
+        user_query = str(turn.get("user_query") or "")
+        assistant_answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
+        if user_query:
+            messages.append({"role": "user", "content": user_query})
+        if assistant_answer:
+            messages.append({"role": "assistant", "content": assistant_answer})
+    return messages
+
+
+def append_md_turn(session_id: str, user_message: str, assistant_answer: str, metadata: dict[str, Any]) -> None:
+    path = md_session_path(session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(f"# Session {safe_session_id(session_id)}\n\n", encoding="utf-8")
+    block = [
+        f"## Turn {metadata.get('turn_id', '?')} - {datetime.now().isoformat(timespec='seconds')}",
+        "",
+        "<!-- metadata",
+        json.dumps(metadata, ensure_ascii=False, indent=2),
+        "-->",
+        "",
+        "### User",
+        user_message.strip(),
+        "",
+        "### Assistant",
+        assistant_answer.strip(),
+        "",
+    ]
+    with path.open("a", encoding="utf-8") as file:
+        file.write("\n".join(block))
+        file.write("\n")
+
+
+def append_runtime_turn(session_id: str, user_message: str, result: RuntimeResult) -> None:
+    session = legacy_agent.load_session(session_id)
+    turns = session.setdefault("turns", [])
+    turn_id = (turns[-1].get("turn_id", 0) + 1) if turns else 1
+    followup_dag = (result.extra_memory or {}).get("followup_dag")
+    for record in result.tool_calls:
+        if record.get("name") != "answer_math_followup":
+            continue
+        arguments = record.get("arguments")
+        if isinstance(arguments, dict) and isinstance(arguments.get("_followup_dag"), dict):
+            followup_dag = dict(arguments["_followup_dag"])
+            break
+    if followup_dag is not None:
+        followup_dag["current_turn_id"] = turn_id
+    route = {
+        "subject": result.subject,
+        "intent": "tool_loop",
+        "need_vl": False,
+        "notes": "standard OpenAI tool-calling runtime",
+    }
+    turn = {
+        "turn_id": turn_id,
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "user_query": user_message,
+        "route": route,
+        "memory": {
+            "topic": user_message[:80],
+            "question_brief": user_message[:300],
+            "answer_brief": result.answer[:300],
+            "context_root_id": result.tool_calls[-1]["name"] if result.tool_calls else "",
+        },
+        "assistant_answer": result.answer,
+        "assistant_answer_preview": result.answer[:500],
+        "metrics": result.metrics,
+        "tool_calls": result.tool_calls,
+    }
+    if followup_dag is not None:
+        memory = turn["memory"]
+        memory["followup_parent_turn_id"] = followup_dag.get("parent_turn_id")
+        memory["followup_parent_turn_ids"] = followup_dag.get("parent_turn_ids") or []
+        memory["followup_chain_turn_ids"] = followup_dag.get("chain_turn_ids") or []
+        memory["followup_dag_reason"] = followup_dag.get("reason") or ""
+        memory["followup_dag_lookback"] = followup_dag.get("lookback")
+        turn["followup_dag"] = followup_dag
+    turns.append(turn)
+    legacy_agent.save_session(session_id, session)
+    append_md_turn(session_id, user_message, result.answer, {"turn_id": turn_id, **result.metrics})
+
+
+def json_schema(properties: dict[str, dict[str, Any]], required: list[str] | None = None) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required or [],
+        "additionalProperties": False,
+    }
+
+
+def _call_tool(tool: Any, payload: dict[str, Any]) -> Any:
+    return tool.invoke(payload) if hasattr(tool, "invoke") else tool(payload)
+
+
+def compact_text(value: Any, limit: int = 1200) -> str:
+    text = str(value or "").strip()
+    text = re.sub(r"\s+", " ", text)
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit].rstrip()}..."
+
+
+def turn_context_block(turn: dict[str, Any], limit: int = 1600) -> str:
+    return compact_text(legacy_agent.turn_full_text(turn), limit)
+
+
+def is_weak_context_followup(user_input: str) -> bool:
+    text = user_input.strip()
+    if not text:
+        return False
+    return bool(re.search(
+        r"这个|这个呢|这个为什么|为什么成立|怎么成立|继续|接着|那如果|如果.*呢|换成|改成|还成立吗|"
+        r"第[一二三四五]个.*呢|(?:\d+|[一二三四五六七八九十]+)阶呢|上一个|上一轮|刚才|刚刚|它|这个式子|这个余项|余项呢|总结一下|简洁",
+        text,
+    ))
+
+
+def classify_followup_route_with_llm(
+    user_input: str,
+    candidates: list[dict[str, Any]],
+    client: Any | None,
+    metrics: RuntimeMetrics | None = None,
+    subject_hint: str | None = None,
+) -> dict[str, Any]:
+    if not candidates or client is None:
+        return {
+            "category": "unknown",
+            "parent_turn_id": None,
+            "parent_turn_ids": [],
+            "reason": "no_candidates_or_client",
+        }
+    history: list[dict[str, str]] = []
+    for turn in candidates:
+        user_query = str(turn.get("user_query") or "")
+        assistant_answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
+        if user_query:
+            history.append({"role": "user", "content": user_query})
+        if assistant_answer:
+            history.append({"role": "assistant", "content": assistant_answer})
+    route = route_with_llm(
+        user_input,
+        history,
+        candidates,
+        client,
+        metrics,
+        subject_hint=subject_hint,
+        subject_locked=bool(subject_hint),
+        followup_hint=classify_followup_heuristic(user_input, history),
+        followup_locked=False,
+    )
+    return route.followup_route()
+
+    candidate_text = "\n\n".join(
+        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 700)}"
+        for turn in candidates
+    )
+    prompt = (
+        f"请判断当前用户输入相对于最近 {FOLLOWUP_DAG_LOOKBACK} 个 turn 属于哪一类追问或新问题。\n"
+        "只输出 JSON："
+        '{"category":"independent|step_followup|weak_nonstep_followup|contextual_nonstep_followup|ambiguous",'
+        '"parent_turn_id":number|null,"parent_turn_ids":[number],"reason":"一句话"}\n\n'
+        "分类规则：\n"
+        "- independent：当前输入是完整新问题，不依赖最近对话。\n"
+        "- step_followup：追问某个解题步骤、局部变形、某一步为什么成立，应走 explain_math_step。\n"
+        "- weak_nonstep_followup：非常省略的非步骤追问，通常默认接上一轮，例如“六阶呢”“为什么”“还成立吗”“继续”“这个呢”。\n"
+        f"- contextual_nonstep_followup：非步骤追问，但需要从最近 {FOLLOWUP_DAG_LOOKBACK} 轮定位 parent，例如“第二个题的余项呢”“刚才那个定理换成开区间还成立吗”。\n"
+        "- ambiguous：多个 parent 都可能或无法判断，需要澄清。\n"
+        "要求：\n"
+        "- parent_turn_id 和 parent_turn_ids 只能取候选 turn_id；独立或歧义时 parent_turn_id 为 null 且 parent_turn_ids 为空数组。\n"
+        "- 如果只指向一个 parent，同时填写 parent_turn_id 和 parent_turn_ids，例如 2 与 [2]。\n"
+        "- 如果用户说“这两个/二者/分别/对比/应用场景各是什么”等多对象追问，可以填写多个 parent_turn_ids，例如 [1,2]，parent_turn_id 可填最近/最主要的一个。\n"
+        "- 如果是 weak_nonstep_followup，通常 parent_turn_id 选最近一轮，parent_turn_ids 只含最近一轮。\n"
+        "- 不要把“第 x 步怎么来的/这一步为什么”判成非步骤追问。\n\n"
+        f"候选 turn：\n{candidate_text}\n\n"
+        f"当前用户输入：{user_input}"
+    )
+    try:
+        response = client.chat.completions.create(
+            model=legacy_agent.load_settings().global_model,
+            messages=[
+                {"role": "system", "content": "你是会话追问类型判定器，只输出 JSON。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+        )
+        if metrics is not None:
+            metrics.llm_calls += 1
+            record_usage(metrics, response)
+        data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
+    except Exception as exc:
+        return {
+            "category": "unknown",
+            "parent_turn_id": None,
+            "parent_turn_ids": [],
+            "reason": f"route_classifier_error:{exc}",
+        }
+
+    category = str(data.get("category") or "unknown")
+    if category not in {"independent", "step_followup", "weak_nonstep_followup", "contextual_nonstep_followup", "ambiguous"}:
+        category = "unknown"
+    parent = data.get("parent_turn_id")
+    candidate_ids = {int(turn.get("turn_id")) for turn in candidates if turn.get("turn_id") is not None}
+    parent_ids: list[int] = []
+    raw_parent_ids = data.get("parent_turn_ids")
+    if isinstance(raw_parent_ids, list):
+        for item in raw_parent_ids:
+            try:
+                item_id = int(item)
+            except (TypeError, ValueError):
+                continue
+            if item_id in candidate_ids and item_id not in parent_ids:
+                parent_ids.append(item_id)
+    try:
+        parent_id = int(parent)
+    except (TypeError, ValueError):
+        parent_id = None
+    if parent_id not in candidate_ids:
+        parent_id = None
+    if parent_id is not None and parent_id not in parent_ids:
+        parent_ids.append(parent_id)
+    parent_ids.sort()
+    return {
+        "category": category,
+        "parent_turn_id": parent_id,
+        "parent_turn_ids": parent_ids,
+        "reason": str(data.get("reason") or ""),
+        "clarification": str(data.get("clarification") or "") or None,
+    }
+
+
+def turn_parent_id(turn: dict[str, Any]) -> int | None:
+    memory = turn.get("memory") if isinstance(turn.get("memory"), dict) else {}
+    value = memory.get("followup_parent_turn_id")
+    if value is None:
+        value = turn.get("followup_parent_turn_id")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def turn_parent_ids(turn: dict[str, Any]) -> list[int]:
+    memory = turn.get("memory") if isinstance(turn.get("memory"), dict) else {}
+    raw_values = memory.get("followup_parent_turn_ids")
+    if raw_values is None:
+        raw_values = turn.get("followup_parent_turn_ids")
+    values: list[Any]
+    if isinstance(raw_values, list):
+        values = raw_values
+    else:
+        parent = turn_parent_id(turn)
+        values = [parent] if parent is not None else []
+    parent_ids: list[int] = []
+    for value in values:
+        try:
+            parent_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parent_id and parent_id not in parent_ids:
+            parent_ids.append(parent_id)
+    return parent_ids
+
+
+def route_parent_ids(route_decision: dict[str, Any] | None) -> list[int]:
+    if not route_decision:
+        return []
+    raw_values = route_decision.get("parent_turn_ids")
+    values: list[Any] = raw_values if isinstance(raw_values, list) else []
+    single = route_decision.get("parent_turn_id")
+    if single is not None:
+        values = [*values, single]
+    parent_ids: list[int] = []
+    for value in values:
+        try:
+            parent_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parent_id and parent_id not in parent_ids:
+            parent_ids.append(parent_id)
+    return parent_ids
+
+
+def resolve_followup_parent_with_llm(
+    user_input: str,
+    candidates: list[dict[str, Any]],
+    client: Any | None,
+    route_decision: dict[str, Any] | None = None,
+) -> tuple[int, str, str]:
+    if not candidates:
+        return FOLLOWUP_EMPTY_ROOT_ID, "independent", "no_previous_turns"
+    if route_decision:
+        category = str(route_decision.get("category") or "")
+        parent_ids = route_parent_ids(route_decision)
+        parent = route_decision.get("parent_turn_id")
+        if parent is None and parent_ids:
+            parent = parent_ids[0]
+        candidate_ids = {int(turn.get("turn_id")) for turn in candidates if turn.get("turn_id") is not None}
+        try:
+            parent_id = int(parent)
+        except (TypeError, ValueError):
+            parent_id = FOLLOWUP_EMPTY_ROOT_ID
+        if parent_id in candidate_ids and category in {"weak_nonstep_followup", "contextual_nonstep_followup"}:
+            return parent_id, category, str(route_decision.get("reason") or "route_classifier_parent")
+        if category in {"independent", "step_followup", "ambiguous"}:
+            return FOLLOWUP_EMPTY_ROOT_ID, category, str(route_decision.get("reason") or "route_classifier_no_parent")
+    if client is None:
+        return int(candidates[-1].get("turn_id", FOLLOWUP_EMPTY_ROOT_ID)), "fallback_previous", "no_resolver_client"
+
+    candidate_text = "\n\n".join(
+        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
+        for turn in candidates
+    )
+    prompt = (
+        f"判断当前用户输入是否是下面最近 {FOLLOWUP_DAG_LOOKBACK} 个 turn 中某一轮的非步骤追问。\n"
+        "只输出 JSON："
+        '{"parent_turn_id": number|null, "followup_type": "independent|parameter_change|condition_change|remainder_query|compare_roots|continue_explanation|rewrite|summary", "reason": "一句话"}\n\n'
+        "规则：\n"
+        "- 只能选择给出的 turn_id；如果是独立新问题，parent_turn_id 为 null。\n"
+        "- 如果用户说“上一个/这个/刚才/继续”等弱指代，通常选最近一轮。\n"
+        f"- 如果用户说“第一个/第二个”，优先在最近 {FOLLOWUP_DAG_LOOKBACK} 轮的局部上下文里找对应对象，不要回到更早历史。\n"
+        "- 如果多个候选都合理且无法消歧，parent_turn_id 为 null，followup_type 为 independent，reason 写明需要澄清。\n\n"
+        f"候选 turn：\n{candidate_text}\n\n"
+        f"当前用户输入：{user_input}"
+    )
+    try:
+        response = client.chat.completions.create(
+            model=legacy_agent.load_settings().global_model,
+            messages=[
+                {"role": "system", "content": f"你是会话追问溯源节点，只做最近 {FOLLOWUP_DAG_LOOKBACK} 轮内的父节点选择。"},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+        )
+        data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
+    except Exception as exc:
+        return int(candidates[-1].get("turn_id", FOLLOWUP_EMPTY_ROOT_ID)), "fallback_previous", f"resolver_error:{exc}"
+
+    parent = data.get("parent_turn_id")
+    candidate_ids = {int(turn.get("turn_id")) for turn in candidates if turn.get("turn_id") is not None}
+    try:
+        parent_id = int(parent)
+    except (TypeError, ValueError):
+        return FOLLOWUP_EMPTY_ROOT_ID, str(data.get("followup_type") or "independent"), str(data.get("reason") or "resolver_independent")
+    if parent_id not in candidate_ids:
+        return FOLLOWUP_EMPTY_ROOT_ID, "independent", f"resolver_parent_not_in_recent_{FOLLOWUP_DAG_LOOKBACK}"
+    return parent_id, str(data.get("followup_type") or "contextual_followup"), str(data.get("reason") or "")
+
+
+def followup_chain_for_parent(session: dict[str, Any], parent_turn_id: int) -> list[dict[str, Any]]:
+    if parent_turn_id == FOLLOWUP_EMPTY_ROOT_ID:
+        return []
+    turns_by_id = {
+        int(turn.get("turn_id")): turn
+        for turn in session.get("turns", [])
+        if isinstance(turn.get("turn_id"), int)
+    }
+    chain: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    current_id = parent_turn_id
+    while current_id and current_id not in seen and current_id in turns_by_id:
+        seen.add(current_id)
+        turn = turns_by_id[current_id]
+        chain.append(turn)
+        parents = turn_parent_ids(turn)
+        if not parents:
+            break
+        current_id = parents[0]
+    return list(reversed(chain))
+
+
+def followup_subgraph_for_parents(session: dict[str, Any], parent_turn_ids: list[int]) -> list[dict[str, Any]]:
+    turns_by_id = {
+        int(turn.get("turn_id")): turn
+        for turn in session.get("turns", [])
+        if isinstance(turn.get("turn_id"), int)
+    }
+    collected: dict[int, dict[str, Any]] = {}
+    seen: set[int] = set()
+
+    def visit(turn_id: int) -> None:
+        if not turn_id or turn_id in seen or turn_id not in turns_by_id:
+            return
+        seen.add(turn_id)
+        turn = turns_by_id[turn_id]
+        for parent_id in turn_parent_ids(turn):
+            visit(parent_id)
+        collected[turn_id] = turn
+
+    for parent_id in parent_turn_ids:
+        visit(parent_id)
+    return [collected[turn_id] for turn_id in sorted(collected)]
+
+
+def format_followup_dag_context(
+    session_id: str,
+    user_input: str,
+    output_format: str,
+    client: Any | None,
+    route_decision: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    session = legacy_agent.load_session(session_id)
+    candidates = session.get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
+    parent_id, followup_type, reason = resolve_followup_parent_with_llm(user_input, candidates, client, route_decision)
+    parent_ids = route_parent_ids(route_decision)
+    candidate_ids = {int(turn.get("turn_id")) for turn in candidates if turn.get("turn_id") is not None}
+    parent_ids = [item for item in parent_ids if item in candidate_ids]
+    if not parent_ids and parent_id != FOLLOWUP_EMPTY_ROOT_ID:
+        parent_ids = [parent_id]
+    chain = followup_subgraph_for_parents(session, parent_ids)
+    root_context = "\n\n".join(
+        f"[root turn {turn.get('turn_id')}]\n{turn_context_block(turn, 1200)}"
+        for turn in chain
+        if not turn_parent_ids(turn)
+    ) if chain else ""
+    chain_lines = []
+    if chain:
+        edge_ids = [str(turn.get("turn_id")) for turn in chain]
+        label = "DAG 链路" if len(parent_ids) <= 1 else "DAG 子图"
+        chain_lines.append(f"{label}：EMPTY({FOLLOWUP_EMPTY_ROOT_ID}) -> " + " -> ".join(f"turn {item}" for item in edge_ids) + " -> current")
+        if len(parent_ids) > 1:
+            chain_lines.append("当前节点父节点：" + ", ".join(f"turn {item}" for item in parent_ids))
+        for turn in chain:
+            chain_lines.append(f"\n[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 1800)}")
+    else:
+        chain_lines.append(f"DAG 链路：EMPTY({FOLLOWUP_EMPTY_ROOT_ID}) -> current")
+        chain_lines.append(f"最近 {FOLLOWUP_DAG_LOOKBACK} 轮内未确定父节点；如当前问题指代不明，应请用户澄清。")
+    chain_lines.append(f"\n[current]\n{compact_text(user_input, 800)}")
+
+    return {
+        "user_query": user_input,
+        "root_context": root_context,
+        "followup_context": "\n".join(chain_lines),
+        "followup_type": followup_type,
+        "output_format": output_format,
+        "followup_dag": {
+            "lookback": FOLLOWUP_DAG_LOOKBACK,
+            "parent_turn_id": parent_id,
+            "parent_turn_ids": parent_ids,
+            "chain_turn_ids": [turn.get("turn_id") for turn in chain],
+            "reason": reason,
+            "empty_root_id": FOLLOWUP_EMPTY_ROOT_ID,
+        },
+    }
+
+
+def build_math_tools(
+    metrics: RuntimeMetrics | None = None,
+    followup_context_resolver: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> dict[str, ToolSpec]:
+    toolkit = legacy_agent.get_toolkit()
+
+    def timed_skill_call(step_name: str, tool: Any, payload: dict[str, Any], **extra: Any) -> Any:
+        started = time.perf_counter()
+        try:
+            value = _call_tool(tool, payload)
+        except Exception as exc:
+            if metrics is not None:
+                metrics.add_step(f"skill:solve_exam_question:{step_name}", started, ok=False, error=str(exc), **extra)
+            raise
+        if metrics is not None:
+            metrics.add_step(f"skill:solve_exam_question:{step_name}", started, ok=True, **extra)
+        return value
+
+    def solve_exam_question(args: dict[str, Any]) -> str:
+        exam_type = args.get("exam_type") or "math1"
+        year = int(args["year"])
+        question_number = int(args["question_number"])
+        user_query = str(args.get("user_query") or "")
+        image_paths = [Path(item) for item in args.get("image_paths") or []]
+        output_format = str(args.get("output_format") or "ui")
+        problem = legacy_agent.math_problem_from_tool_payload(
+            timed_skill_call("search_math_exam", toolkit.search_math_exam, {
+                "exam_type": exam_type,
+                "year": year,
+                "question_number": question_number,
+            }, year=year, question_number=question_number, exam_type=exam_type)
+        )
+        vl_text = None
+        image_started = time.perf_counter()
+        database_image_paths = legacy_agent.problem_image_paths(problem)
+        ocr_image_paths: list[Path] = []
+        seen_paths: set[str] = set()
+        for path in [*database_image_paths, *image_paths]:
+            key = str(path.resolve() if path.exists() else path).lower()
+            if key in seen_paths:
+                continue
+            seen_paths.add(key)
+            ocr_image_paths.append(path)
+        if metrics is not None:
+            metrics.add_step(
+                "skill:solve_exam_question:collect_images",
+                image_started,
+                database_images=len(database_image_paths),
+                user_images=len(image_paths),
+                ocr_images=len(ocr_image_paths),
+            )
+        if ocr_image_paths:
+            ocr_query = (
+                f"{user_query}\n\n"
+                f"题库定位：{problem.year} 年{legacy_agent.exam_label(problem.exam_type)}第 {problem.question_number} 题。\n"
+                "请识别题库图片和用户上传图片中的题干、公式、坐标轴、图形区域、选项图形等关键信息，不要解题。"
+                "对区域标号、阴影或选项小图，必须按实际边界、曲线、端点、刻度和相对位置描述；能读出不等式或参数范围就列出，读不出则标注不确定。"
+            )
+            vl_text = timed_skill_call("ocr_math_image", toolkit.ocr_math_image, {
+                "image_paths": [str(path) for path in ocr_image_paths],
+                "user_query": ocr_query,
+            }, image_count=len(ocr_image_paths))
+        feedback = None
+        last_solution = ""
+        last_judgement: dict[str, Any] = {}
+        for attempt in range(1, 4):
+            last_solution = timed_skill_call("solve_math_exam", toolkit.solve_math_exam, {
+                "exam_type": problem.exam_type,
+                "year": problem.year,
+                "question_number": problem.question_number,
+                "user_query": user_query,
+                "vl_text": vl_text,
+                "output_format": output_format,
+                "feedback": feedback,
+            }, attempt=attempt)
+            last_judgement = timed_skill_call("judge_math_answer", toolkit.judge_math_answer, {
+                "exam_type": problem.exam_type,
+                "year": problem.year,
+                "question_number": problem.question_number,
+                "solution": last_solution,
+            }, attempt=attempt)
+            if last_judgement.get("match"):
+                return last_solution
+            feedback = (
+                "上一次答案与标准答案不一致。"
+                f"标准答案: {last_judgement.get('expected') or problem.answer_text}; "
+                f"你的答案: {last_judgement.get('actual')}; "
+                f"原因: {last_judgement.get('reason')}"
+            )
+        if problem.answer_text:
+            fallback_started = time.perf_counter()
+            try:
+                fallback_answer = legacy_agent.render_standard_answer_with_explanation(problem, user_query, vl_text, output_format)
+            except Exception as exc:
+                if metrics is not None:
+                    metrics.add_step("skill:solve_exam_question:fallback_explanation", fallback_started, ok=False, error=str(exc))
+                raise
+            if metrics is not None:
+                metrics.add_step("skill:solve_exam_question:fallback_explanation", fallback_started, ok=True)
+            return fallback_answer
+        return last_solution or json.dumps(last_judgement, ensure_ascii=False)
+
+    def answer_context_followup(args: dict[str, Any]) -> str:
+        payload = dict(args)
+        if followup_context_resolver is not None:
+            resolved = followup_context_resolver(payload)
+            for key in ("user_query", "root_context", "followup_context", "followup_type", "output_format"):
+                if key in resolved:
+                    payload[key] = resolved[key]
+            args.update(payload)
+            args["_followup_dag"] = resolved.get("followup_dag")
+        return legacy_agent.explain_math_followup_with_qwenmath(
+            str(payload.get("user_query") or ""),
+            str(payload.get("root_context") or ""),
+            str(payload.get("followup_context") or ""),
+            str(payload.get("followup_type") or "contextual_followup"),
+            str(payload.get("output_format") or "ui"),
+        )
+
+    common_exam_props = {
+        "exam_type": {"type": "string", "enum": ["math1", "math2", "math3"], "description": "考试类型：math1 数学一，math2 数学二，math3 数学三"},
+        "year": {"type": "integer", "description": "真题年份，如 2021"},
+        "question_number": {"type": "integer", "description": "题号，如 9"},
+    }
+    tools = {
+        "solve_exam_question": ToolSpec(
+            "solve_exam_question",
+            "组合 skill：搜索考研数学真题，若题库题块或用户本轮包含图片则先用 Qwen-VL OCR，再调用数学解题并与本地标准答案核对。仅当用户文本明确给出年份、科目和题号时使用，例如“2021 数一第 9 题怎么做”。不要根据图片文件名推断真题。边界：未知来源图片题用 ocr_math_image 后接 solve_general_math；只看题目用 show_math_exam_question，只要标准答案用 show_math_exam_answer，局部追问用 explain_math_step。",
+            json_schema({
+                **common_exam_props,
+                "user_query": {"type": "string", "description": "用户原始问题，保留追问措辞"},
+                "image_paths": {"type": "array", "items": {"type": "string"}, "description": "可选的本地图片路径列表"},
+                "output_format": {"type": "string", "enum": ["ui", "terminal"], "description": "输出格式"},
+            }, ["exam_type", "year", "question_number", "user_query"]),
+            solve_exam_question,
+            return_mode="direct",
+        ),
+        "show_math_exam_question": ToolSpec(
+            "show_math_exam_question",
+            "展示考研数学真题题面，不解题、不展示答案。仅当用户文本明确给出年份、科目和题号时使用。典型问法：“2024 数一第 5 题题目是什么”“给我原题”。不要根据图片文件名推断真题；图片未知来源时先 OCR。",
+            json_schema(common_exam_props, ["exam_type", "year", "question_number"]),
+            lambda args: _call_tool(toolkit.show_math_exam_question, args),
+            return_mode="direct",
+        ),
+        "show_math_exam_answer": ToolSpec(
+            "show_math_exam_answer",
+            "展示本地标准答案速查，不重新解题。仅当用户文本明确给出年份、科目和题号时使用。典型问法：“2024 数一第 5 题答案是什么”“选什么”。不要根据图片文件名推断真题；用户要过程时用 solve_exam_question。",
+            json_schema(common_exam_props, ["exam_type", "year", "question_number"]),
+            lambda args: _call_tool(toolkit.show_math_exam_answer, args),
+            return_mode="direct",
+        ),
+        "explain_math_step": ToolSpec(
+            "explain_math_step",
+            "解释已有解题过程中的某一步或局部结论。典型问法：“第 2 步怎么来的”“这里为什么可以这样变形”“这一步是不是用了中值定理”。必须传入从历史定位出的 original_context。边界：不完整重做整题。",
+            json_schema({
+                **common_exam_props,
+                "user_query": {"type": "string", "description": "用户当前追问"},
+                "previous_context": {"type": "string", "description": "最近 15 轮中定位到的原始解题过程或 root 上下文，必须原样保留关键步骤"},
+                "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+            }, ["exam_type", "year", "question_number", "user_query", "previous_context"]),
+            lambda args: _call_tool(toolkit.explain_math_step, args),
+            return_mode="direct",
+        ),
+        "solve_general_math": ToolSpec(
+            "solve_general_math",
+            "解答普通数学题、概念解释、定理说明、非真题计算或证明。典型问法：“第一积分中值定理是什么”“求 lim...”。边界：明确年份题号的考研真题用 solve_exam_question。",
+            json_schema({
+                "user_query": {"type": "string", "description": "完整数学问题"},
+                "vl_text": {"type": ["string", "null"], "description": "可选 OCR 结果"},
+                "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+            }, ["user_query"]),
+            lambda args: _call_tool(toolkit.solve_general_math, args),
+            return_mode="direct",
+        ),
+        "ocr_math_image": ToolSpec(
+            "ocr_math_image",
+            "识别数学题图片，只做 OCR、公式识别和图形条件说明，不解题；既可用于用户上传图片，也可由 solve_exam_question 内部识别本地题库题图。典型问法：“看这张图题面是什么”。图片文件名不能作为真题定位依据。边界：OCR 后解题通常调用 solve_general_math；只有用户文本明确给出年份、科目、题号时才可接 solve_exam_question。",
+            json_schema({
+                "image_paths": {"type": "array", "items": {"type": "string"}, "description": "本地图片路径列表"},
+                "user_query": {"type": "string", "description": "用户文字补充"},
+            }, ["image_paths", "user_query"]),
+            lambda args: _call_tool(toolkit.ocr_math_image, args),
+            return_mode="evidence",
+        ),
+    }
+    if context_followup_tools_enabled():
+        tools.update({
+            "answer_math_followup": ToolSpec(
+                "answer_math_followup",
+                "回答非步骤型数学上下文追问，例如参数改动、条件替换、余项/误差追问、多个前序题之间用“第一个/第二个”定位、继续说明上一个结论等。不要用于“第 x 步怎么来的”这类局部步骤解释；步骤解释仍用 explain_math_step。必须传入最近历史中定位到的 root_context 和 followup_context。",
+                json_schema({
+                    "user_query": {"type": "string", "description": "用户当前非步骤追问"},
+                    "root_context": {"type": "string", "description": "被追问的根话题、原题或原始解法。多个候选时应包含足够定位信息"},
+                    "followup_context": {"type": "string", "description": "从根话题到当前追问的相关对话链路，原样保留函数、参数、展开点、阶数、误差要求等"},
+                    "followup_type": {"type": "string", "description": "追问类型，如 parameter_change / condition_change / remainder_query / compare_roots / continue_explanation"},
+                    "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+                }, ["user_query", "root_context", "followup_context"]),
+                answer_context_followup,
+                return_mode="direct",
+            ),
+            "rewrite_math_answer": ToolSpec(
+                "rewrite_math_answer",
+                "按用户要求改写已有数学回答，例如更简洁、口语化、适合笔记、保留若干位小数等；不重新解题。必须传入 previous_context。",
+                json_schema({
+                    "user_query": {"type": "string", "description": "用户当前改写要求"},
+                    "previous_context": {"type": "string", "description": "需要被改写的上一轮或相关历史回答"},
+                    "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+                }, ["user_query", "previous_context"]),
+                lambda args: _call_tool(toolkit.rewrite_math_answer, args),
+                return_mode="direct",
+            ),
+            "summarize_math_solution": ToolSpec(
+                "summarize_math_solution",
+                "总结已有数学解法、知识点或对话链路；不重新解题。适用于“总结一下”“提炼思路”“帮我整理成笔记”等非步骤追问。必须传入 previous_context。",
+                json_schema({
+                    "user_query": {"type": "string", "description": "用户当前总结要求"},
+                    "previous_context": {"type": "string", "description": "需要被总结的上一轮或相关历史回答"},
+                    "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+                }, ["user_query", "previous_context"]),
+                lambda args: _call_tool(toolkit.summarize_math_solution, args),
+                return_mode="direct",
+            ),
+        })
+    return tools
+
+
+def build_current_affairs_tools() -> dict[str, ToolSpec]:
+    toolkit = legacy_agent.get_toolkit()
+    return {
+        "get_current_affairs": ToolSpec(
+            "get_current_affairs",
+            "调用 Coze 时政智能体整理近期时政、政策、新闻热点。典型问法：“2026 年 5 月考研政治时政热点”。边界：数学题不要使用。",
+            json_schema({"query": {"type": "string", "description": "时政查询或整理请求"}}, ["query"]),
+            lambda args: _call_tool(toolkit.get_current_affairs, args),
+        )
+    }
+
+def build_politics_tools() -> dict[str, ToolSpec]:
+    """政治知识点 RAG 工具。"""
+    try:
+        from politics_rag import retrieve_politics, answer_with_qwen
+    except Exception:
+        return {}
+    return {
+        "search_politics_knowledge": ToolSpec(
+            "search_politics_knowledge",
+            "从考研政治知识库（马原、毛中特、史纲、思修）中检索相关知识点。典型问法：「马克思主义基本原理有哪些章节」「主要矛盾和矛盾的主要方面有什么区别」。",
+            json_schema({"query": {"type": "string", "description": "政治知识查询"}}, ["query"]),
+            lambda args: json.dumps(retrieve_politics(str(args["query"]), top_k=3), ensure_ascii=False, default=str),
+            return_mode="evidence",
+        ),
+    }
+
+
+
+MATH_EXPLICIT_RE = re.compile(
+    r"考研数学|数学[一二三]|数[一二三]|math[123]|"
+    r"极限|积分|导数|求导|微分|偏导|偏导数|全微分|泰勒|余项|级数|"
+    r"特征值|特征向量|二重积分|三重积分|微分方程|分段函数|函数图像|"
+    r"拉格朗日|洛必达|等价无穷小|收敛半径|幂级数|"
+    r"线性代数|线代|矩阵|行列式|向量组|线性相关|线性无关|极大无关组|"
+    r"初等变换|矩阵秩|矩阵的秩|向量组的秩|伴随矩阵|逆矩阵|正交矩阵|"
+    r"二次型|正定|合同矩阵|相似矩阵|对角化|可对角化|特征多项式|特征方程|"
+    r"基础解系|齐次线性方程组|非齐次线性方程组|解空间|"
+    r"概率论|随机变量|分布函数|概率密度|密度函数|分布律|分布列|"
+    r"数学期望|方差|协方差|条件概率|全概率公式|贝叶斯公式|大数定律|中心极限定理|"
+    r"二项分布|泊松分布|正态分布|指数分布|均匀分布|几何分布|超几何分布|"
+    r"相互独立|事件独立|排列组合|"
+    r"(?:20\d{2}|0?[9]|1\d|2\d)\s*年\s*(?:数[一二三]|数学[一二三]|math[123])\s*第\s*(?:\d{1,2}|[一二三四五六七八九十]{1,3})\s*[题问]"
+)
+MATH_FOLLOWUP_RE = re.compile(
+    r"第\s*\d+\s*步|这一步|上一步|这里为什么|怎么来的|为什么成立|"
+    r"上面.*式子|这个式子|那个式子|这个余项|余项呢|展开点|"
+    r"这个积分|那个积分|这个矩阵|这个函数"
+)
+MATH_HISTORY_RE = re.compile(
+    rf"{MATH_EXPLICIT_RE.pattern}|\\int|\\lim|lim_|题号|解法|推导|化简|代入"
+)
+CURRENT_AFFAIRS_EXPLICIT_RE = re.compile(r"时政|时事|新闻热点|热点新闻|近期.*(?:新闻|政策|热点)|本月时政|会议精神|政策解读")
+POLITICS_EXPLICIT_RE = re.compile(r"考研政治|马原|马克思主义|毛中特|毛泽东思想|史纲|思修|思想道德|肖四|肖八|徐涛|腿姐")
+ENGLISH_EXPLICIT_RE = re.compile(r"考研英语|英语[一二]?|阅读理解|英语作文|小作文|大作文|完形填空|新题型|考研翻译")
+
+# 模糊真题引用的局部模式
+_FUZZY_EXAM_YEAR_RE = re.compile(r"(?:20\d{2}|0?[9]|1\d|2\d)\s*年")
+_FUZZY_EXAM_QUESTION_RE = re.compile(r"(?:第\s*)?(?:\d{1,2}|[一二三四五六七八九十]{1,3})\s*(?:题|问|[大个]题)")
+_FUZZY_EXAM_SUBJECT_RE = re.compile(r"数学[一二三]|数[一二三]|math[123]")
+_FUZZY_EXAM_VAGUE_RE = re.compile(r"真题|历年真题|考题|考研题|这道题|那道题|第\s*[几多少]\s*题|第[一二三四五六七八九十]\s*[个大题问]")
+
+
+def analyze_missing_info(user_input: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    text = user_input.strip()
+    result: dict[str, Any] = {
+        "has_subject_hint": False,
+        "has_year": False,
+        "has_question_number": False,
+        "has_exam_type": False,
+        "likely_math": False,
+        "likely_kaoyan": bool(re.search(r"考研|真题|考题|数[一二三]|数学", text)),
+        "missing": [],
+    }
+    result["has_year"] = bool(_FUZZY_EXAM_YEAR_RE.search(text))
+    result["has_question_number"] = bool(_FUZZY_EXAM_QUESTION_RE.search(text))
+    result["has_exam_type"] = bool(_FUZZY_EXAM_SUBJECT_RE.search(text))
+    result["has_subject_hint"] = bool(CURRENT_AFFAIRS_EXPLICIT_RE.search(text) or
+                                      POLITICS_EXPLICIT_RE.search(text) or
+                                      ENGLISH_EXPLICIT_RE.search(text) or
+                                      MATH_EXPLICIT_RE.search(text))
+    if not result["has_subject_hint"]:
+        if history_suggests_math(history):
+            result["likely_math"] = True
+    missing = result["missing"]
+    if result["has_year"] and result["has_question_number"] and not result["has_exam_type"]:
+        missing.append("exam_type")
+    elif not result["has_year"] and result["has_question_number"]:
+        missing.append("year")
+    elif result["has_year"] and not result["has_question_number"]:
+        missing.append("question_number")
+    elif not result["has_subject_hint"] and not result["has_year"] and not result["has_question_number"]:
+        if _FUZZY_EXAM_VAGUE_RE.search(text):
+            missing.append("exam_specifics")
+        elif not result["likely_math"]:
+            missing.append("subject")
+    return result
+
+
+def build_ambiguous_clarification(user_input: str, history: list[dict[str, str]]) -> str:
+    info = analyze_missing_info(user_input, history)
+    missing = info["missing"]
+    hard_rules: list[tuple[list[str], str]] = [
+        (["exam_type"], "请问您指的是数学一、数学二还是数学三的题？"),
+        (["year"], "请问是哪一年的题？比如 2020、2021。"),
+        (["question_number"], "请问是第几题？请提供具体题号。"),
+        (["exam_specifics"], "请提供更具体的信息，比如哪一年、哪一科的哪道真题？例如 2021 年数一第 9 题怎么做。"),
+        (["subject"], "请问您想咨询什么内容？我可以帮您解答数学题、查询考研时政热点。"),
+    ]
+    for triggers, answer in hard_rules:
+        if sorted(missing) == sorted(triggers):
+            return answer
+    if info["has_year"] and info["has_question_number"] and not info["has_exam_type"]:
+        return "请问您指的是数学一、数学二还是数学三的题？"
+    if info["likely_math"]:
+        return "能否提供更具体的信息？比如年份、科目（数一/数二/数三）和题号。"
+    return "请问您想咨询什么内容？我可以帮您解答数学题（如 2021 年数一第 9 题）、查询考研时政热点。"
+
+
+def history_suggests_math(history: list[dict[str, str]] | None) -> bool:
+    if not history:
+        return False
+    recent_text = "\n".join(str(item.get("content", "")) for item in history[-8:])
+    return bool(MATH_HISTORY_RE.search(recent_text))
+
+
+def classify_subject_heuristic(
+    user_input: str,
+    has_images: bool = False,
+    history: list[dict[str, str]] | None = None,
+) -> str | None:
+    if MATH_FOLLOWUP_RE.search(user_input) and history_suggests_math(history):
+        return "math"
+    if MATH_EXPLICIT_RE.search(user_input):
+        return "math"
+    if CURRENT_AFFAIRS_EXPLICIT_RE.search(user_input):
+        return "current_affairs"
+    if POLITICS_EXPLICIT_RE.search(user_input):
+        return "politics"
+    if ENGLISH_EXPLICIT_RE.search(user_input):
+        return "english"
+    return None
+
+
+WEAK_FOLLOWUP_HINT_RE = re.compile(
+    r"这个|那个|它|这里|上面|刚才|上一|继续|详细|展开|"
+    r"为什么|咋来的|怎么来的|还成立|可以吗|对吗|"
+    r"我说的是|我的意思|不是这个|换成|那如果|这个呢|那个呢"
+)
+MULTI_PARENT_FOLLOWUP_HINT_RE = re.compile(
+    r"第[一二三四五六七八九十\d]+个|第[一二三四五六七八九十\d]+题|"
+    r"这两个|那两个|二者|两者|分别|对比|区别|联系|另一个|前一个|后一个"
+)
+INDEPENDENT_COMMAND_RE = re.compile(
+    r"^(?:讲一下|解释一下|总结一下|帮我|请问|什么是|如何|怎么做|求|证明)"
+)
+
+
+def classify_followup_heuristic(user_input: str, history: list[dict[str, str]] | None = None) -> str | None:
+    text = user_input.strip()
+    if not text:
+        return None
+    if MATH_FOLLOWUP_RE.search(text) and history_suggests_math(history):
+        return "step_followup"
+    if MULTI_PARENT_FOLLOWUP_HINT_RE.search(text):
+        return "contextual_nonstep_followup"
+    if WEAK_FOLLOWUP_HINT_RE.search(text):
+        return "weak_nonstep_followup"
+    if classify_subject_heuristic(text, history=history) or INDEPENDENT_COMMAND_RE.search(text):
+        return "independent"
+    return None
+
+
+def normalize_subject(value: Any, fallback: str = "unsupported") -> str:
+    subject = str(value or fallback)
+    if subject not in {"math", "current_affairs", "politics", "english", "unsupported"}:
+        return fallback
+    return subject
+
+
+def normalize_followup_category(value: Any, fallback: str = "independent") -> str:
+    category = str(value or fallback)
+    if category not in {"independent", "step_followup", "weak_nonstep_followup", "contextual_nonstep_followup", "ambiguous"}:
+        return fallback
+    return category
+
+
+def candidate_turn_ids(candidates: list[dict[str, Any]]) -> set[int]:
+    ids: set[int] = set()
+    for turn in candidates:
+        try:
+            ids.add(int(turn.get("turn_id")))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+def normalize_parent_ids(data: dict[str, Any], candidates: list[dict[str, Any]]) -> tuple[int | None, list[int]]:
+    valid_ids = candidate_turn_ids(candidates)
+    values: list[Any] = []
+    raw_values = data.get("parent_turn_ids")
+    if isinstance(raw_values, list):
+        values.extend(raw_values)
+    if data.get("parent_turn_id") is not None:
+        values.append(data.get("parent_turn_id"))
+    parent_ids: list[int] = []
+    for value in values:
+        try:
+            parent_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parent_id in valid_ids and parent_id not in parent_ids:
+            parent_ids.append(parent_id)
+    parent_ids.sort()
+    parent_turn_id = None
+    try:
+        raw_parent = int(data.get("parent_turn_id"))
+    except (TypeError, ValueError):
+        raw_parent = None
+    if raw_parent in valid_ids:
+        parent_turn_id = raw_parent
+    elif parent_ids:
+        parent_turn_id = parent_ids[-1]
+    return parent_turn_id, parent_ids
+
+
+def route_with_llm(
+    user_input: str,
+    history: list[dict[str, str]],
+    candidates: list[dict[str, Any]],
+    client: Any,
+    metrics: RuntimeMetrics | None = None,
+    subject_hint: str | None = None,
+    subject_locked: bool = False,
+    followup_hint: str | None = None,
+    followup_locked: bool = False,
+    has_images: bool = False,
+) -> RouteDecision:
+    candidate_text = "\n\n".join(
+        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
+        for turn in candidates
+    )
+    payload = {
+        "user_input": user_input,
+        "recent_history": history[-ROUTING_HISTORY_TURNS * 2:],
+        "candidate_turns": candidate_text,
+        "has_images": has_images,
+        "subject_hint": subject_hint,
+        "subject_locked": subject_locked,
+        "followup_hint": followup_hint,
+        "followup_locked": followup_locked,
+    }
+    response = client.chat.completions.create(
+        model=legacy_agent.load_settings().global_model,
+        messages=[
+            {"role": "system", "content": ROUTE_CLASSIFIER_PROMPT},
+            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+        ],
+        temperature=0,
+    )
+    if metrics is not None:
+        metrics.llm_calls += 1
+        record_usage(metrics, response)
+    try:
+        data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
+    except Exception:
+        data = {}
+    subject = normalize_subject(subject_hint if subject_locked else data.get("subject"), subject_hint or "unsupported")
+    category = normalize_followup_category(
+        followup_hint if followup_locked else data.get("followup_category", data.get("category")),
+        followup_hint or "independent",
+    )
+    parent_id, parent_ids = normalize_parent_ids(data, candidates)
+    if category == "independent":
+        parent_id = None
+        parent_ids = []
+    clarification = data.get("clarification")
+    return RouteDecision(
+        subject=subject,
+        is_followup=bool(data.get("is_followup")) if not followup_locked else category != "independent",
+        followup_category=category,
+        parent_turn_id=parent_id,
+        parent_turn_ids=parent_ids,
+        reason=str(data.get("reason") or ""),
+        clarification=clarification.strip() if isinstance(clarification, str) and clarification.strip() else None,
+    )
+
+
+_last_clarification: str | None = None
+
+
+def classify_subject(user_input: str, history: list[dict[str, str]], has_images: bool = False, client: Any | None = None, metrics: RuntimeMetrics | None = None) -> str:
+    heuristic = classify_subject_heuristic(user_input, has_images, history)
+    if heuristic:
+        return heuristic
+    if client is None:
+        return "unsupported"
+    route = route_with_llm(
+        user_input,
+        history,
+        [],
+        client,
+        metrics,
+        followup_hint=classify_followup_heuristic(user_input, history),
+        has_images=has_images,
+    )
+    if route.clarification:
+        global _last_clarification
+        _last_clarification = route.clarification
+    return route.subject
+
+
+def should_use_unified_route(has_images: bool, recent_turns: list[dict[str, Any]]) -> bool:
+    return context_followup_tools_enabled() and not has_images and bool(recent_turns)
+
+
+def turns_to_messages(turns: list[dict[str, Any]]) -> list[dict[str, str]]:
+    messages: list[dict[str, str]] = []
+    for turn in turns:
+        user_query = str(turn.get("user_query") or "")
+        assistant_answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
+        if user_query:
+            messages.append({"role": "user", "content": user_query})
+        if assistant_answer:
+            messages.append({"role": "assistant", "content": assistant_answer})
+    return messages
+
+
+def infer_subject_from_turns(turns: list[dict[str, Any]]) -> str | None:
+    text = "\n".join(turn_context_block(turn, 600) for turn in turns)
+    if not text.strip():
+        return None
+    if POLITICS_EXPLICIT_RE.search(text):
+        return "politics"
+    if CURRENT_AFFAIRS_EXPLICIT_RE.search(text):
+        return "current_affairs"
+    if ENGLISH_EXPLICIT_RE.search(text):
+        return "english"
+    if MATH_HISTORY_RE.search(text) or re.search(
+        r"cosh|sinh|Taylor|泰勒|积分|导数|函数|定理|连续|可导|矩阵|概率|"
+        r"\b(?:lim|sin|cos|tan|ln|log|det)\b|[a-zA-Z]\s*\(|\^",
+        text,
+        flags=re.I,
+    ):
+        return "math"
+    for turn in reversed(turns):
+        route = turn.get("route")
+        if isinstance(route, dict):
+            subject = normalize_subject(route.get("subject"), fallback="")
+            if subject:
+                return subject
+    return None
+
+
+def build_route_decision(
+    user_input: str,
+    history: list[dict[str, str]],
+    recent_turns: list[dict[str, Any]],
+    has_images: bool,
+    client: Any,
+    metrics: RuntimeMetrics,
+) -> RouteDecision:
+    route_history = [*history, *turns_to_messages(recent_turns)]
+    subject_hint = classify_subject_heuristic(user_input, has_images=has_images, history=route_history)
+    if subject_hint is None:
+        subject_hint = infer_subject_from_turns(recent_turns)
+    followup_hint = classify_followup_heuristic(user_input, route_history)
+    return route_with_llm(
+        user_input,
+        route_history,
+        recent_turns,
+        client,
+        metrics,
+        subject_hint=subject_hint,
+        subject_locked=bool(subject_hint),
+        followup_hint=followup_hint,
+        followup_locked=False,
+        has_images=has_images,
+    )
+
+
+def pop_last_clarification() -> str | None:
+    global _last_clarification
+    text = _last_clarification
+    _last_clarification = None
+    return text
+
+
+def select_tools(
+    subject: str,
+    metrics: RuntimeMetrics | None = None,
+    followup_context_resolver: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+) -> dict[str, ToolSpec]:
+    if subject == "math":
+        return build_math_tools(metrics, followup_context_resolver)
+    if subject == "politics":
+        return build_politics_tools()
+    if subject == "current_affairs":
+        return build_current_affairs_tools()
+    return {}
+
+
+def has_explicit_exam_reference(text: str) -> bool:
+    has_year = bool(re.search(r"(20\d{2}|0[9]|1[0-9]|2[0-9])\s*年", text))
+    has_exam = bool(re.search(r"数学一|数一|math1|数学二|数二|math2|数学三|数三|math3", text, flags=re.I))
+    has_question = bool(re.search(r"第\s*(?:\d{1,2}|[一二三四五六七八九十]{1,3})\s*[题問问]|(?<!\d)\d{1,2}\s*[题問问]", text))
+    return has_year and has_exam and has_question
+
+
+def filter_tools_for_request(tools: dict[str, ToolSpec], user_input: str, has_images: bool) -> dict[str, ToolSpec]:
+    if not has_images:
+        return tools
+    if has_explicit_exam_reference(user_input):
+        return tools
+    blocked = {"solve_exam_question", "show_math_exam_question", "show_math_exam_answer"}
+    return {name: spec for name, spec in tools.items() if name not in blocked}
+
+
+def make_client() -> Any:
+    return legacy_agent.make_client()
+
+
+def normalize_message(message: Any) -> dict[str, Any]:
+    data: dict[str, Any] = {"role": "assistant", "content": getattr(message, "content", None) or ""}
+    tool_calls = getattr(message, "tool_calls", None)
+    if tool_calls:
+        data["tool_calls"] = []
+        for call in tool_calls:
+            function = getattr(call, "function", None)
+            data["tool_calls"].append({
+                "id": getattr(call, "id", ""),
+                "type": "function",
+                "function": {
+                    "name": getattr(function, "name", ""),
+                    "arguments": getattr(function, "arguments", "{}"),
+                },
+            })
+    return data
+
+
+def record_usage(metrics: RuntimeMetrics, response: Any) -> None:
+    usage = getattr(response, "usage", None)
+    if not usage:
+        return
+    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+    total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    metrics.prompt_tokens += prompt_tokens
+    metrics.completion_tokens += completion_tokens
+    metrics.total_tokens += total_tokens or prompt_tokens + completion_tokens
+
+
+def format_model_error(exc: Exception) -> str:
+    text = str(exc)
+    if "Arrearage" in text or "overdue-payment" in text or "Access denied" in text:
+        return (
+            "模型接口调用失败：DashScope 账户当前不可用，返回了 Arrearage/欠费状态。"
+            "请检查阿里云百炼/DashScope 账户余额、套餐或 API Key 所属账号状态后再试。"
+        )
+    return f"模型接口调用失败：{exc}"
+
+
+def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], metrics: RuntimeMetrics) -> tuple[dict[str, Any], dict[str, Any]]:
+    started = time.perf_counter()
+    name = tool_call.get("function", {}).get("name", "")
+    raw_arguments = tool_call.get("function", {}).get("arguments", "{}")
+    metrics.tool_calls += 1
+    try:
+        arguments = json.loads(raw_arguments or "{}")
+    except json.JSONDecodeError as exc:
+        metrics.tool_errors += 1
+        result = {"ok": False, "error": f"Invalid JSON arguments: {exc}", "raw_arguments": raw_arguments}
+        metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
+        return result, {"name": name, "arguments": raw_arguments, "ok": False, "error": result["error"]}
+    spec = tools.get(name)
+    if spec is None:
+        metrics.tool_errors += 1
+        result = {"ok": False, "error": f"Unknown tool: {name}", "available_tools": sorted(tools)}
+        metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
+        return result, {"name": name, "arguments": arguments, "ok": False, "error": result["error"]}
+    try:
+        value = spec.func(arguments)
+        metrics.tool_success += 1
+        result = {"ok": True, "result": value}
+        metrics.add_step(f"tool:{name}", started, ok=True)
+        return result, {"name": name, "arguments": arguments, "ok": True}
+    except Exception as exc:
+        metrics.tool_errors += 1
+        result = {"ok": False, "error": str(exc)}
+        metrics.add_step(f"tool:{name}", started, ok=False, error=str(exc))
+        return result, {"name": name, "arguments": arguments, "ok": False, "error": str(exc)}
+
+
+def direct_tool_answer(
+    tool_call_records: list[dict[str, Any]],
+    tools: dict[str, ToolSpec],
+    latest_tool_result: dict[str, Any],
+    current_round_tool_count: int,
+) -> tuple[str, str] | None:
+    if current_round_tool_count != 1 or len(tool_call_records) != 1:
+        return None
+    record = tool_call_records[0]
+    if not record.get("ok") or not latest_tool_result.get("ok"):
+        return None
+    spec = tools.get(str(record.get("name") or ""))
+    if spec is None or spec.return_mode != "direct":
+        return None
+    value = latest_tool_result.get("result")
+    if not isinstance(value, str):
+        return None
+    answer = value.strip()
+    if not answer:
+        return None
+    return answer, spec.name
+
+
+def log_runtime(result: RuntimeResult) -> None:
+    REQUEST_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    path = REQUEST_LOG_DIR / f"{datetime.now().date().isoformat()}.jsonl"
+    payload = {
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "subject": result.subject,
+        "metrics": result.metrics,
+        "tool_calls": result.tool_calls,
+        "messages": result.messages,
+    }
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    for item in result.tool_calls:
+        if not item.get("ok"):
+            case_path = REQUEST_LOG_DIR / "tool_misuse_cases.jsonl"
+            with case_path.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            break
+
+
+def build_messages(user_input: str, history: list[dict[str, str]], output_format: str) -> list[dict[str, Any]]:
+    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
+    system_prompt = MAIN_SYSTEM_PROMPT
+    if context_followup_tools_enabled():
+        system_prompt = f"{system_prompt}\n\n{CONTEXT_FOLLOWUP_PROMPT}"
+    return [
+        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
+        *history[-SHORT_TERM_TURNS * 2:],
+        {"role": "user", "content": user_input},
+    ]
+
+
+def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], output_format: str) -> list[dict[str, Any]]:
+    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
+    system_prompt = (
+        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
+        "当前轮已经由 runtime 判定为非步骤追问；下面的 DAG 链路记忆替代最近 15 轮平铺历史。"
+        "回答时只沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
+        "认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
+        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
+        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
+    )
+    content = (
+        "DAG 追问链路记忆：\n"
+        f"{dag_context.get('followup_context') or ''}\n\n"
+        "根节点上下文：\n"
+        f"{dag_context.get('root_context') or ''}\n\n"
+        "当前用户输入：\n"
+        f"{user_input}"
+    )
+    return [
+        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
+        {"role": "user", "content": content},
+    ]
+
+
+def build_followup_clarification_messages(
+    user_input: str,
+    recent_turns: list[dict[str, Any]],
+    route_decision: dict[str, Any],
+    output_format: str,
+) -> list[dict[str, Any]]:
+    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
+    recent_context = "\n\n".join(
+        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
+        for turn in recent_turns
+    )
+    system_prompt = (
+        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
+        "当前轮被判定为非步骤追问但 parent 不明确。不要直接解题；"
+        f"请基于最近 {FOLLOWUP_DAG_LOOKBACK} 轮候选，向用户提出一个简短澄清问题，让用户确认要追问哪一轮或哪个对象。"
+    )
+    content = (
+        f"判定结果：{json.dumps(route_decision, ensure_ascii=False)}\n\n"
+        f"最近 {FOLLOWUP_DAG_LOOKBACK} 轮候选：\n{recent_context}\n\n"
+        f"当前用户输入：\n{user_input}"
+    )
+    return [
+        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
+        {"role": "user", "content": content},
+    ]
+
+
+def run_standard_message_loop(
+    user_input: str,
+    session_id: str = "default",
+    image_paths: list[Path] | None = None,
+    output_format: str = "ui",
+    client: Any | None = None,
+    persist: bool = True,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+) -> RuntimeResult:
+    load_dotenv(ROOT / ".env")
+    image_paths = image_paths or []
+    request_id = now_id()
+    metrics = RuntimeMetrics(
+        request_id=request_id,
+        session_id=safe_session_id(session_id),
+        progress_callback=progress_callback,
+    )
+    client = client or make_client()
+
+    history = read_recent_md_messages(session_id)
+    recent_turns = legacy_agent.load_session(session_id).get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
+    followup_route_decision: dict[str, Any] | None = None
+    route_decision: RouteDecision | None = None
+    step_started = time.perf_counter()
+    try:
+        if should_use_unified_route(bool(image_paths), recent_turns):
+            route_decision = build_route_decision(
+                user_input,
+                history,
+                recent_turns,
+                bool(image_paths),
+                client,
+                metrics,
+            )
+            subject = route_decision.subject
+            followup_route_decision = route_decision.followup_route()
+        else:
+            subject = classify_subject(user_input, history, has_images=bool(image_paths), client=client, metrics=metrics)
+    except Exception as exc:
+        metrics.add_step("route_classifier", step_started, subject="error", error=str(exc))
+        result = RuntimeResult(
+            format_model_error(exc),
+            "unsupported",
+            build_messages(user_input, history, output_format),
+            [],
+            metrics.as_dict(),
+        )
+        log_runtime(result)
+        if persist:
+            append_runtime_turn(session_id, user_input, result)
+        return result
+    metrics.subject = subject
+    metrics.add_step(
+        "route_classifier" if route_decision is not None else "subject_classifier",
+        step_started,
+        subject=subject,
+        category=(followup_route_decision or {}).get("category"),
+        parent_turn_id=(followup_route_decision or {}).get("parent_turn_id"),
+        parent_turn_ids=(followup_route_decision or {}).get("parent_turn_ids") or [],
+    )
+
+    def followup_context_resolver(args: dict[str, Any]) -> dict[str, Any]:
+        return format_followup_dag_context(
+            session_id=session_id,
+            user_input=str(args.get("user_query") or user_input),
+            output_format=str(args.get("output_format") or output_format),
+            client=client,
+            route_decision=followup_route_decision,
+        )
+
+    tools = filter_tools_for_request(
+        select_tools(subject, metrics, followup_context_resolver),
+        user_input,
+        bool(image_paths),
+    )
+    if not tools:
+        clarification = (route_decision.clarification if route_decision else None) or pop_last_clarification()
+        if not clarification:
+            if subject == "politics":
+                clarification = "当前主要支持数学问答和时政查询，政治知识点功能正在开发中。您可以试试数学题（如「2021 年数一第 9 题怎么做」），或者查询近期的时政热点。"
+            elif subject == "english":
+                clarification = "当前主要支持数学问答和时政查询，英语相关功能正在开发中。您有数学题需要解答吗？"
+            else:
+                clarification = build_ambiguous_clarification(user_input, history)
+        answer = clarification
+        result = RuntimeResult(answer, subject, build_messages(user_input, history, output_format), [], metrics.as_dict())
+        log_runtime(result)
+        if persist:
+            append_runtime_turn(session_id, user_input, result)
+        return result
+
+    if image_paths:
+        user_input = f"{user_input}\n\n本轮上传图片路径：{json.dumps([str(path) for path in image_paths], ensure_ascii=False)}"
+
+    if (
+        context_followup_tools_enabled()
+        and not image_paths
+        and subject in {"math", "politics", "current_affairs"}
+        and followup_route_decision is None
+    ):
+        followup_hint = classify_followup_heuristic(user_input, history)
+        if followup_hint == "independent":
+            followup_route_decision = {
+                "category": "independent",
+                "parent_turn_id": None,
+                "parent_turn_ids": [],
+                "reason": "heuristic_independent",
+            }
+        else:
+            route_started = time.perf_counter()
+            followup_route_decision = classify_followup_route_with_llm(user_input, recent_turns, client, metrics, subject_hint=subject)
+            metrics.add_step(
+                "followup_route_classifier",
+                route_started,
+                category=followup_route_decision.get("category"),
+                parent_turn_id=followup_route_decision.get("parent_turn_id"),
+                parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
+            )
+
+    if (
+        context_followup_tools_enabled()
+        and not image_paths
+        and followup_route_decision is not None
+        and followup_route_decision.get("category") in {"weak_nonstep_followup", "contextual_nonstep_followup"}
+        and route_parent_ids(followup_route_decision)
+    ):
+        dag_context = followup_context_resolver({
+            "user_query": user_input,
+            "output_format": output_format,
+        })
+        messages = build_dag_followup_messages(user_input, dag_context, output_format)
+        llm_started = time.perf_counter()
+        try:
+            response = client.chat.completions.create(
+                model=legacy_agent.load_settings().global_model,
+                messages=messages,
+                temperature=legacy_agent.load_settings().temperature,
+                max_tokens=DAG_FOLLOWUP_MAX_TOKENS,
+            )
+            metrics.llm_calls += 1
+            record_usage(metrics, response)
+            answer = str(response.choices[0].message.content or "").strip()
+            metrics.add_step(
+                "llm_dag_followup_final",
+                llm_started,
+                category=followup_route_decision.get("category"),
+                parent_turn_id=followup_route_decision.get("parent_turn_id"),
+                parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
+            )
+            result = RuntimeResult(
+                answer,
+                subject,
+                messages,
+                [],
+                metrics.as_dict(),
+                extra_memory={"followup_dag": dag_context.get("followup_dag")},
+            )
+        except Exception as exc:
+            metrics.add_step("llm_dag_followup_final", llm_started, ok=False, error=str(exc))
+            result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
+        log_runtime(result)
+        if persist:
+            append_runtime_turn(session_id, user_input, result)
+        return result
+
+    if (
+        context_followup_tools_enabled()
+        and not image_paths
+        and followup_route_decision is not None
+        and followup_route_decision.get("category") in {"contextual_nonstep_followup", "ambiguous"}
+        and not route_parent_ids(followup_route_decision)
+    ):
+        recent_turns = legacy_agent.load_session(session_id).get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
+        messages = build_followup_clarification_messages(user_input, recent_turns, followup_route_decision, output_format)
+        llm_started = time.perf_counter()
+        try:
+            response = client.chat.completions.create(
+                model=legacy_agent.load_settings().global_model,
+                messages=messages,
+                temperature=legacy_agent.load_settings().temperature,
+            )
+            metrics.llm_calls += 1
+            record_usage(metrics, response)
+            answer = str(response.choices[0].message.content or "").strip()
+            metrics.add_step(
+                "llm_followup_clarification",
+                llm_started,
+                category=followup_route_decision.get("category"),
+            )
+            result = RuntimeResult(answer, subject, messages, [], metrics.as_dict())
+        except Exception as exc:
+            metrics.add_step("llm_followup_clarification", llm_started, ok=False, error=str(exc))
+            result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
+        log_runtime(result)
+        if persist:
+            append_runtime_turn(session_id, user_input, result)
+        return result
+
+    messages = build_messages(user_input, history, output_format)
+    openai_tools = [tool.openai_schema() for tool in tools.values()]
+    tool_call_records: list[dict[str, Any]] = []
+
+    for round_index in range(MAX_TOOL_ROUNDS):
+        llm_started = time.perf_counter()
+        try:
+            response = client.chat.completions.create(
+                model=legacy_agent.load_settings().global_model,
+                messages=messages,
+                tools=openai_tools,
+                tool_choice="auto",
+                temperature=legacy_agent.load_settings().temperature,
+            )
+        except Exception as exc:
+            metrics.add_step("llm_tool_selection", llm_started, round=round_index + 1, ok=False, error=str(exc))
+            result = RuntimeResult(format_model_error(exc), subject, messages, tool_call_records, metrics.as_dict())
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+        metrics.llm_calls += 1
+        record_usage(metrics, response)
+        message = response.choices[0].message
+        assistant_message = normalize_message(message)
+        messages.append(assistant_message)
+        tool_calls = assistant_message.get("tool_calls") or []
+        metrics.add_step("llm_tool_selection" if tool_calls else "llm_final", llm_started, round=round_index + 1, tool_calls=len(tool_calls))
+        if not tool_calls:
+            answer = str(assistant_message.get("content") or "").strip()
+            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+        latest_tool_result: dict[str, Any] | None = None
+        for tool_call in tool_calls:
+            tool_result, record = execute_tool_call(tool_call, tools, metrics)
+            latest_tool_result = tool_result
+            tool_call_records.append(record)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call["id"],
+                "name": tool_call["function"]["name"],
+                "content": json.dumps(tool_result, ensure_ascii=False, default=str),
+            })
+        direct = direct_tool_answer(tool_call_records, tools, latest_tool_result or {}, len(tool_calls))
+        if direct is not None:
+            answer, tool_name = direct
+            direct_started = time.perf_counter()
+            metrics.add_step("direct_tool_return", direct_started, tool=tool_name)
+            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+
+    answer = "工具调用轮次过多，我先停止本轮处理。请把问题拆小一点，或明确要解释哪一步。"
+    result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
+    log_runtime(result)
+    if persist:
+        append_runtime_turn(session_id, user_input, result)
+    return result
+
+
+def iter_text_chunks(text: str, chunk_size: int = 24) -> Iterable[str]:
+    for index in range(0, len(text), chunk_size):
+        yield text[index:index + chunk_size]
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run the standard tool-calling kaoyan assistant.")
+    parser.add_argument("query", nargs="+", help="用户问题")
+    parser.add_argument("--session", default="default", help="会话 ID")
+    parser.add_argument("--image", "-i", action="append", default=[], help="本地图片路径，可传多次")
+    parser.add_argument("--format", choices=["ui", "terminal"], default="terminal")
+    parser.add_argument("--no-memory", action="store_true", help="不写入短期会话")
+if __name__ == "__main__":
+    main()

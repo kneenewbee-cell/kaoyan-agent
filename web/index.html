@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>考研小助手</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="sidebar">
+      <h1>考研小助手</h1>
+      <section class="session-panel">
+        <div class="session-header">
+          <span>会话</span>
+          <button id="newSessionButton" class="small-button" type="button">新建</button>
+        </div>
+        <input id="sessionInput" value="default" />
+        <div id="sessionList" class="session-list"></div>
+        <button id="deleteSessionButton" class="danger-button" type="button">删除当前会话</button>
+      </section>
+      <label class="check-row">
+        <input id="debugInput" type="checkbox" />
+        显示调试信息
+      </label>
+      <div class="hint">
+        支持考研数学真题、普通数学题、图片题和时政信息。数学公式会用 KaTeX 渲染。
+      </div>
+    </section>
+
+    <section class="chat-panel">
+      <div id="messages" class="messages">
+        <article class="message assistant">
+          <div class="bubble">
+            试试：<code>2021 年数学一第 9 题怎么做</code><br>
+            或上传数学题图片后输入：<code>这道题怎么做</code>
+          </div>
+        </article>
+      </div>
+
+      <form id="chatForm" class="composer">
+        <textarea id="messageInput" rows="3" placeholder="输入你的问题，例如：求极限 lim_{x->0} (sin x - x)/x^3"></textarea>
+        <div id="imagePreview" class="image-preview" hidden></div>
+        <div class="composer-actions">
+          <input id="imageInput" type="file" accept="image/*" multiple />
+          <button id="sendButton" type="submit">发送</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
+  <script src="/static/app.js?v=20260601-file-remove"></script>
+</body>
+</html>

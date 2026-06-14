@@ -1,0 +1,47 @@
+[
+  {
+    "name": "concept_to_exam_to_three_layer_step_followup",
+    "turns": [
+      "第一积分中值定理是什么？",
+      "2021 年数学一第 9 题怎么做？",
+      "第 2 步怎么来的？",
+      "那第 2 步里的等价无穷小为什么能用？",
+      "如果不用这个等价式，还能怎么推？"
+    ],
+    "expected": [
+      "concept",
+      "solve_exam_question",
+      "explain_math_step",
+      "explain_math_step",
+      "explain_math_step"
+    ]
+  },
+  {
+    "name": "parallel_root_followup",
+    "turns": [
+      "求 f(x)=e^x 在 x=0 的二阶泰勒展开。",
+      "再求 ln(1+x) 在 x=0 的二阶泰勒展开。",
+      "第一个题的余项怎么估计？",
+      "第二个题的余项呢？"
+    ],
+    "expected": [
+      "solve_general_math",
+      "solve_general_math",
+      "explain_math_step",
+      "explain_math_step"
+    ]
+  },
+  {
+    "name": "omitted_parameter_inheritance",
+    "turns": [
+      "把 sin x 在 x=0 展开到 5 阶，并说明余项。",
+      "如果只展开到 3 阶呢？",
+      "x=1 时误差大概多少？"
+    ],
+    "expected": [
+      "solve_general_math",
+      "solve_general_math",
+      "solve_general_math"
+    ]
+  }
+]

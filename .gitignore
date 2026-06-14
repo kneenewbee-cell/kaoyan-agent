@@ -1,0 +1,79 @@
+# =========================
+# Python cache
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Secrets / local env
+# =========================
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.token
+secrets.json
+config.local.py
+
+# =========================
+# Runtime logs / conversations / uploads
+# 不上传运行日志、会话记录、用户上传文件
+# =========================
+data/runtime/logs/
+data/runtime/sessions/
+data/runtime/sessions_md/
+data/runtime/uploads/
+
+# =========================
+# Runtime cache / generated cache
+# 不上传运行缓存、PDF 切页缓存、会话向量
+# =========================
+data/runtime/session_vectors/
+data/runtime/pdf_pages/
+data/runtime/code_backups/
+data/runtime/test_reports/
+data/runtime/dag_followup_project_status.md
+
+# =========================
+# Local generated files
+# =========================
+*.log
+*.tmp
+*.bak
+~$*
+
+# =========================
+# Optional local temporary documents
+# 如果译文.txt 是临时文件，就保留这一行；
+# 如果你想上传它，就删掉这一行
+# =========================
+译文.txt
+
+# Runtime markdown records
+data/runtime/*.md
+data/runtime/*.json
+data/runtime/*.jsonl
