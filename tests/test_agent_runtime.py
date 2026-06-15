@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import unittest
 from pathlib import Path
@@ -16,6 +17,36 @@ if str(SCRIPTS) not in sys.path:
 
 import agent_runtime
 import kaoyan_agent
+
+
+TEST_SESSION_PREFIXES = ("unit", "real_api_smoke")
+
+
+def is_test_session_id(session_id: str) -> bool:
+    return session_id.startswith(TEST_SESSION_PREFIXES)
+
+
+def cleanup_test_sessions() -> None:
+    for directory, suffix in (
+        (kaoyan_agent.SESSION_DIR, ".json"),
+        (agent_runtime.SESSION_MD_DIR, ".md"),
+    ):
+        if not directory.exists():
+            continue
+        for path in directory.iterdir():
+            if path.is_file() and path.suffix == suffix and is_test_session_id(path.stem):
+                path.unlink()
+
+    vector_dir = kaoyan_agent.SESSION_VECTOR_DIR
+    if not vector_dir.exists():
+        return
+    for path in vector_dir.iterdir():
+        if not is_test_session_id(path.name):
+            continue
+        if path.is_dir():
+            shutil.rmtree(path)
+        elif path.is_file():
+            path.unlink()
 
 
 def fake_response(content: str = "", tool_calls: list[dict] | None = None) -> SimpleNamespace:
@@ -53,6 +84,10 @@ class FakeClient:
 
 
 class AgentRuntimeTest(unittest.TestCase):
+    def setUp(self) -> None:
+        cleanup_test_sessions()
+        self.addCleanup(cleanup_test_sessions)
+
     def test_subject_classifier_heuristic_math_followup(self) -> None:
         self.assertIsNone(agent_runtime.classify_subject_heuristic("这一步怎么来的？"))
         history = [{"role": "assistant", "content": "考研数学解法：先求极限，再估计余项。"}]
@@ -69,10 +104,33 @@ class AgentRuntimeTest(unittest.TestCase):
             "随机变量的分布函数怎么写？",
             "条件概率和全概率公式怎么区分？",
             "正态分布的数学期望和方差是多少？",
+            "斯托克斯公式",
+            "格林公式",
+            "高斯公式",
+            "曲面积分怎么计算？",
+            "牛顿-莱布尼茨公式",
+            "隐函数求导怎么做？",
+            "比值判别法和根值判别法怎么选？",
+            "施密特正交化步骤",
+            "最大似然估计量怎么求？",
+            "置信区间和假设检验",
         ]
         for text in examples:
             with self.subTest(text=text):
                 self.assertEqual(agent_runtime.classify_subject_heuristic(text), "math")
+
+    def test_subject_classifier_heuristic_ignores_weak_math_words_alone(self) -> None:
+        examples = [
+            "这个函数是什么？",
+            "连续推进改革",
+            "总体要求是什么",
+            "相关政策有哪些",
+            "独立自主是什么意思",
+            "这个条件有什么关系",
+        ]
+        for text in examples:
+            with self.subTest(text=text):
+                self.assertIsNone(agent_runtime.classify_subject_heuristic(text))
 
     def test_subject_classifier_requires_evidence_for_ambiguous_input(self) -> None:
         client = FakeClient([fake_response(content='{"subject":"english","reason":"用户问题本身模糊，需要按历史判断"}')])
@@ -100,6 +158,14 @@ class AgentRuntimeTest(unittest.TestCase):
         plain_payload = json.loads(plain_client.chat.completions.calls[0]["messages"][1]["content"])
         self.assertNotIn("image_context", plain_payload)
 
+    def test_route_uses_router_model_when_configured(self) -> None:
+        client = FakeClient([fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"router model","clarification":null}')])
+        with patch.dict(os.environ, {"ROUTER_MODEL": "deepseek-v4-flash", "ROUTER_TEMPERATURE": "0"}, clear=False):
+            route = agent_runtime.route_with_llm("格林公式", [], [], client)
+        self.assertEqual(route.subject, "math")
+        self.assertEqual(client.chat.completions.calls[0]["model"], "deepseek-v4-flash")
+        self.assertEqual(client.chat.completions.calls[0]["temperature"], 0.0)
+
     def test_image_context_counts_as_subject_routing_evidence(self) -> None:
         image_context = {
             "ocr_text": "计算极限 lim x->0 sin x / x",
@@ -118,6 +184,145 @@ class AgentRuntimeTest(unittest.TestCase):
                 image_context=image_context,
             )
         )
+
+    def test_image_subject_hint_overrides_recent_history_for_route(self) -> None:
+        image_context = {
+            "ocr_text": "帮我用数学归纳法证明：1² + 2² + ... + n² = n(n+1)(2n+1)/6。",
+            "visual_summary": "图片包含数学归纳法证明题。",
+            "subject_hint": "math",
+            "confidence": 0.95,
+            "reason": "包含数学公式和归纳法证明要求",
+        }
+        recent_turns = [
+            {"turn_id": 1, "user_query": "量变和质变的辩证关系是什么？", "assistant_answer": "这是政治马原内容。", "route": {"subject": "politics"}},
+        ]
+        subject_hint, subject_locked = agent_runtime.route_subject_hint("这道题怎么做？", recent_turns, True, image_context)
+        self.assertEqual(subject_hint, "math")
+        self.assertTrue(subject_locked)
+
+        client = FakeClient([fake_response(content='{"subject":"politics","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"tries to inherit history","clarification":null}')])
+        route = agent_runtime.build_route_decision("这道题怎么做？", [], recent_turns, True, client, agent_runtime.RuntimeMetrics("r", "s"), image_context)
+        payload = json.loads(client.chat.completions.calls[0]["messages"][1]["content"])
+        self.assertEqual(route.subject, "math")
+        self.assertEqual(payload["subject_hint"], "math")
+        self.assertTrue(payload["subject_locked"])
+
+    def test_current_explicit_subject_overrides_previous_topic_for_route(self) -> None:
+        recent_turns = [
+            {"turn_id": 15, "user_query": "数学归纳法证明平方和公式", "assistant_answer": "已完成数学证明。", "route": {"subject": "math"}},
+            {"turn_id": 16, "user_query": "量变和质变的辩证关系是什么？", "assistant_answer": "政治题回答。", "route": {"subject": "politics"}},
+        ]
+        subject_hint, subject_locked = agent_runtime.route_subject_hint(
+            "回到刚才的数学证明，在归纳假设步，n=1 验证过吗？",
+            recent_turns,
+        )
+        self.assertEqual(subject_hint, "math")
+        self.assertTrue(subject_locked)
+
+    def test_followup_subject_inherits_single_parent_subject(self) -> None:
+        recent_turns = [
+            {
+                "turn_id": 9,
+                "user_query": "中央经济工作会议提出的“稳中求进”工作总基调是什么？",
+                "assistant_answer": "这是时政中的工作总基调。",
+                "route": {"subject": "current_affairs"},
+            },
+        ]
+        client = FakeClient([fake_response(content='{"subject":"politics","is_followup":true,"followup_category":"weak_nonstep_followup","parent_turn_id":9,"parent_turn_ids":[9],"reason":"当前句有辩证关系","clarification":null}')])
+        route = agent_runtime.build_route_decision(
+            "那“稳”和“进”的辩证关系是什么？",
+            [],
+            recent_turns,
+            False,
+            client,
+            agent_runtime.RuntimeMetrics("r", "s"),
+        )
+        self.assertEqual(route.subject, "current_affairs")
+        self.assertEqual(route.parent_turn_ids, [9])
+
+    def test_followup_subject_keeps_current_subject_for_mixed_parents(self) -> None:
+        recent_turns = [
+            {
+                "turn_id": 8,
+                "user_query": "两点论和重点论有什么联系？",
+                "assistant_answer": "政治马原内容。",
+                "route": {"subject": "politics"},
+            },
+            {
+                "turn_id": 10,
+                "user_query": "稳中求进的工作总基调是什么？",
+                "assistant_answer": "时政内容。",
+                "route": {"subject": "current_affairs"},
+            },
+        ]
+        client = FakeClient([fake_response(content='{"subject":"politics","is_followup":true,"followup_category":"contextual_nonstep_followup","parent_turn_id":10,"parent_turn_ids":[8,10],"reason":"混合父节点比较","clarification":null}')])
+        route = agent_runtime.build_route_decision(
+            "比较一下两点论和稳中求进，它们是否相通？",
+            [],
+            recent_turns,
+            False,
+            client,
+            agent_runtime.RuntimeMetrics("r", "s"),
+        )
+        self.assertEqual(route.subject, "politics")
+        self.assertEqual(route.parent_turn_ids, [8, 10])
+
+    def test_ambiguous_route_clears_parent_ids(self) -> None:
+        recent_turns = [
+            {
+                "turn_id": 16,
+                "user_query": "比较一下两个政治概念。",
+                "assistant_answer": "这是一个比较题。",
+                "route": {"subject": "politics"},
+            },
+        ]
+        client = FakeClient([fake_response(content='{"subject":"politics","is_followup":true,"followup_category":"ambiguous","parent_turn_id":16,"parent_turn_ids":[16],"reason":"比较对象缺失","clarification":"你指哪一个比较题？"}')])
+        route = agent_runtime.route_with_llm(
+            "那这个和之前那个哪个更难？",
+            [],
+            recent_turns,
+            client,
+        )
+        self.assertEqual(route.followup_category, "ambiguous")
+        self.assertIsNone(route.parent_turn_id)
+        self.assertEqual(route.parent_turn_ids, [])
+
+    def test_contextual_anchor_inputs_are_not_locked_independent(self) -> None:
+        history = [{"role": "assistant", "content": "上一题是矩阵特征值计算。"}]
+        self.assertEqual(
+            agent_runtime.classify_followup_heuristic("不好意思，我写错了矩阵，请重新计算", history),
+            "contextual_nonstep_followup",
+        )
+        self.assertEqual(
+            agent_runtime.classify_followup_heuristic("能不能使用洛必达解决这道题呢", history),
+            "contextual_nonstep_followup",
+        )
+
+    def test_image_new_problem_clears_parent_from_route(self) -> None:
+        image_context = {
+            "ocr_text": "帮我用数学归纳法证明：1² + 2² + ... + n² = n(n+1)(2n+1)/6。",
+            "visual_summary": "图片包含数学归纳法证明题。",
+            "subject_hint": "math",
+            "confidence": 0.95,
+            "reason": "包含数学公式和归纳法证明要求",
+        }
+        recent_turns = [
+            {"turn_id": 16, "user_query": "量变和质变的辩证关系是什么？", "assistant_answer": "政治题回答。", "route": {"subject": "politics"}},
+        ]
+        client = FakeClient([fake_response(content='{"subject":"math","is_followup":true,"followup_category":"weak_nonstep_followup","parent_turn_id":16,"parent_turn_ids":[16],"reason":"tries to attach latest","clarification":null}')])
+        route = agent_runtime.build_route_decision("这道题怎么做？", [], recent_turns, True, client, agent_runtime.RuntimeMetrics("r", "s"), image_context)
+        self.assertEqual(route.subject, "math")
+        self.assertEqual(route.followup_category, "independent")
+        self.assertIsNone(route.parent_turn_id)
+        self.assertEqual(route.parent_turn_ids, [])
+
+    def test_route_classifier_prompt_documents_parent_priority_rules(self) -> None:
+        prompt = agent_runtime.ROUTE_CLASSIFIER_PROMPT
+        self.assertIn("父节点判定优先级", prompt)
+        self.assertIn("完整新题目", prompt)
+        self.assertIn("回到刚才", prompt)
+        self.assertIn("纠错或改条件", prompt)
+        self.assertIn("本轮有 image_context 显示一张新题", prompt)
 
     def test_image_context_flows_into_runtime_messages(self) -> None:
         image_context = {

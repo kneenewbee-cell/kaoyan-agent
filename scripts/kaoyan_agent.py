@@ -191,6 +191,48 @@ def chat_text(model: str, system_prompt: str, user_prompt: str, temperature: flo
     return response.choices[0].message.content or ""
 
 
+def global_model_name() -> str:
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    return os.getenv("ROUTER_MODEL") or load_settings().global_model
+
+
+def global_temperature(default: float | None = None) -> float | None:
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    value = os.getenv("ROUTER_TEMPERATURE")
+    if value is None or not value.strip():
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
+
+def make_global_client():
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    router_model = os.getenv("ROUTER_MODEL")
+    router_api_key = os.getenv("ROUTER_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    router_base_url = os.getenv("ROUTER_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL")
+    if not router_model or not router_api_key or not router_base_url:
+        return make_client()
+    from openai import OpenAI
+
+    return OpenAI(api_key=router_api_key, base_url=router_base_url)
+
+
+def chat_global_text(system_prompt: str, user_prompt: str, temperature: float | None = None) -> str:
+    settings = load_settings()
+    client = make_global_client()
+    response = client.chat.completions.create(
+        model=global_model_name(),
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=global_temperature(settings.temperature if temperature is None else temperature),
+    )
+    return response.choices[0].message.content or ""
+
+
 def parse_json_object(text: str) -> dict[str, Any]:
     stripped = text.strip()
     if stripped.startswith("```"):
@@ -712,7 +754,6 @@ def solve_general_math_with_qwenmath(
 def judge_answer(problem: MathProblem, solution: str) -> dict[str, Any]:
     if not problem.answer_text:
         return {"match": True, "reason": "资料库没有标准答案，跳过核对。", "expected": "", "actual": ""}
-    settings = load_settings()
     prompt = (
         f"题目：\n{problem.question_text}\n\n"
         f"标准答案速查：{problem.answer_text}\n\n"
@@ -720,16 +761,15 @@ def judge_answer(problem: MathProblem, solution: str) -> dict[str, Any]:
         "请判断核心最终答案是否一致。"
     )
     try:
-        return parse_json_object(chat_text(settings.global_model, ANSWER_JUDGE_PROMPT, prompt, temperature=0))
+        return parse_json_object(chat_global_text(ANSWER_JUDGE_PROMPT, prompt, temperature=0))
     except Exception as exc:
         return {"match": False, "reason": f"核对 JSON 解析失败：{exc}", "expected": problem.answer_text, "actual": ""}
 
 
 def judge_solution_quality(problem: MathProblem, solution: str) -> dict[str, Any]:
-    settings = load_settings()
     prompt = f"题目：\n{problem.question_text}\n\n标准答案：{problem.answer_text or '无'}\n\n模型解答：\n{solution}"
     try:
-        return parse_json_object(chat_text(settings.global_model, SOLUTION_QUALITY_PROMPT, prompt, temperature=0))
+        return parse_json_object(chat_global_text(SOLUTION_QUALITY_PROMPT, prompt, temperature=0))
     except Exception as exc:
         return {"valid": True, "reason": f"过程审核失败，跳过：{exc}", "fix_hint": ""}
 
@@ -819,13 +859,12 @@ def find_question_sentence_for_symbol(target: str, question_text: str) -> str | 
 
 
 def clarify_symbol_with_qwen(target: str, problem: MathProblem) -> str:
-    settings = load_settings()
     prompt = (
         f"题目：\n{problem.question_text}\n\n"
         f"用户追问的符号或对象：{target}\n\n"
         "请只解释这个符号或对象在题干中的含义，不要重新解题。"
     )
-    return chat_text(settings.global_model, "你是考研数学真题的局部答疑助手。", prompt, temperature=0)
+    return chat_global_text("你是考研数学真题的局部答疑助手。", prompt, temperature=0)
 
 
 def explain_math_step_with_qwenmath(
@@ -868,17 +907,15 @@ def explain_math_followup_with_qwenmath(
 
 
 def rewrite_math_answer_with_qwen(user_query: str, previous_context: str, output_format: str = "ui") -> str:
-    settings = load_settings()
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
     prompt = f"用户改写要求：{user_query}\n\n已有回答/上下文：\n{previous_context}\n\n{format_hint}"
-    return chat_text(settings.global_model, "你只改写已有数学回答，不重新解题。", prompt, temperature=0.2)
+    return chat_global_text("你只改写已有数学回答，不重新解题。", prompt, temperature=0.2)
 
 
 def summarize_math_solution_with_qwen(user_query: str, previous_context: str, output_format: str = "ui") -> str:
-    settings = load_settings()
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
     prompt = f"用户总结要求：{user_query}\n\n已有回答/上下文：\n{previous_context}\n\n{format_hint}"
-    return chat_text(settings.global_model, "你只总结已有数学解法，不重新解题。", prompt, temperature=0.2)
+    return chat_global_text("你只总结已有数学解法，不重新解题。", prompt, temperature=0.2)
 
 
 def render_question_for_user(problem: MathProblem) -> str:
