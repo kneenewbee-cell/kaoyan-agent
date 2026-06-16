@@ -96,6 +96,13 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertEqual(agent_runtime.classify_subject_heuristic("09年数一第二题怎么做"), "math")
         self.assertIsNone(agent_runtime.classify_subject_heuristic("这张图怎么看？", has_images=True))
 
+    def test_current_affairs_is_politics_subject_with_current_affairs_tool(self) -> None:
+        self.assertEqual(agent_runtime.classify_subject_heuristic("二十届三中全会的新质生产力是什么？"), "politics")
+        tools = agent_runtime.select_tools("politics")
+        self.assertIn("search_politics_knowledge", tools)
+        self.assertIn("get_current_affairs", tools)
+        self.assertEqual(agent_runtime.normalize_subject("current_affairs"), "politics")
+
     def test_subject_classifier_heuristic_math_linear_algebra_probability(self) -> None:
         examples = [
             "向量组线性相关怎么判断？",
@@ -237,7 +244,7 @@ class AgentRuntimeTest(unittest.TestCase):
             client,
             agent_runtime.RuntimeMetrics("r", "s"),
         )
-        self.assertEqual(route.subject, "current_affairs")
+        self.assertEqual(route.subject, "politics")
         self.assertEqual(route.parent_turn_ids, [9])
 
     def test_followup_subject_keeps_current_subject_for_mixed_parents(self) -> None:
@@ -297,6 +304,18 @@ class AgentRuntimeTest(unittest.TestCase):
             agent_runtime.classify_followup_heuristic("能不能使用洛必达解决这道题呢", history),
             "contextual_nonstep_followup",
         )
+        composite_examples = [
+            "讲一下积分中值定理，刚才那道题能用吗",
+            "这个方法是什么，上一题能不能用它证明",
+            "这个政策工具是什么，上一题可以用它分析吗",
+        ]
+        for text in composite_examples:
+            with self.subTest(text=text):
+                self.assertTrue(agent_runtime.is_composite_followup_input(text, has_history=True))
+                self.assertEqual(
+                    agent_runtime.classify_followup_heuristic(text, history),
+                    "contextual_nonstep_followup",
+                )
 
     def test_image_new_problem_clears_parent_from_route(self) -> None:
         image_context = {
@@ -319,10 +338,29 @@ class AgentRuntimeTest(unittest.TestCase):
     def test_route_classifier_prompt_documents_parent_priority_rules(self) -> None:
         prompt = agent_runtime.ROUTE_CLASSIFIER_PROMPT
         self.assertIn("父节点判定优先级", prompt)
+        self.assertIn("纯粹新话题", prompt)
+        self.assertIn("复合输入追问优先", prompt)
+        self.assertIn("解释某概念/方法", prompt)
+        self.assertIn("能否使用或如何应用", prompt)
         self.assertIn("完整新题目", prompt)
         self.assertIn("回到刚才", prompt)
         self.assertIn("纠错或改条件", prompt)
         self.assertIn("本轮有 image_context 显示一张新题", prompt)
+
+    def test_dag_followup_prompt_uses_soft_answer_budget(self) -> None:
+        messages = agent_runtime.build_dag_followup_messages(
+            "那这个条件下还成立吗？",
+            {
+                "followup_context": "[turn 1]\nUser: 原题\nAssistant: 原回答",
+                "root_context": "[root turn 1]\nUser: 原题\nAssistant: 原回答",
+            },
+            "ui",
+        )
+        system_prompt = messages[0]["content"]
+        self.assertIn(f"{agent_runtime.DAG_FOLLOWUP_TARGET_CHARS} 个汉字以内", system_prompt)
+        self.assertIn("必须完整收尾", system_prompt)
+        self.assertIn("优先删减例子、背景、表格和延伸内容", system_prompt)
+        self.assertGreater(agent_runtime.DAG_FOLLOWUP_MAX_TOKENS, agent_runtime.DAG_FOLLOWUP_TARGET_CHARS)
 
     def test_image_context_flows_into_runtime_messages(self) -> None:
         image_context = {
@@ -428,6 +466,72 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("rewrite_math_answer", tools)
         self.assertIn("summarize_math_solution", tools)
         self.assertIn("非步骤追问规则", messages[0]["content"])
+
+    def test_independent_context_uses_recent_same_subject_keyword_paragraphs(self) -> None:
+        recent_turns = [
+            {
+                "turn_id": 1,
+                "user_query": "等价无穷小定义",
+                "assistant_answer": "turn1 old matching answer",
+                "route": {"subject": "math"},
+            },
+            {
+                "turn_id": 2,
+                "user_query": "等价无穷小替换条件",
+                "assistant_answer": "turn2 开头\n\n等价无穷小只能在乘除中替换。\n\nturn2 结尾",
+                "route": {"subject": "math"},
+            },
+            {
+                "turn_id": 3,
+                "user_query": "新质生产力是什么",
+                "assistant_answer": "政治里也可能出现等价无穷小这个字样，但学科不一致。",
+                "route": {"subject": "politics"},
+            },
+            {
+                "turn_id": 4,
+                "user_query": "等价无穷小例题",
+                "assistant_answer": (
+                    "turn4 开头\n\n"
+                    "等价无穷小第一处命中。\n\n"
+                    "无关段落不应进入。\n\n"
+                    "等价无穷小第二处命中。\n\n"
+                    "turn4 结尾"
+                ),
+                "route": {"subject": "math"},
+            },
+        ]
+
+        message = agent_runtime.format_independent_context_message("等价无穷小怎么用？", recent_turns, "math")
+
+        self.assertIsNotNone(message)
+        content = message["content"] if message else ""
+        self.assertIn("turn 2", content)
+        self.assertIn("turn 4", content)
+        self.assertNotIn("turn 1", content)
+        self.assertNotIn("turn 3", content)
+        self.assertLess(content.index("turn 2"), content.index("turn 4"))
+        self.assertIn("等价无穷小第一处命中", content)
+        self.assertIn("等价无穷小第二处命中", content)
+        self.assertIn("turn4 开头", content)
+        self.assertIn("turn4 结尾", content)
+        self.assertNotIn("无关段落不应进入", content)
+
+    def test_independent_build_messages_does_not_fallback_to_flat_history(self) -> None:
+        messages = agent_runtime.build_messages(
+            "一个没有关键词的新问题",
+            [
+                {"role": "user", "content": "old flat user"},
+                {"role": "assistant", "content": "old flat assistant"},
+            ],
+            "ui",
+            subject="math",
+            recent_turns=[],
+            use_independent_context=True,
+        )
+        joined = "\n".join(str(item.get("content", "")) for item in messages)
+        self.assertNotIn("old flat user", joined)
+        self.assertNotIn("old flat assistant", joined)
+        self.assertIn("一个没有关键词的新问题", joined)
 
     def test_followup_dag_context_uses_previous_turn_for_weak_followup(self) -> None:
         session_id = "unit2_followup_dag"
@@ -571,6 +675,54 @@ class AgentRuntimeTest(unittest.TestCase):
         step_names = [step["name"] for step in result.metrics["steps"]]
         self.assertIn("route_classifier", step_names)
         self.assertNotIn("followup_route_classifier", step_names)
+
+    def test_independent_runtime_uses_selected_context_not_flat_history(self) -> None:
+        session_id = "unit2_independent_selected_context"
+        kaoyan_agent.save_session(session_id, {
+            "session_id": session_id,
+            "turns": [
+                {
+                    "turn_id": 1,
+                    "user_query": "特征值与特征向量的几何意义是什么？",
+                    "assistant_answer": "特征值开头\n\n特征值表示线性变换中的伸缩倍数。\n\n特征值结尾",
+                    "route": {"subject": "math"},
+                },
+                {
+                    "turn_id": 2,
+                    "user_query": "等价无穷小是什么？",
+                    "assistant_answer": "不应进入当前独立问题。",
+                    "route": {"subject": "math"},
+                },
+            ],
+        })
+        appendable_result = agent_runtime.RuntimeResult(
+            "old md answer not selected",
+            "math",
+            [],
+            [],
+            {"request_id": "seed", "session_id": session_id},
+        )
+        agent_runtime.append_md_turn(session_id, "old md user not selected", appendable_result.answer, {"turn_id": 99})
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"new independent linear algebra question","clarification":null}'),
+            fake_response(content="final independent answer"),
+        ])
+
+        with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}):
+            result = agent_runtime.run_standard_message_loop(
+                "特征值怎么计算？",
+                session_id=session_id,
+                client=client,
+                persist=False,
+            )
+
+        joined = "\n".join(str(item.get("content", "")) for item in result.messages)
+        self.assertEqual(result.answer, "final independent answer")
+        self.assertIn("当前问题已判定为独立问题", joined)
+        self.assertIn("特征值表示线性变换中的伸缩倍数", joined)
+        self.assertNotIn("old md user not selected", joined)
+        self.assertNotIn("old md answer not selected", joined)
+        self.assertNotIn("不应进入当前独立问题", joined)
 
     def test_explicit_new_exam_request_is_not_remounted_as_followup(self) -> None:
         session_id = "unit2_explicit_exam_independent"

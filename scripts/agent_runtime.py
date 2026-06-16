@@ -24,7 +24,10 @@ MAX_TOOL_ROUNDS = 8
 ROUTING_HISTORY_TURNS = 6
 FOLLOWUP_DAG_LOOKBACK = ROUTING_HISTORY_TURNS
 FOLLOWUP_EMPTY_ROOT_ID = 0
-DAG_FOLLOWUP_MAX_TOKENS = 900
+INDEPENDENT_CONTEXT_LOOKBACK = 6
+INDEPENDENT_CONTEXT_MAX_TURNS = 2
+DAG_FOLLOWUP_TARGET_CHARS = 900
+DAG_FOLLOWUP_MAX_TOKENS = 1600
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -36,6 +39,10 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 def context_followup_tools_enabled() -> bool:
     return env_flag("ENABLE_CONTEXT_FOLLOWUP_TOOLS", default=False)
+
+
+def route_debug_log_enabled() -> bool:
+    return env_flag("ROUTE_DEBUG_LOG", default=False)
 
 
 CONTEXT_FOLLOWUP_PROMPT = f"""非步骤追问规则：
@@ -79,7 +86,7 @@ MAIN_SYSTEM_PROMPT = """你是考研小助手，当前优先服务数学问答�
 
 
 SUBJECT_CLASSIFIER_PROMPT = """判断用户输入属于哪个学科。如果输入信息充分可以确定学科，输出：
-{"subject":"math|current_affairs|politics|english|unsupported","reason":"一句话","clarification":null}
+{"subject":"math|politics|english|unsupported","reason":"一句话","clarification":null}
 
 如果用户输入明显模糊、缺少关键信息导致无法确定学科，不要直接判 unsupported，而是输出：
 {"subject":"unsupported","reason":"一句话","clarification":"向用户追问的一句话"}
@@ -96,11 +103,11 @@ clarification 追问规则：
 
 优先级：
 - 明确数学、考研数学、计算、证明、极限、积分、矩阵、概率、泰勒、余项、步骤追问 -> math
-- 时政、近期热点、新闻政策 -> current_affairs
-- 考研政治非实时知识点 -> politics
+- 考研政治知识点、时政、近期热点、新闻政策 -> politics
 - 考研英语 -> english
 - 无明确学科关键词时 -> 从近期历史推断；历史也不明确 -> unsupported + clarification
 - 图片文件名只能作为弱线索
+注意：时政不是独立学科，它属于 politics；是否调用时政工具由后续 tool-calling 层决定。
 """
 
 
@@ -109,7 +116,7 @@ ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 J
 任务：根据当前输入、最近 {ROUTING_HISTORY_TURNS} 轮历史和 hints，同时判断学科、是否追问、追问类型和父节点。
 
 输出 JSON：
-{{"subject":"math|current_affairs|politics|english|unsupported","is_followup":true/false,"followup_category":"independent|step_followup|weak_nonstep_followup|contextual_nonstep_followup|ambiguous","parent_turn_id":number|null,"parent_turn_ids":[number],"reason":"一句话","clarification":string|null}}
+{{"subject":"math|politics|english|unsupported","is_followup":true/false,"followup_category":"independent|step_followup|weak_nonstep_followup|contextual_nonstep_followup|ambiguous","parent_turn_id":number|null,"parent_turn_ids":[number],"reason":"一句话","clarification":string|null}}
 
 规则：
 - 如果 subject_locked=true，必须沿用 subject_hint；如果 followup_locked=true，必须沿用 followup_hint。
@@ -127,11 +134,12 @@ ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 J
 - 如果图片 OCR 显示为数学题、政治材料、英语文本或时政材料，即使 user_input 只有“怎么做/讲一下/这题”，也应结合图片内容判定对应学科。
 - 如果 image_context 仍无法提供足够学科证据，再输出 unsupported + clarification；不要根据图片文件名判断学科。
 - 父节点判定优先级：
-  1. 当前输入含明确新话题/完整新题目（如“简述...”“计算...”“证明...”“换政治题...”且题面或概念完整）时，判 independent，parent 为空，不要因为上一轮同学科或相邻就挂父节点。
-  2. 当前输入含明确回指词（如“刚才/之前/回到刚才/你刚才提到/上面那个/这道题”）时，必须在候选 turn 中寻找被回指的具体对象；如果回指词后带有主题限定（如“数学证明”“概率题”“毛泽东思想”“实践检验”），优先挂到最近的同主题 turn，而不是简单挂上一轮。
-  3. 当前输入是纠错或改条件（如“不好意思写错了”“应该是...”“改成...”“重新计算”“换成...还成立吗”）时，挂到被纠错/被改条件的上一道实质题或结论。
-  4. “这题呢/那这题呢”且本轮有 image_context 显示一张新题时，通常判 independent，parent 为空；只有用户明确说“沿用上一题/和上一题比较/把上一题条件换成...”才挂父节点。
-  5. 多个候选都能解释当前指代且没有主题限定时，判 ambiguous 并给 clarification，不要硬选最近一轮。
+  1. 当前输入是纯粹新话题/完整新题目（无任何回指词、引用关系，如“简述...”“计算...”“证明...”“换政治题...”且题面或概念完整）时，判 independent，parent 为空，不要因为上一轮同学科或相邻就挂父节点。
+  2. 复合输入追问优先：如果当前输入同时包含新话题/新概念和明确回指词或应用关系（典型结构是“解释某概念/方法 + 刚才/上一题/这道题能否使用或如何应用”），不要因为前半句是新话题就判 independent；应判 contextual_nonstep_followup，parent 定位到被回指对象，新话题部分留给回答阶段自行解释。
+  3. 当前输入含明确回指词（如“刚才/之前/回到刚才/你刚才提到/上面那个/这道题”）时，必须在候选 turn 中寻找被回指的具体对象；如果回指词后带有主题限定（如“数学证明”“概率题”“毛泽东思想”“实践检验”），优先挂到最近的同主题 turn，而不是简单挂上一轮。
+  4. 当前输入是纠错或改条件（如“不好意思写错了”“应该是...”“改成...”“重新计算”“换成...还成立吗”）时，挂到被纠错/被改条件的上一道实质题或结论。
+  5. “这题呢/那这题呢”且本轮有 image_context 显示一张新题时，通常判 independent，parent 为空；只有用户明确说“沿用上一题/和上一题比较/把上一题条件换成...”才挂父节点。
+  6. 多个候选都能解释当前指代且没有主题限定时，判 ambiguous 并给 clarification，不要硬选最近一轮。
 - 当前输入很省略时，如“这个呢”“还成立吗”“我说的是...”“不是这个”，优先从最近历史继承学科并定位 parent；但若本轮明确切换学科或 image_context 显示新题，应按新话题处理。
 - 当前输入包含“你刚才说/刚才提到/上一轮说/你说的”并引用某个词句或结论时，优先选择最近一轮 whose assistant answer 中出现该词句或结论的 turn 作为 parent；不要为了追到主题源头而跳过这轮。
 - 数学步骤追问，如“这一步怎么来的”“第 2 步为什么”，判为 step_followup。
@@ -140,6 +148,7 @@ ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 J
 - 多对象比较中，如果用户明确命名“某某问题/某某定理/换序问题/分布问题/特征值问题”等历史主题，优先选择该主题首次出现的独立 turn 作为 parent；只有用户明确说“上一轮说法/这个步骤/这个例子/刚才结论”时，才选择最近的相关子节点。
 - 如果无法确定 parent，但明显是追问，followup_category 设为 ambiguous，并给 clarification。
 - subject=unsupported 表示学科证据不足，不是错误状态；此时 followup_category 仍应按输入本身判断，通常为 independent 或 ambiguous。
+- 时政、会议热点、新闻政策、新质生产力等都属于 politics，不要输出 current_affairs；时政工具由后续工具选择层决定。
 - parent_turn_id 和 parent_turn_ids 只能来自给定历史 turn_id；独立问题 parent_turn_id=null 且 parent_turn_ids=[]。
 - 注意系统后处理：followup_category=independent 时系统会强制清空 parent；超出 candidate_turns 的 parent 会被清除。若需要挂父节点，就不要判 independent。
 """
@@ -1316,7 +1325,7 @@ def classify_subject_heuristic(
     if MATH_EXPLICIT_RE.search(user_input):
         return "math"
     if CURRENT_AFFAIRS_EXPLICIT_RE.search(user_input):
-        return "current_affairs"
+        return "politics"
     if POLITICS_EXPLICIT_RE.search(user_input):
         return "politics"
     if ENGLISH_EXPLICIT_RE.search(user_input):
@@ -1338,9 +1347,27 @@ CONTEXTUAL_FOLLOWUP_ANCHOR_RE = re.compile(
     r"重新计算|重新算|写错|改错|应该是|更正|改成|换成|"
     r"能不能.*解决这道题|能否.*解决这道题"
 )
+COMPOSITE_FOLLOWUP_NEW_TOPIC_RE = re.compile(
+    r"什么是|是什么|讲一下|解释一下|介绍一下|总结一下|怎么理解|如何理解|"
+    r"定义|概念|定理|公式|方法|原理|规则"
+)
+COMPOSITE_FOLLOWUP_APPLICATION_RE = re.compile(
+    r"能不能|能否|能用吗|能不能用|能否用|可以用吗|可不可以|是否可以|"
+    r"能不能使用|能否使用|是否能使用|适合.*吗|"
+    r"用.*(?:证明|解决|求解|计算|解释|处理|分析)"
+)
 INDEPENDENT_COMMAND_RE = re.compile(
     r"^(?:讲一下|解释一下|总结一下|帮我|请问|什么是|如何|怎么做|求|证明)"
 )
+
+
+def is_composite_followup_input(text: str, has_history: bool) -> bool:
+    if not has_history or not CONTEXTUAL_FOLLOWUP_ANCHOR_RE.search(text):
+        return False
+    return bool(
+        COMPOSITE_FOLLOWUP_NEW_TOPIC_RE.search(text)
+        or COMPOSITE_FOLLOWUP_APPLICATION_RE.search(text)
+    )
 
 
 def classify_followup_heuristic(user_input: str, history: list[dict[str, str]] | None = None) -> str | None:
@@ -1354,10 +1381,12 @@ def classify_followup_heuristic(user_input: str, history: list[dict[str, str]] |
         return "step_followup"
     if MULTI_PARENT_FOLLOWUP_HINT_RE.search(text):
         return "contextual_nonstep_followup"
-    if WEAK_FOLLOWUP_HINT_RE.search(text):
-        return "weak_nonstep_followup"
+    if is_composite_followup_input(text, has_history):
+        return "contextual_nonstep_followup"
     if CONTEXTUAL_FOLLOWUP_ANCHOR_RE.search(text):
         return "contextual_nonstep_followup"
+    if WEAK_FOLLOWUP_HINT_RE.search(text):
+        return "weak_nonstep_followup"
     if re.search(r"^(那|再|继续|如果|你刚|刚才|回到|比较\s*turn\d+)", text, flags=re.I) and has_history:
         return None
     if not has_history and (classify_subject_heuristic(text, history=history) or INDEPENDENT_COMMAND_RE.search(text)):
@@ -1367,9 +1396,31 @@ def classify_followup_heuristic(user_input: str, history: list[dict[str, str]] |
 
 def normalize_subject(value: Any, fallback: str = "unsupported") -> str:
     subject = str(value or fallback)
-    if subject not in {"math", "current_affairs", "politics", "english", "unsupported"}:
+    if subject == "current_affairs":
+        return "politics"
+    if subject not in {"math", "politics", "english", "unsupported", ""}:
         return fallback
     return subject
+
+
+def subject_keywords(subject: str) -> tuple[str, ...]:
+    normalized = normalize_subject(subject, fallback="")
+    if normalized == "math":
+        return MATH_STRONG_KEYWORDS
+    if normalized == "politics":
+        return (*POLITICS_STRONG_KEYWORDS, *CURRENT_AFFAIRS_STRONG_KEYWORDS)
+    return ()
+
+
+def matched_subject_keywords(text: str, subject: str) -> set[str]:
+    if not text:
+        return set()
+    lowered = text.lower()
+    return {
+        keyword
+        for keyword in subject_keywords(subject)
+        if keyword and keyword.lower() in lowered
+    }
 
 
 def normalize_followup_category(value: Any, fallback: str = "independent") -> str:
@@ -1448,21 +1499,34 @@ def route_with_llm(
     if has_images and image_context:
         payload["image_context"] = image_context
     global_client = make_global_client(client)
+    model_name = global_model_name()
     response = global_client.chat.completions.create(
-        model=global_model_name(),
+        model=model_name,
         messages=[
             {"role": "system", "content": ROUTE_CLASSIFIER_PROMPT},
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
         ],
         temperature=global_temperature(0),
     )
+    raw_content = str(response.choices[0].message.content or "")
     if metrics is not None:
         metrics.llm_calls += 1
-        record_usage(metrics, response, "route_classifier")
+        usage = record_usage(metrics, response, "route_classifier")
+        usage["raw_content_chars"] = len(raw_content)
+    parse_error = None
     try:
-        data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
-    except Exception:
+        data = legacy_agent.parse_json_object(raw_content or "{}")
+    except Exception as exc:
+        parse_error = str(exc)
         data = {}
+    log_route_debug(
+        metrics,
+        user_input=user_input,
+        model=model_name,
+        raw_content=raw_content,
+        parsed=data,
+        parse_error=parse_error,
+    )
     subject = normalize_subject(subject_hint if subject_locked else data.get("subject"), subject_hint or "unsupported")
     category = normalize_followup_category(
         followup_hint if followup_locked else data.get("followup_category", data.get("category")),
@@ -1548,7 +1612,7 @@ def infer_subject_from_turns(turns: list[dict[str, Any]]) -> str | None:
     if POLITICS_EXPLICIT_RE.search(text):
         return "politics"
     if CURRENT_AFFAIRS_EXPLICIT_RE.search(text):
-        return "current_affairs"
+        return "politics"
     if ENGLISH_EXPLICIT_RE.search(text):
         return "english"
     if MATH_HISTORY_RE.search(text) or re.search(
@@ -1603,11 +1667,20 @@ def infer_subject_from_parent_turns(
     return subjects[-1]
 
 
+def turn_subject(turn: dict[str, Any]) -> str | None:
+    route = turn.get("route")
+    if isinstance(route, dict):
+        subject = normalize_subject(route.get("subject"), fallback="")
+        if subject:
+            return subject
+    return classify_subject_heuristic(turn_context_block(turn, 600))
+
+
 def subject_hint_from_image_context(image_context: dict[str, Any] | None) -> str | None:
     if not image_context:
         return None
-    subject = str(image_context.get("subject_hint") or "unknown")
-    if subject not in {"math", "politics", "english", "current_affairs"}:
+    subject = normalize_subject(image_context.get("subject_hint"), fallback="")
+    if not subject or subject == "unsupported":
         return None
     try:
         confidence = float(image_context.get("confidence", 0.0) or 0.0)
@@ -1673,7 +1746,7 @@ def subject_has_routing_evidence(
     if subject == "unsupported":
         return True
     if has_images and image_context:
-        image_subject = str(image_context.get("subject_hint") or "unknown")
+        image_subject = normalize_subject(image_context.get("subject_hint"), fallback="")
         try:
             confidence = float(image_context.get("confidence", 0.0) or 0.0)
         except (TypeError, ValueError):
@@ -1753,12 +1826,11 @@ def select_tools(
     metrics: RuntimeMetrics | None = None,
     followup_context_resolver: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> dict[str, ToolSpec]:
+    subject = normalize_subject(subject)
     if subject == "math":
         return build_math_tools(metrics, followup_context_resolver)
     if subject == "politics":
-        return build_politics_tools()
-    if subject == "current_affairs":
-        return build_current_affairs_tools()
+        return {**build_politics_tools(), **build_current_affairs_tools()}
     return {}
 
 
@@ -1848,6 +1920,34 @@ def global_temperature(default: float | None = None) -> float | None:
         return float(value)
     except ValueError:
         return default
+
+
+def log_route_debug(
+    metrics: RuntimeMetrics | None,
+    *,
+    user_input: str,
+    model: str,
+    raw_content: str,
+    parsed: dict[str, Any] | None,
+    parse_error: str | None = None,
+) -> None:
+    if not route_debug_log_enabled():
+        return
+    REQUEST_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "session_id": metrics.session_id if metrics else None,
+        "request_id": metrics.request_id if metrics else None,
+        "user_input": user_input,
+        "model": model,
+        "raw_content_chars": len(raw_content),
+        "raw_content": raw_content,
+        "parsed": parsed,
+        "parse_error": parse_error,
+    }
+    path = REQUEST_LOG_DIR / f"route_debug_{datetime.now().date().isoformat()}.jsonl"
+    with path.open("a", encoding="utf-8") as file:
+        file.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
 
 def make_global_client(default_client: Any | None = None) -> Any:
@@ -1986,14 +2086,110 @@ def log_runtime(result: RuntimeResult) -> None:
             break
 
 
-def build_messages(user_input: str, history: list[dict[str, str]], output_format: str) -> list[dict[str, Any]]:
+def split_context_paragraphs(text: str) -> list[str]:
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", str(text or "")) if part.strip()]
+    if paragraphs:
+        return paragraphs
+    return [line.strip() for line in str(text or "").splitlines() if line.strip()]
+
+
+def selected_answer_paragraphs(answer: str, keywords: set[str]) -> str:
+    paragraphs = split_context_paragraphs(answer)
+    if not paragraphs:
+        return ""
+    selected_indexes: list[int] = []
+    for index in (0, len(paragraphs) - 1):
+        if index not in selected_indexes:
+            selected_indexes.append(index)
+    lowered_keywords = {keyword.lower() for keyword in keywords if keyword}
+    for index, paragraph in enumerate(paragraphs):
+        lowered = paragraph.lower()
+        if any(keyword in lowered for keyword in lowered_keywords) and index not in selected_indexes:
+            selected_indexes.append(index)
+    selected_indexes.sort()
+    return "\n\n".join(paragraphs[index] for index in selected_indexes)
+
+
+def select_independent_context_turns(
+    user_input: str,
+    recent_turns: list[dict[str, Any]],
+    subject: str,
+    lookback: int = INDEPENDENT_CONTEXT_LOOKBACK,
+    max_turns: int = INDEPENDENT_CONTEXT_MAX_TURNS,
+) -> list[dict[str, Any]]:
+    normalized_subject = normalize_subject(subject, fallback="")
+    if not normalized_subject or normalized_subject == "unsupported":
+        return []
+    current_keywords = matched_subject_keywords(user_input, normalized_subject)
+    if not current_keywords:
+        return []
+    selected: list[dict[str, Any]] = []
+    for turn in reversed(recent_turns[-lookback:]):
+        if turn_subject(turn) != normalized_subject:
+            continue
+        turn_text = turn_context_block(turn, 2400)
+        turn_keywords = matched_subject_keywords(turn_text, normalized_subject)
+        overlap = current_keywords & turn_keywords
+        if not overlap:
+            continue
+        enriched = dict(turn)
+        enriched["_independent_context_keywords"] = sorted(overlap, key=len, reverse=True)
+        selected.append(enriched)
+        if len(selected) >= max_turns:
+            break
+    return list(reversed(selected))
+
+
+def format_independent_context_message(
+    user_input: str,
+    recent_turns: list[dict[str, Any]],
+    subject: str,
+) -> dict[str, str] | None:
+    selected_turns = select_independent_context_turns(user_input, recent_turns, subject)
+    if not selected_turns:
+        return None
+    blocks = [
+        "当前问题已判定为独立问题。下面仅提供最近 6 轮内同学科且关键词匹配的参考片段；",
+        "不要把当前问题强行挂到这些历史，只在确有帮助时参考术语、口径或已讲过的结论。",
+    ]
+    for turn in selected_turns:
+        keywords = set(str(item) for item in turn.get("_independent_context_keywords") or [])
+        answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
+        selected_answer = selected_answer_paragraphs(answer, keywords)
+        blocks.append(
+            "\n".join([
+                f"\n[turn {turn.get('turn_id')}]",
+                f"匹配关键词：{', '.join(sorted(keywords, key=len, reverse=True))}",
+                f"User: {str(turn.get('user_query') or '').strip()}",
+                "Assistant 参考片段:",
+                selected_answer or str((turn.get("memory") or {}).get("answer_brief") or "").strip(),
+            ]).strip()
+        )
+    return {"role": "user", "content": "\n\n".join(blocks)}
+
+
+def build_messages(
+    user_input: str,
+    history: list[dict[str, str]],
+    output_format: str,
+    subject: str | None = None,
+    recent_turns: list[dict[str, Any]] | None = None,
+    use_independent_context: bool = False,
+) -> list[dict[str, Any]]:
     format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
     system_prompt = MAIN_SYSTEM_PROMPT
     if context_followup_tools_enabled():
         system_prompt = f"{system_prompt}\n\n{CONTEXT_FOLLOWUP_PROMPT}"
+    selected_context = (
+        format_independent_context_message(user_input, recent_turns or [], subject or "")
+        if use_independent_context
+        else None
+    )
+    history_messages = [] if use_independent_context else history[-SHORT_TERM_TURNS * 2:]
     return [
         {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
-        *history[-SHORT_TERM_TURNS * 2:],
+        *history_messages,
+        *([selected_context] if selected_context else []),
         {"role": "user", "content": user_input},
     ]
 
@@ -2007,6 +2203,9 @@ def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], ou
         "认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
         "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
         "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
+        f"默认把回答控制在 {DAG_FOLLOWUP_TARGET_CHARS} 个汉字以内，并且必须完整收尾。"
+        "如果篇幅不够，优先删减例子、背景、表格和延伸内容，保留结论、关键理由和必要公式。"
+        "只有当用户明确要求“详细讲”“细说”“展开”“举例”“完整推导”等时，才允许超过默认字数，但仍要优先保证结尾完整，不要停在列表或公式中途。"
     )
     content = (
         "DAG 追问链路记忆：\n"
@@ -2160,7 +2359,7 @@ def run_standard_message_loop(
     if (
         context_followup_tools_enabled()
         and not image_paths
-        and subject in {"math", "politics", "current_affairs"}
+        and subject in {"math", "politics"}
         and followup_route_decision is None
     ):
         followup_hint = classify_followup_heuristic(user_input, history)
@@ -2263,7 +2462,14 @@ def run_standard_message_loop(
             append_runtime_turn(session_id, user_input, result)
         return result
 
-    messages = build_messages(user_input, history, output_format)
+    messages = build_messages(
+        user_input,
+        history,
+        output_format,
+        subject=subject,
+        recent_turns=recent_turns,
+        use_independent_context=(followup_route_decision or {}).get("category") == "independent",
+    )
     openai_tools = [tool.openai_schema() for tool in tools.values()]
     tool_call_records: list[dict[str, Any]] = []
 
