@@ -1301,1564 +1301,4 @@ POLITICS_STRONG_KEYWORDS = (
     '民生主义', '中华民国', '临时约法', '旧民主主义革命', '新文化运动', '民主与科学', '五四运动', '五四精神',
     '马克思主义传播', '李大钊', '陈独秀', '中国早期马克思主义思想运动', '工人阶级登上政治舞台', '新民主主义革命开端', '中国共产党成立', '中共一大',
     '中共二大', '中共三大', '中共四大', '民主革命纲领', '国共合作', '第一次国共合作', '革命统一战线', '国民革命',
-    '大革命', '北伐战争', '四一二反革命政变', '七一五反革命政变', '大革命失败', '南昌起义', '八七会议', '秋收起义',
-    '广州起义', '井冈山革命根据地', '古田会议', '中华苏维埃共和国', '遵义会议', '长征', '长征精神', '瓦窑堡会议',
-    '抗日民族统一战线', '九一八事变', '华北事变', '一二九运动', '西安事变', '七七事变', '卢沟桥事变', '第二次国共合作',
-    '全面抗战路线', '片面抗战路线', '洛川会议', '持久战', '论持久战', '敌后战场', '正面战场', '百团大战',
-    '延安整风运动', '六届六中全会', '中共七大', '毛泽东思想写入党章', '抗日战争胜利', '重庆谈判', '双十协定', '内战爆发',
-    '人民解放战争', '土地改革', '中国土地法大纲', '三大战役', '辽沈战役', '淮海战役', '平津战役', '七届二中全会',
-    '两个务必', '渡江战役', '南京解放', '中国人民政治协商会议', '共同纲领', '中华人民共和国成立', '新中国成立', '抗美援朝',
-    '土地改革运动', '镇压反革命', '三反五反运动', '中共八大', '社会主义建设总路线', '大跃进', '人民公社化运动', '七千人大会',
-    '四清运动', '文化大革命', '二月抗争', '四五运动', '粉碎四人帮', '真理标准问题讨论', '十一届三中全会', '家庭联产承包责任制',
-    '经济特区', '南方谈话', '中共十二大', '中共十三大', '中共十四大', '中共十五大', '中共十六大', '中共十七大',
-    '中共十八大', '中共十九大', '中共二十大', '全面建成小康社会', '脱贫攻坚', '十二月会议', '义和团运动', '抗日战争',
-    '解放战争', '思想道德与法治', '人生观', '世界观', '价值观', '人生目的', '人生态度', '人生价值',
-    '自我价值', '社会价值', '人生价值评价', '人生价值实现', '服务人民', '奉献社会', '个人与社会', '个人理想与社会理想',
-    '理想信念', '马克思主义信仰', '中国特色社会主义共同理想', '共产主义远大理想', '个人理想', '社会理想', '理想信念是精神之钙', '立大志',
-    '明大德', '成大才', '担大任', '中国精神', '民族精神', '时代精神', '爱国主义', '改革创新',
-    '伟大创造精神', '伟大奋斗精神', '伟大团结精神', '伟大梦想精神', '爱国爱党爱社会主义相统一', '国家安全意识', '核心价值观', '价值准则',
-    '价值目标', '价值取向', '价值规范', '道德本质', '道德功能', '道德作用', '中华传统美德', '中国革命道德',
-    '社会主义道德', '为人民服务', '集体主义', '社会公德', '职业道德', '家庭美德', '个人品德', '网络道德',
-    '诚信道德', '志愿服务', '见义勇为', '法治思维', '法治观念', '社会主义法治观念', '社会主义法治道路', '法律权威',
-    '尊法学法守法用法', '法律面前人人平等', '权利义务相统一', '依法行使权利', '依法履行义务', '宪法', '宪法法律至上', '宪法权威',
-    '宪法宣誓制度', '国家宪法日', '基本权利', '基本义务', '国家机构', '公民权利', '公民义务', '民法典',
-    '民事权利', '民事义务', '民事责任', '民事法律行为', '违约责任', '侵权责任', '缔约过失责任', '不可抗力',
-    '人格权', '知识产权', '继承权', '刑法', '刑事责任', '正当防卫', '紧急避险', '行政法',
-    '行政行为', '行政处罚', '行政复议', '行政诉讼', '民事诉讼', '刑事诉讼', '法律援助', '司法救助',
-    '程序正义', '实体正义', '肖秀荣', '腿姐', '徐涛', '陆寓丰', '米鹏', '肖四',
-    '肖八', '1000题', '精讲精练', '核心考案', '冲刺背诵手册', '背诵手册', '腿四', '徐六',
-    '米三', '米六', '政治选择题', '政治单选题', '政治多选题', '政治大题', '政治分析题', '马原大题',
-    '毛中特大题', '史纲大题', '思修大题', '当代大题', '政治背诵', '政治刷题', '政治错题', '政治押题',
-    '政治主观题', '政治客观题', '考研政治', '政治题', '马原', '马克思主义', '毛中特', '史纲',
-    '思修', '思想道德', '思想道德修养与法律基础', '思修法基', '实践是检验真理', '逻辑证明', '实践检验', '新民主主义',
-    '官僚资本主义', '混合所有制', '反对本本主义',
-)
-CURRENT_AFFAIRS_STRONG_KEYWORDS = (
-    '时政', '时事', '时事政治', '新闻热点', '热点新闻', '本月时政', '会议精神', '政策解读',
-    '形势与政策', '中央经济工作会议', '中央农村工作会议', '全国两会', '政府工作报告', '高质量发展', '新质生产力', '现代化产业体系',
-    '共同富裕', '乡村振兴', '区域协调发展', '扩大内需', '科技自立自强', '教育强国', '人才强国', '健康中国',
-    '数字中国', '美丽中国', '双碳', '碳达峰', '碳中和', '党的二十大', '二十届一中全会', '二十届二中全会',
-    '二十届三中全会', '中国式现代化', '全面深化改革', '党纪学习教育', '全面从严治党', '党的自我革命', '反腐败斗争', '中央八项规定',
-    '中国特色大国外交', '人类命运共同体', '全人类共同价值', '一带一路', '全球发展倡议', '全球安全倡议', '全球文明倡议', '多边主义',
-    '经济全球化', '全球治理', '国际秩序', '国际格局', '百年未有之大变局', '中美关系', '中俄关系', '中欧关系',
-    '周边外交', '大国关系', '南南合作', '联合国', '金砖国家', '上合组织', '亚太经合组织', '新型举国体制',
-)
-CURRENT_AFFAIRS_EXPLICIT_RE = re.compile(keyword_regex(CURRENT_AFFAIRS_STRONG_KEYWORDS) + r"|近期.*(?:新闻|政策|热点)")
-POLITICS_EXPLICIT_RE = re.compile(keyword_regex(POLITICS_STRONG_KEYWORDS))
-ENGLISH_EXPLICIT_RE = re.compile(r"考研英语|英语[一二]?|阅读理解|英语作文|小作文|大作文|完形填空|新题型|考研翻译")
-
-# 模糊真题引用的局部模式
-_FUZZY_EXAM_YEAR_RE = re.compile(r"(?:20\d{2}|0?[9]|1\d|2\d)\s*年")
-_FUZZY_EXAM_QUESTION_RE = re.compile(r"(?:第\s*)?(?:\d{1,2}|[一二三四五六七八九十]{1,3})\s*(?:题|问|[大个]题)")
-_FUZZY_EXAM_SUBJECT_RE = re.compile(r"数学[一二三]|数[一二三]|math[123]")
-_FUZZY_EXAM_VAGUE_RE = re.compile(r"真题|历年真题|考题|考研题|这道题|那道题|第\s*[几多少]\s*题|第[一二三四五六七八九十]\s*[个大题问]")
-
-
-def analyze_missing_info(user_input: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    text = user_input.strip()
-    result: dict[str, Any] = {
-        "has_subject_hint": False,
-        "has_year": False,
-        "has_question_number": False,
-        "has_exam_type": False,
-        "likely_math": False,
-        "likely_kaoyan": bool(re.search(r"考研|真题|考题|数[一二三]|数学", text)),
-        "missing": [],
-    }
-    result["has_year"] = bool(_FUZZY_EXAM_YEAR_RE.search(text))
-    result["has_question_number"] = bool(_FUZZY_EXAM_QUESTION_RE.search(text))
-    result["has_exam_type"] = bool(_FUZZY_EXAM_SUBJECT_RE.search(text))
-    result["has_subject_hint"] = bool(CURRENT_AFFAIRS_EXPLICIT_RE.search(text) or
-                                      POLITICS_EXPLICIT_RE.search(text) or
-                                      ENGLISH_EXPLICIT_RE.search(text) or
-                                      MATH_EXPLICIT_RE.search(text))
-    if not result["has_subject_hint"]:
-        if history_suggests_math(history):
-            result["likely_math"] = True
-    missing = result["missing"]
-    if result["has_year"] and result["has_question_number"] and not result["has_exam_type"]:
-        missing.append("exam_type")
-    elif not result["has_year"] and result["has_question_number"]:
-        missing.append("year")
-    elif result["has_year"] and not result["has_question_number"]:
-        missing.append("question_number")
-    elif not result["has_subject_hint"] and not result["has_year"] and not result["has_question_number"]:
-        if _FUZZY_EXAM_VAGUE_RE.search(text):
-            missing.append("exam_specifics")
-        elif not result["likely_math"]:
-            missing.append("subject")
-    return result
-
-
-def build_ambiguous_clarification(user_input: str, history: list[dict[str, str]]) -> str:
-    info = analyze_missing_info(user_input, history)
-    missing = info["missing"]
-    hard_rules: list[tuple[list[str], str]] = [
-        (["exam_type"], "请问您指的是数学一、数学二还是数学三的题？"),
-        (["year"], "请问是哪一年的题？比如 2020、2021。"),
-        (["question_number"], "请问是第几题？请提供具体题号。"),
-        (["exam_specifics"], "请提供更具体的信息，比如哪一年、哪一科的哪道真题？例如 2021 年数一第 9 题怎么做。"),
-        (["subject"], "请问您想咨询什么内容？我可以帮您解答数学题、查询考研时政热点。"),
-    ]
-    for triggers, answer in hard_rules:
-        if sorted(missing) == sorted(triggers):
-            return answer
-    if info["has_year"] and info["has_question_number"] and not info["has_exam_type"]:
-        return "请问您指的是数学一、数学二还是数学三的题？"
-    if info["likely_math"]:
-        return "能否提供更具体的信息？比如年份、科目（数一/数二/数三）和题号。"
-    return "请问您想咨询什么内容？我可以帮您解答数学题（如 2021 年数一第 9 题）、查询考研时政热点。"
-
-
-def history_suggests_math(history: list[dict[str, str]] | None) -> bool:
-    if not history:
-        return False
-    recent_text = "\n".join(str(item.get("content", "")) for item in history[-8:])
-    return bool(MATH_HISTORY_RE.search(recent_text))
-
-
-def classify_subject_heuristic(
-    user_input: str,
-    has_images: bool = False,
-    history: list[dict[str, str]] | None = None,
-) -> str | None:
-    if MATH_FOLLOWUP_RE.search(user_input) and history_suggests_math(history):
-        return "math"
-    if MATH_EXPLICIT_RE.search(user_input):
-        return "math"
-    if CURRENT_AFFAIRS_EXPLICIT_RE.search(user_input):
-        return "politics"
-    if POLITICS_EXPLICIT_RE.search(user_input):
-        return "politics"
-    if ENGLISH_EXPLICIT_RE.search(user_input):
-        return "english"
-    return None
-
-
-WEAK_FOLLOWUP_HINT_RE = re.compile(
-    r"这个|那个|它|这里|上面|刚才|上一|继续|详细|展开|"
-    r"为什么|咋来的|怎么来的|还成立|可以吗|对吗|"
-    r"我说的是|我的意思|不是这个|换成|那如果|这个呢|那个呢"
-)
-MULTI_PARENT_FOLLOWUP_HINT_RE = re.compile(
-    r"第[一二三四五六七八九十\d]+个|第[一二三四五六七八九十\d]+题|"
-    r"这两个|那两个|二者|两者|分别|对比|区别|联系|另一个|前一个|后一个"
-)
-CONTEXTUAL_FOLLOWUP_ANCHOR_RE = re.compile(
-    r"这道题|那道题|这题|那题|上一题|上一道|刚才.*题|之前.*题|"
-    r"重新计算|重新算|写错|改错|应该是|更正|改成|换成|"
-    r"能不能.*解决这道题|能否.*解决这道题"
-)
-COMPOSITE_FOLLOWUP_NEW_TOPIC_RE = re.compile(
-    r"什么是|是什么|讲一下|解释一下|介绍一下|总结一下|怎么理解|如何理解|"
-    r"定义|概念|定理|公式|方法|原理|规则"
-)
-COMPOSITE_FOLLOWUP_APPLICATION_RE = re.compile(
-    r"能不能|能否|能用吗|能不能用|能否用|可以用吗|可不可以|是否可以|"
-    r"能不能使用|能否使用|是否能使用|适合.*吗|"
-    r"用.*(?:证明|解决|求解|计算|解释|处理|分析)"
-)
-INDEPENDENT_COMMAND_RE = re.compile(
-    r"^(?:讲一下|解释一下|总结一下|帮我|请问|什么是|如何|怎么做|求|证明)"
-)
-
-
-def is_composite_followup_input(text: str, has_history: bool) -> bool:
-    if not has_history or not CONTEXTUAL_FOLLOWUP_ANCHOR_RE.search(text):
-        return False
-    return bool(
-        COMPOSITE_FOLLOWUP_NEW_TOPIC_RE.search(text)
-        or COMPOSITE_FOLLOWUP_APPLICATION_RE.search(text)
-    )
-
-
-def classify_followup_heuristic(user_input: str, history: list[dict[str, str]] | None = None) -> str | None:
-    text = user_input.strip()
-    if not text:
-        return None
-    has_history = bool(history)
-    if re.search(r"(?:20\d{2}|0?[9]|1\d|2\d).*(?:math[123]|数学[一二三]|数[一二三]).*(?:question|第\s*\d+|题)", text, flags=re.I):
-        return "independent"
-    if MATH_FOLLOWUP_RE.search(text) and history_suggests_math(history):
-        return "step_followup"
-    if MULTI_PARENT_FOLLOWUP_HINT_RE.search(text):
-        return "contextual_nonstep_followup"
-    if is_composite_followup_input(text, has_history):
-        return "contextual_nonstep_followup"
-    if CONTEXTUAL_FOLLOWUP_ANCHOR_RE.search(text):
-        return "contextual_nonstep_followup"
-    if WEAK_FOLLOWUP_HINT_RE.search(text):
-        return "weak_nonstep_followup"
-    if re.search(r"^(那|再|继续|如果|你刚|刚才|回到|比较\s*turn\d+)", text, flags=re.I) and has_history:
-        return None
-    if not has_history and (classify_subject_heuristic(text, history=history) or INDEPENDENT_COMMAND_RE.search(text)):
-        return "independent"
-    return None
-
-
-def normalize_subject(value: Any, fallback: str = "unsupported") -> str:
-    subject = str(value or fallback)
-    if subject == "current_affairs":
-        return "politics"
-    if subject not in {"math", "politics", "english", "unsupported", ""}:
-        return fallback
-    return subject
-
-
-def subject_keywords(subject: str) -> tuple[str, ...]:
-    normalized = normalize_subject(subject, fallback="")
-    if normalized == "math":
-        return MATH_STRONG_KEYWORDS
-    if normalized == "politics":
-        return (*POLITICS_STRONG_KEYWORDS, *CURRENT_AFFAIRS_STRONG_KEYWORDS)
-    return ()
-
-
-def matched_subject_keywords(text: str, subject: str) -> set[str]:
-    if not text:
-        return set()
-    lowered = text.lower()
-    return {
-        keyword
-        for keyword in subject_keywords(subject)
-        if keyword and keyword.lower() in lowered
-    }
-
-
-def normalize_followup_category(value: Any, fallback: str = "independent") -> str:
-    category = str(value or fallback)
-    if category not in {"independent", "step_followup", "weak_nonstep_followup", "contextual_nonstep_followup", "ambiguous"}:
-        return fallback
-    return category
-
-
-def candidate_turn_ids(candidates: list[dict[str, Any]]) -> set[int]:
-    ids: set[int] = set()
-    for turn in candidates:
-        try:
-            ids.add(int(turn.get("turn_id")))
-        except (TypeError, ValueError):
-            continue
-    return ids
-
-
-def normalize_parent_ids(data: dict[str, Any], candidates: list[dict[str, Any]]) -> tuple[int | None, list[int]]:
-    valid_ids = candidate_turn_ids(candidates)
-    values: list[Any] = []
-    raw_values = data.get("parent_turn_ids")
-    if isinstance(raw_values, list):
-        values.extend(raw_values)
-    if data.get("parent_turn_id") is not None:
-        values.append(data.get("parent_turn_id"))
-    parent_ids: list[int] = []
-    for value in values:
-        try:
-            parent_id = int(value)
-        except (TypeError, ValueError):
-            continue
-        if parent_id in valid_ids and parent_id not in parent_ids:
-            parent_ids.append(parent_id)
-    parent_ids.sort()
-    parent_turn_id = None
-    try:
-        raw_parent = int(data.get("parent_turn_id"))
-    except (TypeError, ValueError):
-        raw_parent = None
-    if raw_parent in valid_ids:
-        parent_turn_id = raw_parent
-    elif parent_ids:
-        parent_turn_id = parent_ids[-1]
-    return parent_turn_id, parent_ids
-
-
-def route_with_llm(
-    user_input: str,
-    history: list[dict[str, str]],
-    candidates: list[dict[str, Any]],
-    client: Any,
-    metrics: RuntimeMetrics | None = None,
-    subject_hint: str | None = None,
-    subject_locked: bool = False,
-    followup_hint: str | None = None,
-    followup_locked: bool = False,
-    has_images: bool = False,
-    image_context: dict[str, Any] | None = None,
-) -> RouteDecision:
-    candidate_text = "\n\n".join(
-        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
-        for turn in candidates
-    )
-    payload = {
-        "user_input": user_input,
-        "recent_history": history[-ROUTING_HISTORY_TURNS * 2:],
-        "candidate_turns": candidate_text,
-        "has_images": has_images,
-        "subject_hint": subject_hint,
-        "subject_locked": subject_locked,
-        "followup_hint": followup_hint,
-        "followup_locked": followup_locked,
-    }
-    if has_images and image_context:
-        payload["image_context"] = image_context
-    global_client = make_global_client(client)
-    model_name = global_model_name()
-    llm_started = time.perf_counter()
-    response = global_client.chat.completions.create(
-        model=model_name,
-        messages=[
-            {"role": "system", "content": ROUTE_CLASSIFIER_PROMPT},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-        ],
-        temperature=global_temperature(0),
-    )
-    raw_content = str(response.choices[0].message.content or "")
-    if metrics is not None:
-        metrics.llm_calls += 1
-        usage = record_usage(metrics, response, "route_classifier", model=model_name, started_at=llm_started)
-        usage["raw_content_chars"] = len(raw_content)
-    parse_error = None
-    try:
-        data = legacy_agent.parse_json_object(raw_content or "{}")
-    except Exception as exc:
-        parse_error = str(exc)
-        data = {}
-    log_route_debug(
-        metrics,
-        user_input=user_input,
-        model=model_name,
-        raw_content=raw_content,
-        parsed=data,
-        parse_error=parse_error,
-    )
-    subject = normalize_subject(subject_hint if subject_locked else data.get("subject"), subject_hint or "unsupported")
-    category = normalize_followup_category(
-        followup_hint if followup_locked else data.get("followup_category", data.get("category")),
-        followup_hint or "independent",
-    )
-    parent_id, parent_ids = normalize_parent_ids(data, candidates)
-    if category in {"independent", "ambiguous"}:
-        parent_id = None
-        parent_ids = []
-    reason = str(data.get("reason") or "")
-    parent_subject = infer_subject_from_parent_turns(candidates, parent_ids, subject)
-    if category != "independent" and parent_subject:
-        if subject != parent_subject:
-            reason = f"{reason}；追问学科继承父节点 {parent_subject}。".strip("；")
-        subject = parent_subject
-    clarification = data.get("clarification")
-    return RouteDecision(
-        subject=subject,
-        is_followup=bool(data.get("is_followup")) if not followup_locked else category != "independent",
-        followup_category=category,
-        parent_turn_id=parent_id,
-        parent_turn_ids=parent_ids,
-        reason=reason,
-        clarification=clarification.strip() if isinstance(clarification, str) and clarification.strip() else None,
-    )
-
-
-_last_clarification: str | None = None
-
-
-def classify_subject(
-    user_input: str,
-    history: list[dict[str, str]],
-    has_images: bool = False,
-    client: Any | None = None,
-    metrics: RuntimeMetrics | None = None,
-    image_context: dict[str, Any] | None = None,
-) -> str:
-    heuristic = classify_subject_heuristic(user_input, has_images, history)
-    if heuristic:
-        return heuristic
-    if client is None:
-        return "unsupported"
-    route = route_with_llm(
-        user_input,
-        history,
-        [],
-        client,
-        metrics,
-        followup_hint=classify_followup_heuristic(user_input, history),
-        has_images=has_images,
-        image_context=image_context,
-    )
-    if route.clarification:
-        global _last_clarification
-        _last_clarification = route.clarification
-    if not subject_has_routing_evidence(route.subject, user_input, history, [], has_images, image_context):
-        _last_clarification = build_ambiguous_clarification(user_input, history)
-        return "unsupported"
-    return route.subject
-
-
-def should_use_unified_route(has_images: bool, recent_turns: list[dict[str, Any]]) -> bool:
-    return context_followup_tools_enabled() and bool(recent_turns)
-
-
-def turns_to_messages(turns: list[dict[str, Any]]) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = []
-    for turn in turns:
-        user_query = str(turn.get("user_query") or "")
-        assistant_answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
-        if user_query:
-            messages.append({"role": "user", "content": user_query})
-        if assistant_answer:
-            messages.append({"role": "assistant", "content": assistant_answer})
-    return messages
-
-
-def infer_subject_from_turns(turns: list[dict[str, Any]]) -> str | None:
-    text = "\n".join(turn_context_block(turn, 600) for turn in turns)
-    if not text.strip():
-        return None
-    if POLITICS_EXPLICIT_RE.search(text):
-        return "politics"
-    if CURRENT_AFFAIRS_EXPLICIT_RE.search(text):
-        return "politics"
-    if ENGLISH_EXPLICIT_RE.search(text):
-        return "english"
-    if MATH_HISTORY_RE.search(text) or re.search(
-        r"cosh|sinh|Taylor|泰勒|积分|导数|函数|定理|连续|可导|矩阵|概率|"
-        r"\b(?:lim|sin|cos|tan|ln|log|det)\b|[a-zA-Z]\s*\(|\^",
-        text,
-        flags=re.I,
-    ):
-        return "math"
-    for turn in reversed(turns):
-        route = turn.get("route")
-        if isinstance(route, dict):
-            subject = normalize_subject(route.get("subject"), fallback="")
-            if subject:
-                return subject
-    return None
-
-
-def infer_subject_from_parent_turns(
-    recent_turns: list[dict[str, Any]],
-    parent_turn_ids: list[int],
-    current_subject: str | None = None,
-) -> str | None:
-    if not parent_turn_ids:
-        return None
-    turns_by_id: dict[int, dict[str, Any]] = {}
-    for turn in recent_turns:
-        try:
-            turns_by_id[int(turn.get("turn_id"))] = turn
-        except (TypeError, ValueError):
-            continue
-    subjects: list[str] = []
-    for parent_id in parent_turn_ids:
-        turn = turns_by_id.get(parent_id)
-        if not turn:
-            continue
-        subject: str | None = None
-        route = turn.get("route")
-        if isinstance(route, dict):
-            subject = normalize_subject(route.get("subject"), fallback="")
-        if not subject:
-            subject = classify_subject_heuristic(turn_context_block(turn, 600))
-        if subject and subject != "unsupported" and subject not in subjects:
-            subjects.append(subject)
-    if not subjects:
-        return None
-    if len(subjects) == 1:
-        return subjects[0]
-    normalized_current = normalize_subject(current_subject, fallback="")
-    if normalized_current in subjects:
-        return normalized_current
-    return subjects[-1]
-
-
-def turn_subject(turn: dict[str, Any]) -> str | None:
-    route = turn.get("route")
-    if isinstance(route, dict):
-        subject = normalize_subject(route.get("subject"), fallback="")
-        if subject:
-            return subject
-    return classify_subject_heuristic(turn_context_block(turn, 600))
-
-
-def subject_hint_from_image_context(image_context: dict[str, Any] | None) -> str | None:
-    if not image_context:
-        return None
-    subject = normalize_subject(image_context.get("subject_hint"), fallback="")
-    if not subject or subject == "unsupported":
-        return None
-    try:
-        confidence = float(image_context.get("confidence", 0.0) or 0.0)
-    except (TypeError, ValueError):
-        confidence = 0.0
-    if confidence < 0.7:
-        return None
-    image_text = "\n".join([
-        str(image_context.get("ocr_text") or ""),
-        str(image_context.get("visual_summary") or ""),
-    ])
-    if classify_subject_heuristic(image_text) == subject:
-        return subject
-    return subject
-
-
-def route_subject_hint(
-    user_input: str,
-    recent_turns: list[dict[str, Any]],
-    has_images: bool = False,
-    image_context: dict[str, Any] | None = None,
-) -> tuple[str | None, bool]:
-    current_hint = classify_subject_heuristic(user_input, has_images=False, history=None)
-    if current_hint:
-        return current_hint, True
-    image_hint = subject_hint_from_image_context(image_context) if has_images else None
-    if image_hint:
-        return image_hint, True
-    return infer_subject_from_turns(recent_turns), False
-
-
-IMAGE_NEW_PROBLEM_RE = re.compile(
-    r"^\s*(?:这道题|这题|那这题|这个题|这个|这张图|图片)?\s*"
-    r"(?:怎么做|如何做|求解|解一下|看一下|帮我看看|呢)?[？?。！!\s]*$"
-)
-IMAGE_CONTEXT_LINK_RE = re.compile(r"上一|刚才|之前|沿用|比较|对比|区别|换成|改成|继续|同样|类似")
-
-
-def image_context_is_new_problem(
-    user_input: str,
-    recent_turns: list[dict[str, Any]],
-    image_context: dict[str, Any] | None,
-) -> bool:
-    image_subject = subject_hint_from_image_context(image_context)
-    if not image_subject:
-        return False
-    if IMAGE_CONTEXT_LINK_RE.search(user_input):
-        return False
-    if not IMAGE_NEW_PROBLEM_RE.search(user_input):
-        return False
-    recent_subject = infer_subject_from_turns(recent_turns)
-    return recent_subject is None or recent_subject != image_subject
-
-
-def subject_has_routing_evidence(
-    subject: str,
-    user_input: str,
-    history: list[dict[str, str]],
-    recent_turns: list[dict[str, Any]],
-    has_images: bool = False,
-    image_context: dict[str, Any] | None = None,
-) -> bool:
-    if subject == "unsupported":
-        return True
-    if has_images and image_context:
-        image_subject = normalize_subject(image_context.get("subject_hint"), fallback="")
-        try:
-            confidence = float(image_context.get("confidence", 0.0) or 0.0)
-        except (TypeError, ValueError):
-            confidence = 0.0
-        image_text = "\n".join([
-            str(image_context.get("ocr_text") or ""),
-            str(image_context.get("visual_summary") or ""),
-        ])
-        if image_subject == subject and confidence >= 0.55:
-            return True
-        if classify_subject_heuristic(image_text) == subject:
-            return True
-    route_history = [*history, *turns_to_messages(recent_turns)]
-    heuristic = classify_subject_heuristic(user_input, has_images=has_images, history=route_history)
-    if heuristic == subject:
-        return True
-    return infer_subject_from_turns(recent_turns) == subject
-
-
-def build_route_decision(
-    user_input: str,
-    history: list[dict[str, str]],
-    recent_turns: list[dict[str, Any]],
-    has_images: bool,
-    client: Any,
-    metrics: RuntimeMetrics,
-    image_context: dict[str, Any] | None = None,
-) -> RouteDecision:
-    route_history = [*history, *turns_to_messages(recent_turns)]
-    subject_hint, subject_locked = route_subject_hint(user_input, recent_turns, has_images, image_context)
-    followup_hint = classify_followup_heuristic(user_input, route_history)
-    route = route_with_llm(
-        user_input,
-        route_history,
-        recent_turns,
-        client,
-        metrics,
-        subject_hint=subject_hint,
-        subject_locked=subject_locked,
-        followup_hint=followup_hint,
-        followup_locked=followup_hint == "independent",
-        has_images=has_images,
-        image_context=image_context,
-    )
-    if has_images and image_context_is_new_problem(user_input, recent_turns, image_context):
-        image_subject = subject_hint_from_image_context(image_context)
-        if image_subject:
-            route.subject = image_subject
-        route.is_followup = False
-        route.followup_category = "independent"
-        route.parent_turn_id = None
-        route.parent_turn_ids = []
-        route.reason = f"{route.reason}；本轮图片 OCR 显示为新题，按独立图片题处理。".strip("；")
-    parent_subject = infer_subject_from_parent_turns(recent_turns, route.parent_turn_ids, route.subject)
-    if route.is_followup and parent_subject:
-        if route.subject != parent_subject:
-            route.reason = f"{route.reason}；追问学科继承父节点 {parent_subject}。".strip("；")
-        route.subject = parent_subject
-    has_parent_context = route.is_followup and bool(route.parent_turn_ids)
-    if not has_parent_context and not subject_has_routing_evidence(route.subject, user_input, history, recent_turns, has_images, image_context):
-        route.subject = "unsupported"
-        route.clarification = build_ambiguous_clarification(user_input, history)
-        route.parent_turn_id = None
-        route.parent_turn_ids = []
-    return route
-
-
-def pop_last_clarification() -> str | None:
-    global _last_clarification
-    text = _last_clarification
-    _last_clarification = None
-    return text
-
-
-def select_tools(
-    subject: str,
-    metrics: RuntimeMetrics | None = None,
-    followup_context_resolver: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
-) -> dict[str, ToolSpec]:
-    subject = normalize_subject(subject)
-    if subject == "math":
-        return build_math_tools(metrics, followup_context_resolver)
-    if subject == "politics":
-        return {**build_politics_tools(), **build_current_affairs_tools()}
-    return {}
-
-
-def has_explicit_exam_reference(text: str) -> bool:
-    has_year = bool(re.search(r"(20\d{2}|0[9]|1[0-9]|2[0-9])\s*年", text))
-    has_exam = bool(re.search(r"数学一|数一|math1|数学二|数二|math2|数学三|数三|math3", text, flags=re.I))
-    has_question = bool(re.search(r"第\s*(?:\d{1,2}|[一二三四五六七八九十]{1,3})\s*[题問问]|(?<!\d)\d{1,2}\s*[题問问]", text))
-    return has_year and has_exam and has_question
-
-
-def filter_tools_for_request(tools: dict[str, ToolSpec], user_input: str, has_images: bool) -> dict[str, ToolSpec]:
-    if not has_images:
-        return tools
-    if has_explicit_exam_reference(user_input):
-        return tools
-    blocked = {"solve_exam_question", "show_math_exam_question", "show_math_exam_answer"}
-    return {name: spec for name, spec in tools.items() if name not in blocked}
-
-
-def build_image_context_text(image_context: dict[str, Any] | None) -> str:
-    if not image_context:
-        return ""
-    parts = [
-        "本轮图片预识别结果（供路由和作答参考，不是用户原话）：",
-        f"- 学科线索：{image_context.get('subject_hint') or 'unknown'}",
-        f"- 置信度：{image_context.get('confidence', 0.0)}",
-    ]
-    reason = str(image_context.get("reason") or "").strip()
-    if reason:
-        parts.append(f"- 判断依据：{reason}")
-    visual_summary = str(image_context.get("visual_summary") or "").strip()
-    if visual_summary:
-        parts.append(f"- 视觉概述：{visual_summary}")
-    ocr_text = str(image_context.get("ocr_text") or "").strip()
-    if ocr_text:
-        parts.append(f"- OCR 文本：\n{ocr_text}")
-    return "\n".join(parts)
-
-
-def recognize_image_context(
-    image_paths: list[Path],
-    user_input: str,
-    client: Any,
-    metrics: RuntimeMetrics,
-) -> dict[str, Any] | None:
-    if not image_paths:
-        return None
-    started = time.perf_counter()
-    usage_token = set_usage_callback(
-        lambda item: metrics.add_tool_usage({
-            **item,
-            "tool_call_name": "image_routing_ocr",
-        })
-    )
-    try:
-        image_context = legacy_agent.recognize_images_for_routing(image_paths, user_input, client=client)
-    except Exception as exc:
-        metrics.add_step("image_routing_ocr", started, ok=False, error=str(exc), image_count=len(image_paths))
-        return {
-            "ocr_text": "",
-            "visual_summary": "",
-            "subject_hint": "unknown",
-            "confidence": 0.0,
-            "reason": f"image_routing_ocr_error:{exc}",
-        }
-    finally:
-        reset_usage_callback(usage_token)
-    metrics.add_step(
-        "image_routing_ocr",
-        started,
-        ok=True,
-        image_count=len(image_paths),
-        subject_hint=image_context.get("subject_hint"),
-        confidence=image_context.get("confidence"),
-    )
-    return image_context
-
-
-def make_client() -> Any:
-    return legacy_agent.make_client()
-
-
-def global_model_name() -> str:
-    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
-    return os.getenv("ROUTER_MODEL") or legacy_agent.load_settings().global_model
-
-
-def global_temperature(default: float | None = None) -> float | None:
-    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
-    value = os.getenv("ROUTER_TEMPERATURE")
-    if value is None or not value.strip():
-        return default
-    try:
-        return float(value)
-    except ValueError:
-        return default
-
-
-def log_route_debug(
-    metrics: RuntimeMetrics | None,
-    *,
-    user_input: str,
-    model: str,
-    raw_content: str,
-    parsed: dict[str, Any] | None,
-    parse_error: str | None = None,
-) -> None:
-    if not route_debug_log_enabled():
-        return
-    REQUEST_LOG_DIR.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "session_id": metrics.session_id if metrics else None,
-        "request_id": metrics.request_id if metrics else None,
-        "user_input": user_input,
-        "model": model,
-        "raw_content_chars": len(raw_content),
-        "raw_content": raw_content,
-        "parsed": parsed,
-        "parse_error": parse_error,
-    }
-    path = REQUEST_LOG_DIR / f"route_debug_{datetime.now().date().isoformat()}.jsonl"
-    with path.open("a", encoding="utf-8") as file:
-        file.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
-
-
-def make_global_client(default_client: Any | None = None) -> Any:
-    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
-    router_model = os.getenv("ROUTER_MODEL")
-    router_api_key = os.getenv("ROUTER_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-    router_base_url = os.getenv("ROUTER_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL")
-    if default_client is not None and not str(default_client.__class__.__module__).startswith("openai"):
-        return default_client
-    if not router_model or not router_api_key or not router_base_url:
-        return default_client or make_client()
-    from openai import OpenAI
-
-    return OpenAI(api_key=router_api_key, base_url=router_base_url)
-
-
-def normalize_message(message: Any) -> dict[str, Any]:
-    data: dict[str, Any] = {"role": "assistant", "content": getattr(message, "content", None) or ""}
-    tool_calls = getattr(message, "tool_calls", None)
-    if tool_calls:
-        data["tool_calls"] = []
-        for call in tool_calls:
-            function = getattr(call, "function", None)
-            data["tool_calls"].append({
-                "id": getattr(call, "id", ""),
-                "type": "function",
-                "function": {
-                    "name": getattr(function, "name", ""),
-                    "arguments": getattr(function, "arguments", "{}"),
-                },
-            })
-    return data
-
-
-def record_usage(
-    metrics: RuntimeMetrics,
-    response: Any,
-    name: str | None = None,
-    *,
-    model: str | None = None,
-    started_at: float | None = None,
-) -> dict[str, Any]:
-    usage = getattr(response, "usage", None)
-    if not usage:
-        return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
-    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
-    total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
-    if not total_tokens:
-        total_tokens = prompt_tokens + completion_tokens
-    metrics.prompt_tokens += prompt_tokens
-    metrics.completion_tokens += completion_tokens
-    metrics.total_tokens += total_tokens
-    metrics.runtime_prompt_tokens += prompt_tokens
-    metrics.runtime_completion_tokens += completion_tokens
-    metrics.runtime_total_tokens += total_tokens
-    item = {
-        "name": name or "llm",
-        "kind": "chat",
-        "prompt_tokens": prompt_tokens,
-        "completion_tokens": completion_tokens,
-        "total_tokens": total_tokens,
-    }
-    if model:
-        item["model"] = model
-    if started_at is not None:
-        latency_ms = round((time.perf_counter() - started_at) * 1000, 2)
-        elapsed_seconds = latency_ms / 1000 if latency_ms else 0.0
-        item["latency_ms"] = latency_ms
-        item["tokens_per_second"] = round(total_tokens / elapsed_seconds, 2) if elapsed_seconds and total_tokens else 0.0
-        item["completion_tokens_per_second"] = (
-            round(completion_tokens / elapsed_seconds, 2) if elapsed_seconds and completion_tokens else 0.0
-        )
-    metrics.llm_usages.append(item)
-    return item
-
-
-def format_model_error(exc: Exception) -> str:
-    text = str(exc)
-    if "Arrearage" in text or "overdue-payment" in text or "Access denied" in text:
-        return (
-            "模型接口调用失败：DashScope 账户当前不可用，返回了 Arrearage/欠费状态。"
-            "请检查阿里云百炼/DashScope 账户余额、套餐或 API Key 所属账号状态后再试。"
-        )
-    return f"模型接口调用失败：{exc}"
-
-
-def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], metrics: RuntimeMetrics) -> tuple[dict[str, Any], dict[str, Any]]:
-    started = time.perf_counter()
-    name = tool_call.get("function", {}).get("name", "")
-    raw_arguments = tool_call.get("function", {}).get("arguments", "{}")
-    metrics.tool_calls += 1
-    try:
-        arguments = json.loads(raw_arguments or "{}")
-    except json.JSONDecodeError as exc:
-        metrics.tool_errors += 1
-        result = {"ok": False, "error": f"Invalid JSON arguments: {exc}", "raw_arguments": raw_arguments}
-        metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
-        return result, {"name": name, "arguments": raw_arguments, "ok": False, "error": result["error"]}
-    spec = tools.get(name)
-    if spec is None:
-        metrics.tool_errors += 1
-        result = {"ok": False, "error": f"Unknown tool: {name}", "available_tools": sorted(tools)}
-        metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
-        return result, {"name": name, "arguments": arguments, "ok": False, "error": result["error"]}
-    usage_token = set_usage_callback(
-        lambda item: metrics.add_tool_usage({
-            **item,
-            "tool_call_name": name,
-        })
-    )
-    try:
-        value = spec.func(arguments)
-        metrics.tool_success += 1
-        result = {"ok": True, "result": value}
-        metrics.add_step(f"tool:{name}", started, ok=True)
-        return result, {"name": name, "arguments": arguments, "ok": True}
-    except Exception as exc:
-        metrics.tool_errors += 1
-        result = {"ok": False, "error": str(exc)}
-        metrics.add_step(f"tool:{name}", started, ok=False, error=str(exc))
-        return result, {"name": name, "arguments": arguments, "ok": False, "error": str(exc)}
-    finally:
-        reset_usage_callback(usage_token)
-
-
-def direct_tool_answer(
-    tool_call_records: list[dict[str, Any]],
-    tools: dict[str, ToolSpec],
-    latest_tool_result: dict[str, Any],
-    current_round_tool_count: int,
-) -> tuple[str, str] | None:
-    if current_round_tool_count != 1 or len(tool_call_records) != 1:
-        return None
-    record = tool_call_records[0]
-    if not record.get("ok") or not latest_tool_result.get("ok"):
-        return None
-    spec = tools.get(str(record.get("name") or ""))
-    if spec is None or spec.return_mode != "direct":
-        return None
-    value = latest_tool_result.get("result")
-    if not isinstance(value, str):
-        return None
-    answer = value.strip()
-    if not answer:
-        return None
-    return answer, spec.name
-
-
-def log_runtime(result: RuntimeResult) -> None:
-    REQUEST_LOG_DIR.mkdir(parents=True, exist_ok=True)
-    path = REQUEST_LOG_DIR / f"{datetime.now().date().isoformat()}.jsonl"
-    payload = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "subject": result.subject,
-        "metrics": result.metrics,
-        "tool_calls": result.tool_calls,
-        "messages": result.messages,
-    }
-    with path.open("a", encoding="utf-8") as file:
-        file.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    for item in result.tool_calls:
-        if not item.get("ok"):
-            case_path = REQUEST_LOG_DIR / "tool_misuse_cases.jsonl"
-            with case_path.open("a", encoding="utf-8") as file:
-                file.write(json.dumps(payload, ensure_ascii=False) + "\n")
-            break
-
-
-def split_context_paragraphs(text: str) -> list[str]:
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", str(text or "")) if part.strip()]
-    if paragraphs:
-        return paragraphs
-    return [line.strip() for line in str(text or "").splitlines() if line.strip()]
-
-
-def selected_answer_paragraphs(answer: str, keywords: set[str]) -> str:
-    paragraphs = split_context_paragraphs(answer)
-    if not paragraphs:
-        return ""
-    selected_indexes: list[int] = []
-    for index in (0, len(paragraphs) - 1):
-        if index not in selected_indexes:
-            selected_indexes.append(index)
-    lowered_keywords = {keyword.lower() for keyword in keywords if keyword}
-    for index, paragraph in enumerate(paragraphs):
-        lowered = paragraph.lower()
-        if any(keyword in lowered for keyword in lowered_keywords) and index not in selected_indexes:
-            selected_indexes.append(index)
-    selected_indexes.sort()
-    return "\n\n".join(paragraphs[index] for index in selected_indexes)
-
-
-def select_independent_context_turns(
-    user_input: str,
-    recent_turns: list[dict[str, Any]],
-    subject: str,
-    lookback: int = INDEPENDENT_CONTEXT_LOOKBACK,
-    max_turns: int = INDEPENDENT_CONTEXT_MAX_TURNS,
-) -> list[dict[str, Any]]:
-    normalized_subject = normalize_subject(subject, fallback="")
-    if not normalized_subject or normalized_subject == "unsupported":
-        return []
-    current_keywords = matched_subject_keywords(user_input, normalized_subject)
-    if not current_keywords:
-        return []
-    selected: list[dict[str, Any]] = []
-    for turn in reversed(recent_turns[-lookback:]):
-        if turn_subject(turn) != normalized_subject:
-            continue
-        turn_text = turn_context_block(turn, 2400)
-        turn_keywords = matched_subject_keywords(turn_text, normalized_subject)
-        overlap = current_keywords & turn_keywords
-        if not overlap:
-            continue
-        enriched = dict(turn)
-        enriched["_independent_context_keywords"] = sorted(overlap, key=len, reverse=True)
-        selected.append(enriched)
-        if len(selected) >= max_turns:
-            break
-    return list(reversed(selected))
-
-
-def format_independent_context_message(
-    user_input: str,
-    recent_turns: list[dict[str, Any]],
-    subject: str,
-) -> dict[str, str] | None:
-    selected_turns = select_independent_context_turns(user_input, recent_turns, subject)
-    if not selected_turns:
-        return None
-    blocks = [
-        "当前问题已判定为独立问题。下面仅提供最近 6 轮内同学科且关键词匹配的参考片段；",
-        "不要把当前问题强行挂到这些历史，只在确有帮助时参考术语、口径或已讲过的结论。",
-    ]
-    for turn in selected_turns:
-        keywords = set(str(item) for item in turn.get("_independent_context_keywords") or [])
-        answer = str(turn.get("assistant_answer") or turn.get("assistant_answer_preview") or "")
-        selected_answer = selected_answer_paragraphs(answer, keywords)
-        blocks.append(
-            "\n".join([
-                f"\n[turn {turn.get('turn_id')}]",
-                f"匹配关键词：{', '.join(sorted(keywords, key=len, reverse=True))}",
-                f"User: {str(turn.get('user_query') or '').strip()}",
-                "Assistant 参考片段:",
-                selected_answer or str((turn.get("memory") or {}).get("answer_brief") or "").strip(),
-            ]).strip()
-        )
-    return {"role": "user", "content": "\n\n".join(blocks)}
-
-
-def build_messages(
-    user_input: str,
-    history: list[dict[str, str]],
-    output_format: str,
-    subject: str | None = None,
-    recent_turns: list[dict[str, Any]] | None = None,
-    use_independent_context: bool = False,
-) -> list[dict[str, Any]]:
-    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
-    system_prompt = MAIN_SYSTEM_PROMPT
-    if context_followup_tools_enabled():
-        system_prompt = f"{system_prompt}\n\n{CONTEXT_FOLLOWUP_PROMPT}"
-    selected_context = (
-        format_independent_context_message(user_input, recent_turns or [], subject or "")
-        if use_independent_context
-        else None
-    )
-    history_messages = [] if use_independent_context else history[-SHORT_TERM_TURNS * 2:]
-    return [
-        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
-        *history_messages,
-        *([selected_context] if selected_context else []),
-        {"role": "user", "content": user_input},
-    ]
-
-
-def tool_selection_policy_for_subject(subject: str | None) -> str:
-    if subject == "math":
-        return MATH_TOOL_SELECTION_POLICY
-    if subject == "politics":
-        return POLITICS_TOOL_SELECTION_POLICY
-    return GENERIC_TOOL_SELECTION_POLICY
-
-
-def append_tool_selection_policy(messages: list[dict[str, Any]], subject: str | None, context_mode: str) -> list[dict[str, Any]]:
-    if not messages:
-        return messages
-    updated = [dict(item) for item in messages]
-    policy = tool_selection_policy_for_subject(subject)
-    updated[0]["content"] = (
-        f"{updated[0].get('content') or ''}\n\n"
-        f"当前第二层上下文模式：{context_mode}。\n"
-        f"{policy}"
-    )
-    return updated
-
-
-def build_dag_tool_selection_messages(
-    user_input: str,
-    dag_context: dict[str, Any],
-    output_format: str,
-    subject: str | None,
-) -> list[dict[str, Any]]:
-    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
-    system_prompt = (
-        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
-        "当前轮已经由 runtime 定位到 DAG 追问链路；下面的 DAG 链路记忆替代最近 15 轮平铺历史。"
-        "你是第二层 tool_selection + 可直接回答节点。"
-        "先判断当前问题能否基于 DAG 链路可靠直接回答；如果不能，调用合适工具。"
-        "回答或调用工具都只能沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
-        "如果选择调用工具，必须在 tool arguments 中显式写出继承后的完整问题和必要上下文。"
-        "如果链路不足以确定指代对象，请直接提出澄清问题，不要调用工具。"
-        "如果选择直接回答，认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
-        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
-        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
-        "如果选择直接回答，应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
-        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
-        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
-    )
-    content = (
-        "DAG 追问链路记忆：\n"
-        f"{dag_context.get('followup_context') or ''}\n\n"
-        "根节点上下文：\n"
-        f"{dag_context.get('root_context') or ''}\n\n"
-        "当前用户输入：\n"
-        f"{user_input}"
-    )
-    return [
-        {
-            "role": "system",
-            "content": (
-                f"{system_prompt}\n\n{format_hint}\n\n"
-                f"当前第二层上下文模式：dag。\n"
-                f"{tool_selection_policy_for_subject(subject)}"
-            ),
-        },
-        {"role": "user", "content": content},
-    ]
-
-
-def build_tool_selection_messages(
-    user_input: str,
-    history: list[dict[str, str]],
-    output_format: str,
-    *,
-    subject: str | None = None,
-    recent_turns: list[dict[str, Any]] | None = None,
-    followup_route_decision: dict[str, Any] | None = None,
-    dag_context: dict[str, Any] | None = None,
-) -> list[dict[str, Any]]:
-    if dag_context is not None:
-        return build_dag_tool_selection_messages(user_input, dag_context, output_format, subject)
-    context_mode = "plain"
-    if (followup_route_decision or {}).get("category") == "independent":
-        context_mode = "independent"
-    messages = build_messages(
-        user_input,
-        history,
-        output_format,
-        subject=subject,
-        recent_turns=recent_turns,
-        use_independent_context=(followup_route_decision or {}).get("category") == "independent",
-    )
-    return append_tool_selection_policy(messages, subject, context_mode)
-
-
-def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], output_format: str) -> list[dict[str, Any]]:
-    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
-    system_prompt = (
-        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
-        "当前轮已经由 runtime 判定为非步骤追问；下面的 DAG 链路记忆替代最近 15 轮平铺历史。"
-        "回答时只沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
-        "认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
-        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
-        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
-        "回答时应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
-        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
-        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
-        "只有当用户明确要求“详细讲”“细说”“展开”“举例”“完整推导”等时，才允许超过默认字数，但仍要优先保证结尾完整，不要停在列表或公式中途。"
-    )
-    content = (
-        "DAG 追问链路记忆：\n"
-        f"{dag_context.get('followup_context') or ''}\n\n"
-        "根节点上下文：\n"
-        f"{dag_context.get('root_context') or ''}\n\n"
-        "当前用户输入：\n"
-        f"{user_input}"
-    )
-    return [
-        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
-        {"role": "user", "content": content},
-    ]
-
-
-def build_followup_clarification_messages(
-    user_input: str,
-    recent_turns: list[dict[str, Any]],
-    route_decision: dict[str, Any],
-    output_format: str,
-) -> list[dict[str, Any]]:
-    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
-    recent_context = "\n\n".join(
-        f"[turn {turn.get('turn_id')}]\n{turn_context_block(turn, 900)}"
-        for turn in recent_turns
-    )
-    system_prompt = (
-        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
-        "当前轮被判定为非步骤追问但 parent 不明确。不要直接解题；"
-        f"请基于最近 {FOLLOWUP_DAG_LOOKBACK} 轮候选，向用户提出一个简短澄清问题，让用户确认要追问哪一轮或哪个对象。"
-    )
-    content = (
-        f"判定结果：{json.dumps(route_decision, ensure_ascii=False)}\n\n"
-        f"最近 {FOLLOWUP_DAG_LOOKBACK} 轮候选：\n{recent_context}\n\n"
-        f"当前用户输入：\n{user_input}"
-    )
-    return [
-        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
-        {"role": "user", "content": content},
-    ]
-
-
-def run_tool_selection_loop(
-    *,
-    user_input: str,
-    session_id: str,
-    subject: str,
-    messages: list[dict[str, Any]],
-    tools: dict[str, ToolSpec],
-    client: Any,
-    metrics: RuntimeMetrics,
-    persist: bool,
-    extra_memory: dict[str, Any] | None = None,
-    max_tokens: int | None = None,
-) -> RuntimeResult:
-    openai_tools = [tool.openai_schema() for tool in tools.values()]
-    tool_call_records: list[dict[str, Any]] = []
-
-    for round_index in range(MAX_TOOL_ROUNDS):
-        llm_started = time.perf_counter()
-        try:
-            global_client = make_global_client(client)
-            model_name = global_model_name()
-            payload: dict[str, Any] = {
-                "model": model_name,
-                "messages": messages,
-                "tools": openai_tools,
-                "tool_choice": "auto",
-                "temperature": global_temperature(legacy_agent.load_settings().temperature),
-            }
-            if max_tokens is not None:
-                payload["max_tokens"] = max_tokens
-            response = global_client.chat.completions.create(**payload)
-        except Exception as exc:
-            metrics.add_step("llm_tool_selection", llm_started, round=round_index + 1, ok=False, error=str(exc))
-            result = RuntimeResult(format_model_error(exc), subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-        metrics.llm_calls += 1
-        message = response.choices[0].message
-        assistant_message = normalize_message(message)
-        messages.append(assistant_message)
-        tool_calls = assistant_message.get("tool_calls") or []
-        record_usage(
-            metrics,
-            response,
-            "llm_tool_selection" if tool_calls else "llm_final",
-            model=model_name,
-            started_at=llm_started,
-        )
-        metrics.add_step("llm_tool_selection" if tool_calls else "llm_final", llm_started, round=round_index + 1, tool_calls=len(tool_calls))
-        if not tool_calls:
-            answer = str(assistant_message.get("content") or "").strip()
-            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-        latest_tool_result: dict[str, Any] | None = None
-        for tool_call in tool_calls:
-            tool_result, record = execute_tool_call(tool_call, tools, metrics)
-            latest_tool_result = tool_result
-            tool_call_records.append(record)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call["id"],
-                "name": tool_call["function"]["name"],
-                "content": json.dumps(tool_result, ensure_ascii=False, default=str),
-            })
-        direct = direct_tool_answer(tool_call_records, tools, latest_tool_result or {}, len(tool_calls))
-        if direct is not None:
-            answer, tool_name = direct
-            direct_started = time.perf_counter()
-            metrics.add_step("direct_tool_return", direct_started, tool=tool_name)
-            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-
-    answer = "工具调用轮次过多，我先停止本轮处理。请把问题拆小一点，或明确要解释哪一步。"
-    result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
-    log_runtime(result)
-    if persist:
-        append_runtime_turn(session_id, user_input, result)
-    return result
-
-
-def run_standard_message_loop(
-    user_input: str,
-    session_id: str = "default",
-    image_paths: list[Path] | None = None,
-    output_format: str = "ui",
-    client: Any | None = None,
-    persist: bool = True,
-    progress_callback: Callable[[dict[str, Any]], None] | None = None,
-) -> RuntimeResult:
-    load_dotenv(ROOT / ".env")
-    image_paths = image_paths or []
-    request_id = now_id()
-    metrics = RuntimeMetrics(
-        request_id=request_id,
-        session_id=safe_session_id(session_id),
-        progress_callback=progress_callback,
-    )
-    client = client or make_client()
-
-    history = read_recent_md_messages(session_id)
-    recent_turns = legacy_agent.load_session(session_id).get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
-    image_context = recognize_image_context(image_paths, user_input, client, metrics) if image_paths else None
-    followup_route_decision: dict[str, Any] | None = None
-    route_decision: RouteDecision | None = None
-    step_started = time.perf_counter()
-    try:
-        if should_use_unified_route(bool(image_paths), recent_turns):
-            route_decision = build_route_decision(
-                user_input,
-                history,
-                recent_turns,
-                bool(image_paths),
-                client,
-                metrics,
-                image_context=image_context,
-            )
-            subject = route_decision.subject
-            followup_route_decision = route_decision.followup_route()
-        else:
-            subject = classify_subject(
-                user_input,
-                history,
-                has_images=bool(image_paths),
-                client=client,
-                metrics=metrics,
-                image_context=image_context,
-            )
-    except Exception as exc:
-        metrics.add_step("route_classifier", step_started, subject="error", error=str(exc))
-        result = RuntimeResult(
-            format_model_error(exc),
-            "unsupported",
-            build_messages(user_input, history, output_format),
-            [],
-            metrics.as_dict(),
-        )
-        log_runtime(result)
-        if persist:
-            append_runtime_turn(session_id, user_input, result)
-        return result
-    metrics.subject = subject
-    metrics.add_step(
-        "route_classifier" if route_decision is not None else "subject_classifier",
-        step_started,
-        subject=subject,
-        category=(followup_route_decision or {}).get("category"),
-        parent_turn_id=(followup_route_decision or {}).get("parent_turn_id"),
-        parent_turn_ids=(followup_route_decision or {}).get("parent_turn_ids") or [],
-    )
-
-    def followup_context_resolver(args: dict[str, Any]) -> dict[str, Any]:
-        return format_followup_dag_context(
-            session_id=session_id,
-            user_input=str(args.get("user_query") or user_input),
-            output_format=str(args.get("output_format") or output_format),
-            client=client,
-            route_decision=followup_route_decision,
-            metrics=metrics,
-        )
-
-    tools = filter_tools_for_request(
-        select_tools(subject, metrics, followup_context_resolver),
-        user_input,
-        bool(image_paths),
-    )
-    if not tools:
-        clarification = (route_decision.clarification if route_decision else None) or pop_last_clarification()
-        if not clarification:
-            if subject == "politics":
-                clarification = "当前主要支持数学问答和时政查询，政治知识点功能正在开发中。您可以试试数学题（如「2021 年数一第 9 题怎么做」），或者查询近期的时政热点。"
-            elif subject == "english":
-                clarification = "当前主要支持数学问答和时政查询，英语相关功能正在开发中。您有数学题需要解答吗？"
-            else:
-                clarification = build_ambiguous_clarification(user_input, history)
-        answer = clarification
-        result = RuntimeResult(answer, subject, build_messages(user_input, history, output_format), [], metrics.as_dict())
-        log_runtime(result)
-        if persist:
-            append_runtime_turn(session_id, user_input, result)
-        return result
-
-    if image_paths:
-        image_context_text = build_image_context_text(image_context)
-        image_parts = [user_input]
-        if image_context_text:
-            image_parts.append(image_context_text)
-        image_parts.append(f"本轮上传图片路径：{json.dumps([str(path) for path in image_paths], ensure_ascii=False)}")
-        user_input = "\n\n".join(part for part in image_parts if part)
-
-    if (
-        context_followup_tools_enabled()
-        and not image_paths
-        and subject in {"math", "politics"}
-        and followup_route_decision is None
-    ):
-        followup_hint = classify_followup_heuristic(user_input, history)
-        if followup_hint == "independent":
-            followup_route_decision = {
-                "category": "independent",
-                "parent_turn_id": None,
-                "parent_turn_ids": [],
-                "reason": "heuristic_independent",
-            }
-        else:
-            route_started = time.perf_counter()
-            followup_route_decision = classify_followup_route_with_llm(user_input, recent_turns, client, metrics, subject_hint=subject)
-            metrics.add_step(
-                "followup_route_classifier",
-                route_started,
-                category=followup_route_decision.get("category"),
-                parent_turn_id=followup_route_decision.get("parent_turn_id"),
-                parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
-            )
-
-    dag_context_for_tool_selection: dict[str, Any] | None = None
-
-    if (
-        context_followup_tools_enabled()
-        and not image_paths
-        and followup_route_decision is not None
-        and followup_route_decision.get("category") in {"weak_nonstep_followup", "contextual_nonstep_followup"}
-        and route_parent_ids(followup_route_decision)
-    ):
-        dag_context = followup_context_resolver({
-            "user_query": user_input,
-            "output_format": output_format,
-        })
-        if dag_tool_selection_enabled():
-            dag_context_for_tool_selection = dag_context
-        else:
-            messages = build_dag_followup_messages(user_input, dag_context, output_format)
-            llm_started = time.perf_counter()
-            try:
-                global_client = make_global_client(client)
-                model_name = global_model_name()
-                response = global_client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    temperature=global_temperature(legacy_agent.load_settings().temperature),
-                    max_tokens=DAG_FOLLOWUP_MAX_TOKENS,
-                )
-                metrics.llm_calls += 1
-                record_usage(metrics, response, "llm_dag_followup_final", model=model_name, started_at=llm_started)
-                answer = str(response.choices[0].message.content or "").strip()
-                metrics.add_step(
-                    "llm_dag_followup_final",
-                    llm_started,
-                    category=followup_route_decision.get("category"),
-                    parent_turn_id=followup_route_decision.get("parent_turn_id"),
-                    parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
-                )
-                result = RuntimeResult(
-                    answer,
-                    subject,
-                    messages,
-                    [],
-                    metrics.as_dict(),
-                    extra_memory={"followup_dag": dag_context.get("followup_dag")},
-                )
-            except Exception as exc:
-                metrics.add_step("llm_dag_followup_final", llm_started, ok=False, error=str(exc))
-                result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-
-    if (
-        context_followup_tools_enabled()
-        and not image_paths
-        and followup_route_decision is not None
-        and followup_route_decision.get("category") in {"contextual_nonstep_followup", "ambiguous"}
-        and not route_parent_ids(followup_route_decision)
-    ):
-        recent_turns = legacy_agent.load_session(session_id).get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
-        messages = build_followup_clarification_messages(user_input, recent_turns, followup_route_decision, output_format)
-        llm_started = time.perf_counter()
-        try:
-            global_client = make_global_client(client)
-            model_name = global_model_name()
-            response = global_client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=global_temperature(legacy_agent.load_settings().temperature),
-            )
-            metrics.llm_calls += 1
-            record_usage(metrics, response, "llm_followup_clarification", model=model_name, started_at=llm_started)
-            answer = str(response.choices[0].message.content or "").strip()
-            metrics.add_step(
-                "llm_followup_clarification",
-                llm_started,
-                category=followup_route_decision.get("category"),
-            )
-            result = RuntimeResult(answer, subject, messages, [], metrics.as_dict())
-        except Exception as exc:
-            metrics.add_step("llm_followup_clarification", llm_started, ok=False, error=str(exc))
-            result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
-        log_runtime(result)
-        if persist:
-            append_runtime_turn(session_id, user_input, result)
-        return result
-
-    messages = build_tool_selection_messages(
-        user_input,
-        history,
-        output_format,
-        subject=subject,
-        recent_turns=recent_turns,
-        followup_route_decision=followup_route_decision,
-        dag_context=dag_context_for_tool_selection,
-    )
-    return run_tool_selection_loop(
-        user_input=user_input,
-        session_id=session_id,
-        subject=subject,
-        messages=messages,
-        tools=tools,
-        client=client,
-        metrics=metrics,
-        persist=persist,
-        extra_memory=(
-            {"followup_dag": dag_context_for_tool_selection.get("followup_dag")}
-            if dag_context_for_tool_selection is not None
-            else None
-        ),
-    )
-
-
-def iter_text_chunks(text: str, chunk_size: int = 24) -> Iterable[str]:
-    for index in range(0, len(text), chunk_size):
-        yield text[index:index + chunk_size]
-
-
-def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run the standard tool-calling kaoyan assistant.")
-    parser.add_argument("query", nargs="+", help="用户问题")
-    parser.add_argument("--session", default="default", help="会话 ID")
-    parser.add_argument("--image", "-i", action="append", default=[], help="本地图片路径，可传多次")
-    parser.add_argument("--format", choices=["ui", "terminal"], default="terminal")
-    parser.add_argument("--no-memory", action="store_true", help="不写入短期会话")
-    parser.add_argument("--debug", action="store_true", help="输出 runtime metrics")
-    return parser
-
-
-def configure_cli_output_encoding() -> None:
-    for stream in (sys.stdout, sys.stderr):
-        reconfigure = getattr(stream, "reconfigure", None)
-        if not callable(reconfigure):
-            continue
-        try:
-            reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
-
-
-def main() -> None:
-    configure_cli_output_encoding()
-    parser = build_arg_parser()
-    args = parser.parse_args()
-    result = run_standard_message_loop(
-        " ".join(args.query),
-        session_id=args.session,
-        image_paths=[Path(item) for item in args.image],
-        output_format=args.format,
-        persist=not args.no_memory,
-    )
-    print(result.answer)
-    if args.debug:
-        print("\n[metrics]")
-        print(json.dumps(result.metrics, ensure_ascii=False, indent=2, default=str))
-
-
-if __name__ == "__main__":
-    main()
+    '大革命', '北伐战争', '四一二反革命政变', '七一五反革命政变', '大革命失败', '南昌起�
