@@ -17,7 +17,8 @@ description: 政治 RAG 知识库、Coze 时政查询。维护或扩展政治能
 ## 知识库
 - 源文件：`data/raw/politics/*.md`
 - 向量：`data/processed/politics_vectors.jsonl`
-- 切块 700 字符，text-embedding-v4 1024 维，cosine similarity
+- 切块：按 Markdown `#`/`##`/`###` 标题路径组织，再按段落聚合到 700 字符
+- 向量：`heading_path + content` 送入 text-embedding-v4，1024 维，cosine similarity
 - 构建：`python scripts/build_politics_db.py`
 
 ## RAG 约束

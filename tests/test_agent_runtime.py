@@ -17,6 +17,8 @@ if str(SCRIPTS) not in sys.path:
 
 import agent_runtime
 import kaoyan_agent
+import politics_rag
+import usage_tracking
 
 
 TEST_SESSION_PREFIXES = ("unit", "real_api_smoke")
@@ -102,6 +104,220 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("search_politics_knowledge", tools)
         self.assertIn("get_current_affairs", tools)
         self.assertEqual(agent_runtime.normalize_subject("current_affairs"), "politics")
+
+    def test_runtime_cli_main_invokes_standard_loop(self) -> None:
+        result = agent_runtime.RuntimeResult(
+            answer="cli answer",
+            subject="math",
+            messages=[],
+            tool_calls=[],
+            metrics={"llm_calls": 1},
+        )
+        with patch.object(
+            sys,
+            "argv",
+            ["agent_runtime.py", "测试", "问题", "--session", "unit_cli", "--format", "terminal", "--no-memory"],
+        ), patch("agent_runtime.run_standard_message_loop", return_value=result) as run_loop, patch("builtins.print") as mocked_print:
+            agent_runtime.main()
+
+        run_loop.assert_called_once()
+        args, kwargs = run_loop.call_args
+        self.assertEqual(args[0], "测试 问题")
+        self.assertEqual(kwargs["session_id"], "unit_cli")
+        self.assertEqual(kwargs["output_format"], "terminal")
+        self.assertFalse(kwargs["persist"])
+        mocked_print.assert_called_with("cli answer")
+
+    def test_cli_output_encoding_is_configured_for_unicode_math(self) -> None:
+        class FakeStream:
+            def __init__(self) -> None:
+                self.calls: list[dict[str, str]] = []
+
+            def reconfigure(self, **kwargs: str) -> None:
+                self.calls.append(kwargs)
+
+        stdout = FakeStream()
+        stderr = FakeStream()
+        with patch("agent_runtime.sys.stdout", stdout), patch("agent_runtime.sys.stderr", stderr):
+            agent_runtime.configure_cli_output_encoding()
+
+        self.assertEqual(stdout.calls[0]["encoding"], "utf-8")
+        self.assertEqual(stdout.calls[0]["errors"], "replace")
+        self.assertEqual(stderr.calls[0]["encoding"], "utf-8")
+        self.assertEqual(stderr.calls[0]["errors"], "replace")
+
+    def test_retrieve_politics_does_not_expose_embeddings(self) -> None:
+        rows = [
+            {
+                "id": "a",
+                "content": "社会主义核心价值观包括自由、平等、公正、法治。",
+                "source": "data/raw/politics/example.md",
+                "subject": "politics",
+                "heading": "社会主义核心价值观",
+                "embedding": [1.0, 0.0],
+            },
+            {
+                "id": "b",
+                "content": "新民主主义革命道路。",
+                "source": "data/raw/politics/example.md",
+                "subject": "politics",
+                "heading": "新民主主义革命",
+                "embedding": [0.0, 1.0],
+            },
+        ]
+        with patch.object(politics_rag, "read_jsonl", return_value=rows), patch.object(
+            politics_rag,
+            "embed_texts",
+            return_value=[[1.0, 0.0]],
+        ):
+            results = politics_rag.retrieve_politics("公正与法治", top_k=1)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], "a")
+        self.assertNotIn("embedding", results[0])
+        self.assertIn("score", results[0])
+
+    def test_parse_politics_chunks_keeps_heading_path_for_embedding_text(self) -> None:
+        path = ROOT / "data" / "runtime" / "test_reports" / "unit_politics_heading_path.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            "# 一级标题\n一级正文。\n\n## 二级标题\n二级正文。\n\n### 三级标题\n三级正文。",
+            encoding="utf-8",
+        )
+        try:
+            chunks = politics_rag.parse_markdown_sections(path)
+        finally:
+            path.unlink(missing_ok=True)
+
+        self.assertEqual(
+            [chunk["heading_path"] for chunk in chunks],
+            [["一级标题"], ["一级标题", "二级标题"], ["一级标题", "二级标题", "三级标题"]],
+        )
+        self.assertEqual(chunks[-1]["heading"], "三级标题")
+        self.assertIn("标题路径：一级标题 > 二级标题 > 三级标题", chunks[-1]["embedding_text"])
+        self.assertIn("正文：", chunks[-1]["embedding_text"])
+
+    def test_split_politics_long_paragraph_keeps_chunks_under_limit(self) -> None:
+        path = ROOT / "data" / "raw" / "politics" / "example.md"
+        paragraph = "\n".join(f"| 考点 {index} | 内容 {'x' * 40} |" for index in range(30))
+
+        chunks = politics_rag.split_text(paragraph, path, ["一级标题", "长表格"], max_chars=200)
+
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(chunk["content"]) <= 200 for chunk in chunks))
+        self.assertTrue(all(chunk["heading_path"] == ["一级标题", "长表格"] for chunk in chunks))
+
+    def test_tool_internal_chat_usage_is_recorded(self) -> None:
+        metrics = agent_runtime.RuntimeMetrics("r", "s")
+
+        def inner_tool(args: dict[str, Any]) -> str:
+            usage_tracking.notify_usage(
+                kind="chat",
+                name="tool_llm:inner_tool:test_model",
+                model="test-model",
+                response=fake_response(content="tool answer"),
+            )
+            return "tool answer"
+
+        tool_call = {
+            "id": "call_1",
+            "function": {
+                "name": "inner_tool",
+                "arguments": json.dumps({"x": 1}),
+            },
+        }
+        tools = {
+            "inner_tool": agent_runtime.ToolSpec(
+                "inner_tool",
+                "test",
+                agent_runtime.json_schema({"x": {"type": "integer"}}, ["x"]),
+                inner_tool,
+            )
+        }
+
+        result, record = agent_runtime.execute_tool_call(tool_call, tools, metrics)
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(record["ok"])
+        self.assertEqual(metrics.tool_llm_calls, 1)
+        self.assertEqual(metrics.tool_prompt_tokens, 10)
+        self.assertEqual(metrics.tool_completion_tokens, 5)
+        self.assertEqual(metrics.tool_total_tokens, 15)
+        self.assertEqual(metrics.prompt_tokens, 10)
+        self.assertEqual(metrics.total_tokens, 15)
+        self.assertEqual(metrics.tool_usages[0]["tool_call_name"], "inner_tool")
+        self.assertEqual(metrics.tool_usages[0]["model"], "test-model")
+
+    def test_tool_internal_embedding_usage_is_recorded(self) -> None:
+        metrics = agent_runtime.RuntimeMetrics("r", "s")
+        response = SimpleNamespace(
+            usage=SimpleNamespace(prompt_tokens=7, completion_tokens=0, total_tokens=7)
+        )
+
+        def embedding_tool(args: dict[str, Any]) -> str:
+            usage_tracking.notify_usage(
+                kind="embedding",
+                name="tool_embedding:politics:test",
+                model="text-embedding-v4",
+                response=response,
+                input_count=1,
+                dimensions=1024,
+            )
+            return "[]"
+
+        tool_call = {
+            "id": "call_1",
+            "function": {
+                "name": "embedding_tool",
+                "arguments": "{}",
+            },
+        }
+        tools = {
+            "embedding_tool": agent_runtime.ToolSpec(
+                "embedding_tool",
+                "test",
+                agent_runtime.json_schema({}),
+                embedding_tool,
+            )
+        }
+
+        result, _ = agent_runtime.execute_tool_call(tool_call, tools, metrics)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(metrics.embedding_calls, 1)
+        self.assertEqual(metrics.tool_prompt_tokens, 7)
+        self.assertEqual(metrics.tool_total_tokens, 7)
+        self.assertEqual(metrics.prompt_tokens, 7)
+        self.assertEqual(metrics.tool_usages[0]["input_count"], 1)
+        self.assertEqual(metrics.tool_usages[0]["dimensions"], 1024)
+
+    def test_deepseek_math_chat_light_thinking_uses_v4pro(self) -> None:
+        client = FakeClient([fake_response(content="math answer")])
+        with patch.dict(
+            os.environ,
+            {
+                "MATH_LLM_PROVIDER": "deepseek",
+                "MATH_MODEL": "deepseek-v4-pro",
+                "MATH_API_KEY": "test-key",
+                "MATH_BASE_URL": "https://example.invalid/v1",
+            },
+        ), patch("kaoyan_agent.make_math_client", return_value=client):
+            answer = kaoyan_agent.chat_math_text(
+                "qwen-math-plus",
+                "system",
+                "user",
+                temperature=0,
+                thinking="light",
+                usage_name="tool_llm:test",
+                tool_name="solve_exam_question",
+            )
+
+        self.assertEqual(answer, "math answer")
+        call = client.chat.completions.calls[0]
+        self.assertEqual(call["model"], "deepseek-v4-pro")
+        self.assertEqual(call["extra_body"]["thinking"]["type"], "enabled")
+        self.assertEqual(call["reasoning_effort"], "high")
+        self.assertNotIn("temperature", call)
 
     def test_subject_classifier_heuristic_math_linear_algebra_probability(self) -> None:
         examples = [
@@ -357,10 +573,27 @@ class AgentRuntimeTest(unittest.TestCase):
             "ui",
         )
         system_prompt = messages[0]["content"]
-        self.assertIn(f"{agent_runtime.DAG_FOLLOWUP_TARGET_CHARS} 个汉字以内", system_prompt)
+        self.assertIn("按问题复杂度控制篇幅", system_prompt)
+        self.assertIn("短确认用简短结论", system_prompt)
+        self.assertIn("比较或推导题给关键步骤", system_prompt)
         self.assertIn("必须完整收尾", system_prompt)
-        self.assertIn("优先删减例子、背景、表格和延伸内容", system_prompt)
+        self.assertIn("优先保留结论、关键理由和必要公式", system_prompt)
         self.assertGreater(agent_runtime.DAG_FOLLOWUP_MAX_TOKENS, agent_runtime.DAG_FOLLOWUP_TARGET_CHARS)
+        tool_selection_messages = agent_runtime.build_dag_tool_selection_messages(
+            "那这个条件下还成立吗？",
+            {
+                "followup_context": "[turn 1]\nUser: 原题\nAssistant: 原回答",
+                "root_context": "[root turn 1]\nUser: 原题\nAssistant: 原回答",
+            },
+            "ui",
+            "math",
+        )
+        tool_selection_prompt = tool_selection_messages[0]["content"]
+        self.assertIn("按问题复杂度控制篇幅", tool_selection_prompt)
+        self.assertIn("短确认用简短结论", tool_selection_prompt)
+        self.assertIn("比较或推导题给关键步骤", tool_selection_prompt)
+        self.assertIn("不要主动延伸", tool_selection_prompt)
+        self.assertIn("不要把回答扩展成完整专题", tool_selection_prompt)
 
     def test_image_context_flows_into_runtime_messages(self) -> None:
         image_context = {
@@ -451,6 +684,9 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("组合 skill", tools["solve_exam_question"].description)
         self.assertIn("局部追问用 explain_math_step", tools["solve_exam_question"].description)
         self.assertIn("previous_context", tools["explain_math_step"].parameters["properties"])
+        self.assertIn("thinking", tools["solve_exam_question"].parameters["properties"])
+        self.assertIn("thinking", tools["solve_general_math"].parameters["properties"])
+        self.assertIn("thinking", tools["explain_math_step"].parameters["properties"])
 
     def test_context_followup_tools_are_env_gated(self) -> None:
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "0"}):
@@ -640,7 +876,100 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("DAG 追问链路记忆", final_joined)
         self.assertIn("turn 1", final_joined)
         self.assertIn("cosh", final_joined)
-        self.assertEqual(len(final_messages), 2)
+        self.assertGreaterEqual(len(final_messages), 2)
+        self.assertNotIn("max_tokens", client.chat.completions.calls[1])
+        self.assertNotIn("llm_dag_followup_final", [step["name"] for step in result.metrics["steps"]])
+
+    def test_dag_tool_selection_can_call_math_tool_with_light_thinking(self) -> None:
+        session_id = "unit2_dag_tool_selection_calls_tool"
+        kaoyan_agent.save_session(session_id, {
+            "session_id": session_id,
+            "turns": [
+                {
+                    "turn_id": 1,
+                    "user_query": "求 cosh x 在 0 点的泰勒展开并估计误差",
+                    "assistant_answer": "cosh x = 1 + x^2/2 + x^4/24 + o(x^4)。",
+                    "route": {"subject": "math"},
+                },
+            ],
+        })
+        captured: dict[str, Any] = {}
+        solve_tool = agent_runtime.ToolSpec(
+            name="solve_general_math",
+            description="direct math solver",
+            parameters=agent_runtime.json_schema({
+                "user_query": {"type": "string"},
+                "thinking": {"type": "string"},
+            }, ["user_query"]),
+            func=lambda args: captured.update(args) or "工具解答：七阶仍只新增偶次项，使用 light thinking。",
+            return_mode="direct",
+        )
+        client = FakeClient([
+            fake_response(content=json.dumps({
+                "subject": "math",
+                "is_followup": True,
+                "followup_category": "contextual_nonstep_followup",
+                "parent_turn_id": 1,
+                "parent_turn_ids": [1],
+                "reason": "用户沿上一轮泰勒展开继续追问复杂误差估计",
+                "clarification": None,
+            }, ensure_ascii=False)),
+            fake_response(tool_calls=[{
+                "name": "solve_general_math",
+                "arguments": {
+                    "user_query": "沿 turn 1 的 cosh x 在 0 点泰勒展开，改成七阶并说明误差估计。",
+                    "thinking": "light",
+                },
+            }]),
+        ])
+        with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
+            "agent_runtime.select_tools",
+            return_value={"solve_general_math": solve_tool},
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "那七阶并估计误差呢",
+                session_id=session_id,
+                client=client,
+                persist=False,
+            )
+
+        self.assertEqual(result.answer, "工具解答：七阶仍只新增偶次项，使用 light thinking。")
+        self.assertEqual(result.tool_calls[0]["name"], "solve_general_math")
+        self.assertEqual(captured["thinking"], "light")
+        self.assertIn("cosh x", captured["user_query"])
+        self.assertEqual(result.extra_memory["followup_dag"]["parent_turn_id"], 1)
+        tool_selection_messages = client.chat.completions.calls[1]["messages"]
+        joined = "\n".join(str(item.get("content", "")) for item in tool_selection_messages)
+        self.assertIn("DAG 追问链路记忆", joined)
+        self.assertIn("当前第二层上下文模式：dag", joined)
+        self.assertIn("数学 tool_selection 策略", joined)
+        self.assertIn("先判定当前数学问题难度", joined)
+        self.assertIn("simple/easy 难度", joined)
+        self.assertIn("medium/high 难度", joined)
+        self.assertIn("常规定理证明", joined)
+        self.assertIn("基础公式推导", joined)
+        self.assertIn("thinking=\"light\"", joined)
+        self.assertNotIn("max_tokens", client.chat.completions.calls[1])
+        step_names = [step["name"] for step in result.metrics["steps"]]
+        self.assertIn("llm_tool_selection", step_names)
+        self.assertIn("direct_tool_return", step_names)
+        self.assertNotIn("llm_dag_followup_final", step_names)
+
+    def test_politics_tool_selection_policy_handles_current_affairs_theory_mapping(self) -> None:
+        messages = agent_runtime.build_tool_selection_messages(
+            "中央经济工作会议体现了什么马原哲学原理？",
+            [],
+            "terminal",
+            subject="politics",
+        )
+        joined = "\n".join(str(item.get("content", "")) for item in messages)
+
+        self.assertIn("政治 tool_selection 策略", joined)
+        self.assertIn("时政会议/政策/新闻材料", joined)
+        self.assertIn("体现什么原理/马原/哲学/政治理论/考研知识点", joined)
+        self.assertIn("先调用 get_current_affairs", joined)
+        self.assertIn("再调用 search_politics_knowledge", joined)
+        self.assertIn("材料 -> 原理 -> 考研答题表述", joined)
 
     def test_context_followup_uses_single_unified_route_before_answer(self) -> None:
         session_id = "unit2_unified_route"

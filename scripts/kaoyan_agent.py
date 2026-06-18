@@ -16,6 +16,7 @@ from urllib.parse import unquote
 
 from dotenv import load_dotenv
 from kaoyan_tools import create_kaoyan_toolkit
+from usage_tracking import notify_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 MATH_EXAM_ROOT = ROOT / "data" / "raw" / "math" / "exam_papers"
@@ -177,9 +178,52 @@ def make_client():
     return OpenAI(api_key=settings.api_key, base_url=settings.base_url)
 
 
-def chat_text(model: str, system_prompt: str, user_prompt: str, temperature: float | None = None) -> str:
+def math_llm_provider() -> str:
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    return (os.getenv("MATH_LLM_PROVIDER") or "dashscope").strip().lower()
+
+
+def math_model_name(default_model: str) -> str:
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    return os.getenv("MATH_MODEL") or default_model
+
+
+def make_math_client():
+    provider = math_llm_provider()
+    if provider != "deepseek":
+        return make_client()
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    api_key = os.getenv("MATH_API_KEY") or os.getenv("ROUTER_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    base_url = os.getenv("MATH_BASE_URL") or os.getenv("ROUTER_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL")
+    if not api_key or not base_url:
+        raise RuntimeError("MATH_LLM_PROVIDER=deepseek 时，请设置 MATH_API_KEY/MATH_BASE_URL 或 DEEPSEEK_API_KEY/DEEPSEEK_BASE_URL。")
+    from openai import OpenAI
+
+    return OpenAI(api_key=api_key, base_url=base_url)
+
+
+def deepseek_thinking_kwargs(thinking: str | None) -> dict[str, Any]:
+    value = (thinking or "disabled").strip().lower()
+    if value in {"", "0", "false", "no", "off", "disabled", "disable", "none"}:
+        return {"extra_body": {"thinking": {"type": "disabled"}}}
+    if value in {"max", "heavy"}:
+        return {"extra_body": {"thinking": {"type": "enabled"}}, "reasoning_effort": "max"}
+    # DeepSeek V4 当前最轻的可用 reasoning_effort 是 high；low/medium 会映射到 high。
+    return {"extra_body": {"thinking": {"type": "enabled"}}, "reasoning_effort": "high"}
+
+
+def chat_text(
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float | None = None,
+    *,
+    usage_name: str | None = None,
+    tool_name: str | None = None,
+) -> str:
     settings = load_settings()
     client = make_client()
+    started = time.perf_counter()
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -187,6 +231,65 @@ def chat_text(model: str, system_prompt: str, user_prompt: str, temperature: flo
             {"role": "user", "content": user_prompt},
         ],
         temperature=settings.temperature if temperature is None else temperature,
+    )
+    notify_usage(
+        kind="chat",
+        name=usage_name or "tool_llm:chat_text",
+        model=model,
+        response=response,
+        started_at=started,
+        tool_name=tool_name,
+        provider="dashscope",
+    )
+    return response.choices[0].message.content or ""
+
+
+def chat_math_text(
+    default_model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float | None = None,
+    *,
+    thinking: str | None = None,
+    usage_name: str | None = None,
+    tool_name: str | None = None,
+) -> str:
+    settings = load_settings()
+    provider = math_llm_provider()
+    if provider != "deepseek":
+        return chat_text(
+            default_model,
+            system_prompt,
+            user_prompt,
+            temperature,
+            usage_name=usage_name,
+            tool_name=tool_name,
+        )
+
+    client = make_math_client()
+    model = math_model_name(default_model)
+    thinking_kwargs = deepseek_thinking_kwargs(thinking)
+    started = time.perf_counter()
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        **thinking_kwargs,
+    }
+    if (thinking or "disabled").strip().lower() in {"", "0", "false", "no", "off", "disabled", "disable", "none"}:
+        payload["temperature"] = settings.temperature if temperature is None else temperature
+    response = client.chat.completions.create(**payload)
+    notify_usage(
+        kind="chat",
+        name=usage_name or "tool_llm:chat_math_text",
+        model=model,
+        response=response,
+        started_at=started,
+        tool_name=tool_name,
+        provider="deepseek",
+        thinking=(thinking or "disabled"),
     )
     return response.choices[0].message.content or ""
 
@@ -219,16 +322,34 @@ def make_global_client():
     return OpenAI(api_key=router_api_key, base_url=router_base_url)
 
 
-def chat_global_text(system_prompt: str, user_prompt: str, temperature: float | None = None) -> str:
+def chat_global_text(
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float | None = None,
+    *,
+    usage_name: str | None = None,
+    tool_name: str | None = None,
+) -> str:
     settings = load_settings()
     client = make_global_client()
+    model_name = global_model_name()
+    started = time.perf_counter()
     response = client.chat.completions.create(
-        model=global_model_name(),
+        model=model_name,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
         temperature=global_temperature(settings.temperature if temperature is None else temperature),
+    )
+    notify_usage(
+        kind="chat",
+        name=usage_name or "tool_llm:chat_global_text",
+        model=model_name,
+        response=response,
+        started_at=started,
+        tool_name=tool_name,
+        provider="global",
     )
     return response.choices[0].message.content or ""
 
@@ -513,6 +634,7 @@ def ocr_images_with_qwenvl(image_paths: list[Path], user_query: str) -> str:
         if not path.exists():
             raise FileNotFoundError(f"图片不存在：{path}")
         content.append({"type": "image_url", "image_url": {"url": image_to_data_url(path)}})
+    started = time.perf_counter()
     response = client.chat.completions.create(
         model=settings.vl_model,
         messages=[
@@ -520,6 +642,16 @@ def ocr_images_with_qwenvl(image_paths: list[Path], user_query: str) -> str:
             {"role": "user", "content": content},
         ],
         temperature=0,
+    )
+    notify_usage(
+        kind="chat",
+        name="tool_llm:ocr_math_image:qwen_vl",
+        model=settings.vl_model,
+        response=response,
+        started_at=started,
+        tool_name="ocr_math_image",
+        image_count=len(image_paths),
+        provider="dashscope",
     )
     return response.choices[0].message.content or ""
 
@@ -542,6 +674,7 @@ def recognize_images_for_routing(image_paths: list[Path], user_query: str, clien
         if not path.exists():
             raise FileNotFoundError(f"图片不存在：{path}")
         content.append({"type": "image_url", "image_url": {"url": image_to_data_url(path)}})
+    started = time.perf_counter()
     response = client.chat.completions.create(
         model=settings.vl_model,
         messages=[
@@ -549,6 +682,16 @@ def recognize_images_for_routing(image_paths: list[Path], user_query: str, clien
             {"role": "user", "content": content},
         ],
         temperature=0,
+    )
+    notify_usage(
+        kind="chat",
+        name="runtime_internal:image_routing_ocr:qwen_vl",
+        model=settings.vl_model,
+        response=response,
+        started_at=started,
+        tool_name="image_routing_ocr",
+        image_count=len(image_paths),
+        provider="dashscope",
     )
     raw = response.choices[0].message.content or "{}"
     try:
@@ -581,6 +724,7 @@ def build_coze_current_affairs_prompt(user_query: str) -> str:
 
 
 def call_coze_current_affairs(user_query: str, timeout_seconds: int | None = None) -> str:
+    started = time.perf_counter()
     settings = load_settings()
     if not settings.coze_api_token or not settings.coze_bot_id:
         raise RuntimeError("请先在 .env 中设置 COZE_API_TOKEN 和 COZE_BOT_ID。")
@@ -613,6 +757,15 @@ def call_coze_current_affairs(user_query: str, timeout_seconds: int | None = Non
     if not chat_id or not conversation_id:
         direct_answer = extract_coze_answer(data)
         if direct_answer:
+            notify_usage(
+                kind="external_tool_api",
+                name="tool_api:get_current_affairs:coze",
+                model=f"coze:{settings.coze_bot_id}",
+                started_at=started,
+                tool_name="get_current_affairs",
+                status=chat_data.get("status") or "direct_answer",
+                provider="coze",
+            )
             return direct_answer
         raise RuntimeError(f"Coze response missing chat id or conversation id: {data}")
 
@@ -631,6 +784,15 @@ def call_coze_current_affairs(user_query: str, timeout_seconds: int | None = Non
 
     answer = fetch_coze_answer_messages(settings, headers, conversation_id, chat_id)
     if answer:
+        notify_usage(
+            kind="external_tool_api",
+            name="tool_api:get_current_affairs:coze",
+            model=f"coze:{settings.coze_bot_id}",
+            started_at=started,
+            tool_name="get_current_affairs",
+            status=status,
+            provider="coze",
+        )
         return answer
     if status != "completed":
         raise TimeoutError(f"Coze 时政智能体仍在处理，当前状态为 {status}，已等待 {timeout_seconds} 秒。")
@@ -717,6 +879,7 @@ def solve_with_qwenmath(
     vl_text: str | None,
     output_format: str = "ui",
     feedback: str | None = None,
+    thinking: str | None = None,
 ) -> str:
     settings = load_settings()
     prompt_parts = [
@@ -732,13 +895,21 @@ def solve_with_qwenmath(
     prompt_parts.append(TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT)
     prompt_parts.append("图形积分题请先列出每个相关区域的完整边界或参数范围，再判断奇偶性、对称性和抵消关系；不要根据标签方位或常见模板跳过建模。")
     prompt_parts.append("请给出清晰解题步骤，并在末尾写“最终答案：...”。")
-    return chat_text(settings.math_model, QWEN_MATH_SOLVER_PROMPT, "\n\n".join(prompt_parts))
+    return chat_math_text(
+        settings.math_model,
+        QWEN_MATH_SOLVER_PROMPT,
+        "\n\n".join(prompt_parts),
+        thinking=thinking or "light",
+        usage_name="tool_llm:solve_math_exam:qwen_math",
+        tool_name="solve_math_exam",
+    )
 
 
 def solve_general_math_with_qwenmath(
     user_query: str,
     vl_text: str | None,
     output_format: str = "ui",
+    thinking: str | None = None,
 ) -> str:
     settings = load_settings()
     prompt_parts = [f"用户题目/问题：{user_query}"]
@@ -748,7 +919,14 @@ def solve_general_math_with_qwenmath(
     prompt_parts.append(
         "请解答这道普通数学题。若本轮是参数修改或追问，请继承历史中未被显式修改的函数、展开点、目标点、阶数和误差要求。"
     )
-    return chat_text(settings.math_model, QWEN_GENERAL_MATH_SOLVER_PROMPT, "\n\n".join(prompt_parts))
+    return chat_math_text(
+        settings.math_model,
+        QWEN_GENERAL_MATH_SOLVER_PROMPT,
+        "\n\n".join(prompt_parts),
+        thinking=thinking or "disabled",
+        usage_name="tool_llm:solve_general_math:qwen_math",
+        tool_name="solve_general_math",
+    )
 
 
 def judge_answer(problem: MathProblem, solution: str) -> dict[str, Any]:
@@ -761,7 +939,13 @@ def judge_answer(problem: MathProblem, solution: str) -> dict[str, Any]:
         "请判断核心最终答案是否一致。"
     )
     try:
-        return parse_json_object(chat_global_text(ANSWER_JUDGE_PROMPT, prompt, temperature=0))
+        return parse_json_object(chat_global_text(
+            ANSWER_JUDGE_PROMPT,
+            prompt,
+            temperature=0,
+            usage_name="tool_llm:judge_math_answer:global",
+            tool_name="judge_math_answer",
+        ))
     except Exception as exc:
         return {"match": False, "reason": f"核对 JSON 解析失败：{exc}", "expected": problem.answer_text, "actual": ""}
 
@@ -769,7 +953,13 @@ def judge_answer(problem: MathProblem, solution: str) -> dict[str, Any]:
 def judge_solution_quality(problem: MathProblem, solution: str) -> dict[str, Any]:
     prompt = f"题目：\n{problem.question_text}\n\n标准答案：{problem.answer_text or '无'}\n\n模型解答：\n{solution}"
     try:
-        return parse_json_object(chat_global_text(SOLUTION_QUALITY_PROMPT, prompt, temperature=0))
+        return parse_json_object(chat_global_text(
+            SOLUTION_QUALITY_PROMPT,
+            prompt,
+            temperature=0,
+            usage_name="tool_llm:judge_solution_quality:global",
+            tool_name="judge_solution_quality",
+        ))
     except Exception as exc:
         return {"valid": True, "reason": f"过程审核失败，跳过：{exc}", "fix_hint": ""}
 
@@ -785,6 +975,7 @@ def render_standard_answer_with_explanation(
     user_query: str,
     vl_text: str | None = None,
     output_format: str = "ui",
+    thinking: str | None = None,
 ) -> str:
     if not problem.answer_text:
         return ""
@@ -799,7 +990,15 @@ def render_standard_answer_with_explanation(
         "请以标准答案为最终结论，给一段简短、可核对的解释。"
     )
     try:
-        explanation = chat_text(settings.math_model, "你是考研数学真题纠偏讲解节点。", prompt, temperature=0).strip()
+        explanation = chat_math_text(
+            settings.math_model,
+            "你是考研数学真题纠偏讲解节点。",
+            prompt,
+            temperature=0,
+            thinking=thinking or "disabled",
+            usage_name="tool_llm:solve_exam_question:fallback_explanation",
+            tool_name="solve_exam_question",
+        ).strip()
     except Exception:
         return render_answer_only(problem.answer_text)
     if not explanation:
@@ -864,7 +1063,13 @@ def clarify_symbol_with_qwen(target: str, problem: MathProblem) -> str:
         f"用户追问的符号或对象：{target}\n\n"
         "请只解释这个符号或对象在题干中的含义，不要重新解题。"
     )
-    return chat_global_text("你是考研数学真题的局部答疑助手。", prompt, temperature=0)
+    return chat_global_text(
+        "你是考研数学真题的局部答疑助手。",
+        prompt,
+        temperature=0,
+        usage_name="tool_llm:clarify_math_symbol:global",
+        tool_name="clarify_math_symbol",
+    )
 
 
 def explain_math_step_with_qwenmath(
@@ -872,6 +1077,7 @@ def explain_math_step_with_qwenmath(
     user_query: str,
     previous_context: str = "",
     output_format: str = "ui",
+    thinking: str | None = None,
 ) -> str:
     settings = load_settings()
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
@@ -882,7 +1088,15 @@ def explain_math_step_with_qwenmath(
         f"{format_hint}\n\n"
         "请只解释用户追问的这一步、这个结论或这个疑问。不要完整重做整题。"
     )
-    return chat_text(settings.math_model, "你是 Qwen-Math 局部讲解节点。", prompt, temperature=0)
+    return chat_math_text(
+        settings.math_model,
+        "你是 Qwen-Math 局部讲解节点。",
+        prompt,
+        temperature=0,
+        thinking=thinking or "disabled",
+        usage_name="tool_llm:explain_math_step:qwen_math",
+        tool_name="explain_math_step",
+    )
 
 
 def explain_math_followup_with_qwenmath(
@@ -891,6 +1105,7 @@ def explain_math_followup_with_qwenmath(
     followup_context: str,
     followup_type: str = "contextual_followup",
     output_format: str = "ui",
+    thinking: str | None = None,
 ) -> str:
     settings = load_settings()
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
@@ -903,19 +1118,39 @@ def explain_math_followup_with_qwenmath(
         "请只回答当前追问，必须沿着给定链路解释，不要切换到无关话题。"
         "如果链路信息不足以确定指代对象，请直接请用户澄清。"
     )
-    return chat_text(settings.math_model, "你是 Qwen-Math 上下文追问讲解节点。", prompt, temperature=0)
+    return chat_math_text(
+        settings.math_model,
+        "你是 Qwen-Math 上下文追问讲解节点。",
+        prompt,
+        temperature=0,
+        thinking=thinking or "disabled",
+        usage_name="tool_llm:answer_math_followup:qwen_math",
+        tool_name="answer_math_followup",
+    )
 
 
 def rewrite_math_answer_with_qwen(user_query: str, previous_context: str, output_format: str = "ui") -> str:
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
     prompt = f"用户改写要求：{user_query}\n\n已有回答/上下文：\n{previous_context}\n\n{format_hint}"
-    return chat_global_text("你只改写已有数学回答，不重新解题。", prompt, temperature=0.2)
+    return chat_global_text(
+        "你只改写已有数学回答，不重新解题。",
+        prompt,
+        temperature=0.2,
+        usage_name="tool_llm:rewrite_math_answer:global",
+        tool_name="rewrite_math_answer",
+    )
 
 
 def summarize_math_solution_with_qwen(user_query: str, previous_context: str, output_format: str = "ui") -> str:
     format_hint = TERMINAL_FORMAT_PROMPT if output_format == "terminal" else UI_FORMAT_PROMPT
     prompt = f"用户总结要求：{user_query}\n\n已有回答/上下文：\n{previous_context}\n\n{format_hint}"
-    return chat_global_text("你只总结已有数学解法，不重新解题。", prompt, temperature=0.2)
+    return chat_global_text(
+        "你只总结已有数学解法，不重新解题。",
+        prompt,
+        temperature=0.2,
+        usage_name="tool_llm:summarize_math_solution:global",
+        tool_name="summarize_math_solution",
+    )
 
 
 def render_question_for_user(problem: MathProblem) -> str:

@@ -11,7 +11,7 @@ def main() -> None:
     if not chunks:
         raise SystemExit("没有找到政治资料，请先把 .md 文件放到 data/raw/politics/")
 
-    texts = [chunk["content"] for chunk in chunks]
+    texts = [chunk.get("embedding_text") or chunk["content"] for chunk in chunks]
     embeddings = embed_texts(texts)
     rows = []
     for chunk, embedding in zip(chunks, embeddings):

@@ -75,6 +75,7 @@ class SolveMathExamInput(BaseModel):
     vl_text: str | None = Field(default=None, description="可选：Qwen-VL 图片识别文本")
     output_format: str = Field(default="ui", description="ui 或 terminal")
     feedback: str | None = Field(default=None, description="可选：答案核对反馈")
+    thinking: str | None = Field(default=None, description="可选：disabled/light/max；高难度完整解题建议 light")
 
 
 class ShowMathExamInput(BaseModel):
@@ -98,6 +99,7 @@ class ExplainMathStepInput(BaseModel):
     user_query: str = Field(description="用户关于某一步的追问")
     previous_context: str = Field(default="", description="可选：上一轮解答或会话上下文")
     output_format: str = Field(default="ui", description="ui 或 terminal")
+    thinking: str | None = Field(default=None, description="可选：disabled/light/max")
 
 
 class RewriteMathAnswerInput(BaseModel):
@@ -116,6 +118,7 @@ class SolveGeneralMathInput(BaseModel):
     user_query: str = Field(description="用户数学题或问题")
     vl_text: str | None = Field(default=None, description="可选：Qwen-VL 图片识别文本")
     output_format: str = Field(default="ui", description="ui 或 terminal")
+    thinking: str | None = Field(default=None, description="可选：disabled/light/max；复杂推导可传 light")
 
 
 class JudgeMathAnswerInput(BaseModel):
@@ -209,9 +212,10 @@ def create_kaoyan_toolkit(agent_module: Any) -> KaoyanToolkit:
         previous_context: str = "",
         output_format: str = "ui",
         exam_type: str = "math1",
+        thinking: str | None = None,
     ) -> str:
         problem = agent_module.load_problem(year, question_number, exam_type)
-        return agent_module.explain_math_step_with_qwenmath(problem, user_query, previous_context, output_format)
+        return agent_module.explain_math_step_with_qwenmath(problem, user_query, previous_context, output_format, thinking)
 
     def rewrite_math_answer(user_query: str, previous_context: str, output_format: str = "ui") -> str:
         return agent_module.rewrite_math_answer_with_qwen(user_query, previous_context, output_format)
@@ -227,12 +231,18 @@ def create_kaoyan_toolkit(agent_module: Any) -> KaoyanToolkit:
         output_format: str = "ui",
         feedback: str | None = None,
         exam_type: str = "math1",
+        thinking: str | None = None,
     ) -> str:
         problem = agent_module.load_problem(year, question_number, exam_type)
-        return agent_module.solve_with_qwenmath(problem, user_query, vl_text, output_format, feedback)
+        return agent_module.solve_with_qwenmath(problem, user_query, vl_text, output_format, feedback, thinking)
 
-    def solve_general_math(user_query: str, vl_text: str | None = None, output_format: str = "ui") -> str:
-        return agent_module.solve_general_math_with_qwenmath(user_query, vl_text, output_format)
+    def solve_general_math(
+        user_query: str,
+        vl_text: str | None = None,
+        output_format: str = "ui",
+        thinking: str | None = None,
+    ) -> str:
+        return agent_module.solve_general_math_with_qwenmath(user_query, vl_text, output_format, thinking)
 
     def judge_math_answer(year: int, question_number: int, solution: str, exam_type: str = "math1") -> dict[str, Any]:
         problem = agent_module.load_problem(year, question_number, exam_type)

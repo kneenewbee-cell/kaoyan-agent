@@ -15,6 +15,7 @@ from typing import Any, Callable, Iterable
 from dotenv import load_dotenv
 
 import kaoyan_agent as legacy_agent
+from usage_tracking import reset_usage_callback, set_usage_callback
 
 ROOT = Path(__file__).resolve().parents[1]
 SESSION_MD_DIR = ROOT / "data" / "runtime" / "sessions_md"
@@ -41,6 +42,10 @@ def context_followup_tools_enabled() -> bool:
     return env_flag("ENABLE_CONTEXT_FOLLOWUP_TOOLS", default=False)
 
 
+def dag_tool_selection_enabled() -> bool:
+    return env_flag("ENABLE_DAG_TOOL_SELECTION", default=True)
+
+
 def route_debug_log_enabled() -> bool:
     return env_flag("ROUTE_DEBUG_LOG", default=False)
 
@@ -51,6 +56,39 @@ CONTEXT_FOLLOWUP_PROMPT = f"""非步骤追问规则：
 - 当前轮显式给出的参数覆盖历史参数；没有显式修改的函数、展开点、目标点、阶数、误差要求应从历史继承。
 - 执行性很弱的非步骤追问（例如“这个呢”“为什么成立”“继续”“那如果换成...”）默认先指向上一轮；如果历史中存在多个可能 root，且最近 {FOLLOWUP_DAG_LOOKBACK} 轮仍不足以定位，先请用户澄清。
 """
+
+
+MATH_TOOL_SELECTION_POLICY = """数学 tool_selection 策略：
+- 你可以直接回答，也可以调用工具；不要为了调用工具而调用工具。
+- 先判定当前数学问题难度：simple/easy 难度由你直接回答；medium/high 难度调用合适工具。不要把难度判定过程单独输出给用户。
+- simple/easy 通常包括：常见概念、标准定理短证明、基础公式推导、公式含义确认、短条件说明、简短 DAG 追问，且不需要题库、OCR、标准答案核对或长链计算。
+- medium/high 通常包括：复杂完整解题、长链多步推导、非常规证明、易错计算、严谨步骤解释、OCR 后解题，或任何你不能不借助工具可靠完成的问题。
+- 简单概念解释、公式确认、短条件说明、常规定理证明、基础公式推导、简短 DAG 追问，如果你能基于输入和上下文给出可靠完整答案，可以直接回答。
+- 明确年份 + 科目 + 题号的真题请求必须调用 solve_exam_question；这不是因为题目一定难，而是因为需要本地题库、题图 OCR 和标准答案核对。
+- 复杂完整解题、长链多步推导、非常规证明、易错计算、严谨步骤解释、OCR 后解题时，应调用合适工具。
+- 步骤追问优先 explain_math_step；普通数学题或非真题推导优先 solve_general_math。
+- 如果当前消息来自 DAG 链路，调用工具时必须把继承后的完整问题写入 tool arguments，不能只传“这个”“那一步”“继续”等省略说法。
+- 如果 DAG 链路仍不足以确定指代对象，请直接向用户澄清，不要硬调工具。
+- 对 medium 难度数学工具可传 thinking=\"disabled\"；对 high 难度或完整真题解答可传 thinking=\"light\"。"""
+
+
+POLITICS_TOOL_SELECTION_POLICY = """政治 tool_selection 策略：
+- 先判断当前政治问题类型，不要为了调用工具而调用工具。
+- simple/easy：常识性概念、非常基础的区别说明、用户只要一句话解释，且不涉及考研标准表述/官方提法/近期时政时，可以直接回答。
+- 教材知识点、考研政治概念、马原/毛中特/史纲/思修标准表述、选择题/分析题答题表述、背诵口径，应调用 search_politics_knowledge。
+- 近期会议、政策热点、时政新闻、月份时政、中央会议精神、最新政策，应调用 get_current_affairs。
+- 如果问题同时包含“时政会议/政策/新闻材料”和“体现什么原理/马原/哲学/政治理论/考研知识点”，必须按组合题处理：先调用 get_current_affairs 获取时政材料和官方表述，再调用 search_politics_knowledge 获取理论标准表述，最后综合回答“材料 -> 原理 -> 考研答题表述”。
+- 例如“某个会议体现了什么马原哲学原理”“用新质生产力解释高质量发展”“中央经济工作会议体现了哪些辩证法原理”，都属于时政材料 + 理论映射题，通常需要两个工具协同；若问题只需其中一种材料，不要重复调用。
+- DAG 追问时，如果调用工具，必须把被追问对象、父轮主题、用户当前追问补全进 query，不能只传“这个”“那它呢”。
+- 如果用户问的是考研主观题/分析题怎么答，优先调用知识库获取标准表述，再组织成可背诵答案。
+- 如果材料不足或指代不明，直接澄清，不要编造官方表述。"""
+
+
+GENERIC_TOOL_SELECTION_POLICY = """tool_selection 策略：
+- 在已知学科和上下文的前提下，判断直接回答还是调用工具。
+- 能基于当前输入和上下文可靠完成的短问题可以直接回答。
+- 需要外部知识库、题库、OCR、标准答案核对或复杂推理时调用工具。
+- 指代不明或上下文不足时请用户澄清。"""
 
 
 MAIN_SYSTEM_PROMPT = """你是考研小助手，当前优先服务数学问答。
@@ -175,6 +213,16 @@ class RuntimeMetrics:
     tool_errors: int = 0
     steps: list[dict[str, Any]] = field(default_factory=list)
     llm_usages: list[dict[str, Any]] = field(default_factory=list)
+    tool_usages: list[dict[str, Any]] = field(default_factory=list)
+    runtime_prompt_tokens: int = 0
+    runtime_completion_tokens: int = 0
+    runtime_total_tokens: int = 0
+    tool_prompt_tokens: int = 0
+    tool_completion_tokens: int = 0
+    tool_total_tokens: int = 0
+    tool_llm_calls: int = 0
+    embedding_calls: int = 0
+    external_tool_api_calls: int = 0
     progress_callback: Callable[[dict[str, Any]], None] | None = field(default=None, repr=False, compare=False)
 
     def add_step(self, name: str, started: float, **extra: Any) -> None:
@@ -196,6 +244,30 @@ class RuntimeMetrics:
             except Exception:
                 pass
 
+    def add_tool_usage(self, item: dict[str, Any]) -> None:
+        normalized = dict(item)
+        prompt_tokens = int(normalized.get("prompt_tokens", 0) or 0)
+        completion_tokens = int(normalized.get("completion_tokens", 0) or 0)
+        total_tokens = int(normalized.get("total_tokens", 0) or 0)
+        if not total_tokens:
+            total_tokens = prompt_tokens + completion_tokens
+            normalized["total_tokens"] = total_tokens
+        self.prompt_tokens += prompt_tokens
+        self.completion_tokens += completion_tokens
+        self.total_tokens += total_tokens
+        self.tool_prompt_tokens += prompt_tokens
+        self.tool_completion_tokens += completion_tokens
+        self.tool_total_tokens += total_tokens
+        kind = str(normalized.get("kind") or "")
+        if kind == "chat":
+            self.llm_calls += 1
+            self.tool_llm_calls += 1
+        elif kind in {"embedding", "local_embedding"}:
+            self.embedding_calls += 1
+        elif kind == "external_tool_api":
+            self.external_tool_api_calls += 1
+        self.tool_usages.append(normalized)
+
     def as_dict(self) -> dict[str, Any]:
         elapsed_ms = round((time.perf_counter() - self.started_at) * 1000, 2)
         success_rate = self.tool_success / self.tool_calls if self.tool_calls else 1.0
@@ -212,7 +284,17 @@ class RuntimeMetrics:
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
             "total_tokens": self.total_tokens,
+            "runtime_prompt_tokens": self.runtime_prompt_tokens,
+            "runtime_completion_tokens": self.runtime_completion_tokens,
+            "runtime_total_tokens": self.runtime_total_tokens,
+            "tool_prompt_tokens": self.tool_prompt_tokens,
+            "tool_completion_tokens": self.tool_completion_tokens,
+            "tool_total_tokens": self.tool_total_tokens,
+            "tool_llm_calls": self.tool_llm_calls,
+            "embedding_calls": self.embedding_calls,
+            "external_tool_api_calls": self.external_tool_api_calls,
             "llm_usages": self.llm_usages,
+            "tool_usages": self.tool_usages,
             "steps": self.steps,
         }
 
@@ -495,8 +577,10 @@ def classify_followup_route_with_llm(
     )
     try:
         global_client = make_global_client(client)
+        model_name = global_model_name()
+        llm_started = time.perf_counter()
         response = global_client.chat.completions.create(
-            model=global_model_name(),
+            model=model_name,
             messages=[
                 {"role": "system", "content": "你是会话追问类型判定器，只输出 JSON。"},
                 {"role": "user", "content": prompt},
@@ -505,7 +589,7 @@ def classify_followup_route_with_llm(
         )
         if metrics is not None:
             metrics.llm_calls += 1
-            record_usage(metrics, response, "followup_route_classifier")
+            record_usage(metrics, response, "followup_route_classifier", model=model_name, started_at=llm_started)
         data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
     except Exception as exc:
         return {
@@ -605,6 +689,7 @@ def resolve_followup_parent_with_llm(
     candidates: list[dict[str, Any]],
     client: Any | None,
     route_decision: dict[str, Any] | None = None,
+    metrics: RuntimeMetrics | None = None,
 ) -> tuple[int, str, str]:
     if not candidates:
         return FOLLOWUP_EMPTY_ROOT_ID, "independent", "no_previous_turns"
@@ -644,14 +729,19 @@ def resolve_followup_parent_with_llm(
     )
     try:
         global_client = make_global_client(client)
+        model_name = global_model_name()
+        llm_started = time.perf_counter()
         response = global_client.chat.completions.create(
-            model=global_model_name(),
+            model=model_name,
             messages=[
                 {"role": "system", "content": f"你是会话追问溯源节点，只做最近 {FOLLOWUP_DAG_LOOKBACK} 轮内的父节点选择。"},
                 {"role": "user", "content": prompt},
             ],
             temperature=global_temperature(0),
         )
+        if metrics is not None:
+            metrics.llm_calls += 1
+            record_usage(metrics, response, "followup_parent_resolver", model=model_name, started_at=llm_started)
         data = legacy_agent.parse_json_object(response.choices[0].message.content or "{}")
     except Exception as exc:
         return int(candidates[-1].get("turn_id", FOLLOWUP_EMPTY_ROOT_ID)), "fallback_previous", f"resolver_error:{exc}"
@@ -718,10 +808,17 @@ def format_followup_dag_context(
     output_format: str,
     client: Any | None,
     route_decision: dict[str, Any] | None = None,
+    metrics: RuntimeMetrics | None = None,
 ) -> dict[str, Any]:
     session = legacy_agent.load_session(session_id)
     candidates = session.get("turns", [])[-FOLLOWUP_DAG_LOOKBACK:]
-    parent_id, followup_type, reason = resolve_followup_parent_with_llm(user_input, candidates, client, route_decision)
+    parent_id, followup_type, reason = resolve_followup_parent_with_llm(
+        user_input,
+        candidates,
+        client,
+        route_decision,
+        metrics,
+    )
     parent_ids = route_parent_ids(route_decision)
     candidate_ids = {int(turn.get("turn_id")) for turn in candidates if turn.get("turn_id") is not None}
     parent_ids = [item for item in parent_ids if item in candidate_ids]
@@ -789,6 +886,7 @@ def build_math_tools(
         user_query = str(args.get("user_query") or "")
         image_paths = [Path(item) for item in args.get("image_paths") or []]
         output_format = str(args.get("output_format") or "ui")
+        thinking = str(args.get("thinking") or "light")
         problem = legacy_agent.math_problem_from_tool_payload(
             timed_skill_call("search_math_exam", toolkit.search_math_exam, {
                 "exam_type": exam_type,
@@ -838,6 +936,7 @@ def build_math_tools(
                 "vl_text": vl_text,
                 "output_format": output_format,
                 "feedback": feedback,
+                "thinking": thinking,
             }, attempt=attempt)
             last_judgement = timed_skill_call("judge_math_answer", toolkit.judge_math_answer, {
                 "exam_type": problem.exam_type,
@@ -856,7 +955,7 @@ def build_math_tools(
         if problem.answer_text:
             fallback_started = time.perf_counter()
             try:
-                fallback_answer = legacy_agent.render_standard_answer_with_explanation(problem, user_query, vl_text, output_format)
+                fallback_answer = legacy_agent.render_standard_answer_with_explanation(problem, user_query, vl_text, output_format, thinking)
             except Exception as exc:
                 if metrics is not None:
                     metrics.add_step("skill:solve_exam_question:fallback_explanation", fallback_started, ok=False, error=str(exc))
@@ -897,6 +996,7 @@ def build_math_tools(
                 "user_query": {"type": "string", "description": "用户原始问题，保留追问措辞"},
                 "image_paths": {"type": "array", "items": {"type": "string"}, "description": "可选的本地图片路径列表"},
                 "output_format": {"type": "string", "enum": ["ui", "terminal"], "description": "输出格式"},
+                "thinking": {"type": "string", "enum": ["disabled", "light", "max"], "description": "数学解题模型思考强度。完整真题或高难题建议 light；普通题可 disabled"},
             }, ["exam_type", "year", "question_number", "user_query"]),
             solve_exam_question,
             return_mode="direct",
@@ -923,6 +1023,7 @@ def build_math_tools(
                 "user_query": {"type": "string", "description": "用户当前追问"},
                 "previous_context": {"type": "string", "description": "最近 15 轮中定位到的原始解题过程或 root 上下文，必须原样保留关键步骤"},
                 "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+                "thinking": {"type": "string", "enum": ["disabled", "light", "max"], "description": "数学解释模型思考强度，默认 disabled；复杂步骤可 light"},
             }, ["exam_type", "year", "question_number", "user_query", "previous_context"]),
             lambda args: _call_tool(toolkit.explain_math_step, args),
             return_mode="direct",
@@ -934,6 +1035,7 @@ def build_math_tools(
                 "user_query": {"type": "string", "description": "完整数学问题"},
                 "vl_text": {"type": ["string", "null"], "description": "可选 OCR 结果"},
                 "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+                "thinking": {"type": "string", "enum": ["disabled", "light", "max"], "description": "数学解题模型思考强度，默认 disabled；复杂推导可 light"},
             }, ["user_query"]),
             lambda args: _call_tool(toolkit.solve_general_math, args),
             return_mode="direct",
@@ -1500,6 +1602,7 @@ def route_with_llm(
         payload["image_context"] = image_context
     global_client = make_global_client(client)
     model_name = global_model_name()
+    llm_started = time.perf_counter()
     response = global_client.chat.completions.create(
         model=model_name,
         messages=[
@@ -1511,7 +1614,7 @@ def route_with_llm(
     raw_content = str(response.choices[0].message.content or "")
     if metrics is not None:
         metrics.llm_calls += 1
-        usage = record_usage(metrics, response, "route_classifier")
+        usage = record_usage(metrics, response, "route_classifier", model=model_name, started_at=llm_started)
         usage["raw_content_chars"] = len(raw_content)
     parse_error = None
     try:
@@ -1879,6 +1982,12 @@ def recognize_image_context(
     if not image_paths:
         return None
     started = time.perf_counter()
+    usage_token = set_usage_callback(
+        lambda item: metrics.add_tool_usage({
+            **item,
+            "tool_call_name": "image_routing_ocr",
+        })
+    )
     try:
         image_context = legacy_agent.recognize_images_for_routing(image_paths, user_input, client=client)
     except Exception as exc:
@@ -1890,7 +1999,8 @@ def recognize_image_context(
             "confidence": 0.0,
             "reason": f"image_routing_ocr_error:{exc}",
         }
-    metrics.llm_calls += 1
+    finally:
+        reset_usage_callback(usage_token)
     metrics.add_step(
         "image_routing_ocr",
         started,
@@ -1982,22 +2092,45 @@ def normalize_message(message: Any) -> dict[str, Any]:
     return data
 
 
-def record_usage(metrics: RuntimeMetrics, response: Any, name: str | None = None) -> dict[str, int]:
+def record_usage(
+    metrics: RuntimeMetrics,
+    response: Any,
+    name: str | None = None,
+    *,
+    model: str | None = None,
+    started_at: float | None = None,
+) -> dict[str, Any]:
     usage = getattr(response, "usage", None)
     if not usage:
         return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
     completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
     total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    if not total_tokens:
+        total_tokens = prompt_tokens + completion_tokens
     metrics.prompt_tokens += prompt_tokens
     metrics.completion_tokens += completion_tokens
-    metrics.total_tokens += total_tokens or prompt_tokens + completion_tokens
+    metrics.total_tokens += total_tokens
+    metrics.runtime_prompt_tokens += prompt_tokens
+    metrics.runtime_completion_tokens += completion_tokens
+    metrics.runtime_total_tokens += total_tokens
     item = {
         "name": name or "llm",
+        "kind": "chat",
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
-        "total_tokens": total_tokens or prompt_tokens + completion_tokens,
+        "total_tokens": total_tokens,
     }
+    if model:
+        item["model"] = model
+    if started_at is not None:
+        latency_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        elapsed_seconds = latency_ms / 1000 if latency_ms else 0.0
+        item["latency_ms"] = latency_ms
+        item["tokens_per_second"] = round(total_tokens / elapsed_seconds, 2) if elapsed_seconds and total_tokens else 0.0
+        item["completion_tokens_per_second"] = (
+            round(completion_tokens / elapsed_seconds, 2) if elapsed_seconds and completion_tokens else 0.0
+        )
     metrics.llm_usages.append(item)
     return item
 
@@ -2030,6 +2163,12 @@ def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], met
         result = {"ok": False, "error": f"Unknown tool: {name}", "available_tools": sorted(tools)}
         metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
         return result, {"name": name, "arguments": arguments, "ok": False, "error": result["error"]}
+    usage_token = set_usage_callback(
+        lambda item: metrics.add_tool_usage({
+            **item,
+            "tool_call_name": name,
+        })
+    )
     try:
         value = spec.func(arguments)
         metrics.tool_success += 1
@@ -2041,6 +2180,8 @@ def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], met
         result = {"ok": False, "error": str(exc)}
         metrics.add_step(f"tool:{name}", started, ok=False, error=str(exc))
         return result, {"name": name, "arguments": arguments, "ok": False, "error": str(exc)}
+    finally:
+        reset_usage_callback(usage_token)
 
 
 def direct_tool_answer(
@@ -2194,6 +2335,96 @@ def build_messages(
     ]
 
 
+def tool_selection_policy_for_subject(subject: str | None) -> str:
+    if subject == "math":
+        return MATH_TOOL_SELECTION_POLICY
+    if subject == "politics":
+        return POLITICS_TOOL_SELECTION_POLICY
+    return GENERIC_TOOL_SELECTION_POLICY
+
+
+def append_tool_selection_policy(messages: list[dict[str, Any]], subject: str | None, context_mode: str) -> list[dict[str, Any]]:
+    if not messages:
+        return messages
+    updated = [dict(item) for item in messages]
+    policy = tool_selection_policy_for_subject(subject)
+    updated[0]["content"] = (
+        f"{updated[0].get('content') or ''}\n\n"
+        f"当前第二层上下文模式：{context_mode}。\n"
+        f"{policy}"
+    )
+    return updated
+
+
+def build_dag_tool_selection_messages(
+    user_input: str,
+    dag_context: dict[str, Any],
+    output_format: str,
+    subject: str | None,
+) -> list[dict[str, Any]]:
+    format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
+    system_prompt = (
+        f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
+        "当前轮已经由 runtime 定位到 DAG 追问链路；下面的 DAG 链路记忆替代最近 15 轮平铺历史。"
+        "你是第二层 tool_selection + 可直接回答节点。"
+        "先判断当前问题能否基于 DAG 链路可靠直接回答；如果不能，调用合适工具。"
+        "回答或调用工具都只能沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
+        "如果选择调用工具，必须在 tool arguments 中显式写出继承后的完整问题和必要上下文。"
+        "如果链路不足以确定指代对象，请直接提出澄清问题，不要调用工具。"
+        "如果选择直接回答，认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
+        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
+        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
+        "如果选择直接回答，应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
+        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
+        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
+    )
+    content = (
+        "DAG 追问链路记忆：\n"
+        f"{dag_context.get('followup_context') or ''}\n\n"
+        "根节点上下文：\n"
+        f"{dag_context.get('root_context') or ''}\n\n"
+        "当前用户输入：\n"
+        f"{user_input}"
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                f"{system_prompt}\n\n{format_hint}\n\n"
+                f"当前第二层上下文模式：dag。\n"
+                f"{tool_selection_policy_for_subject(subject)}"
+            ),
+        },
+        {"role": "user", "content": content},
+    ]
+
+
+def build_tool_selection_messages(
+    user_input: str,
+    history: list[dict[str, str]],
+    output_format: str,
+    *,
+    subject: str | None = None,
+    recent_turns: list[dict[str, Any]] | None = None,
+    followup_route_decision: dict[str, Any] | None = None,
+    dag_context: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if dag_context is not None:
+        return build_dag_tool_selection_messages(user_input, dag_context, output_format, subject)
+    context_mode = "plain"
+    if (followup_route_decision or {}).get("category") == "independent":
+        context_mode = "independent"
+    messages = build_messages(
+        user_input,
+        history,
+        output_format,
+        subject=subject,
+        recent_turns=recent_turns,
+        use_independent_context=(followup_route_decision or {}).get("category") == "independent",
+    )
+    return append_tool_selection_policy(messages, subject, context_mode)
+
+
 def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], output_format: str) -> list[dict[str, Any]]:
     format_hint = "输出适合网页 UI，保留 Markdown 和 LaTeX。" if output_format == "ui" else "输出适合 PowerShell 终端阅读，少用复杂 Markdown 表格。"
     system_prompt = (
@@ -2203,8 +2434,9 @@ def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], ou
         "认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
         "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
         "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
-        f"默认把回答控制在 {DAG_FOLLOWUP_TARGET_CHARS} 个汉字以内，并且必须完整收尾。"
-        "如果篇幅不够，优先删减例子、背景、表格和延伸内容，保留结论、关键理由和必要公式。"
+        "回答时应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
+        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
+        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
         "只有当用户明确要求“详细讲”“细说”“展开”“举例”“完整推导”等时，才允许超过默认字数，但仍要优先保证结尾完整，不要停在列表或公式中途。"
     )
     content = (
@@ -2246,6 +2478,94 @@ def build_followup_clarification_messages(
         {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
         {"role": "user", "content": content},
     ]
+
+
+def run_tool_selection_loop(
+    *,
+    user_input: str,
+    session_id: str,
+    subject: str,
+    messages: list[dict[str, Any]],
+    tools: dict[str, ToolSpec],
+    client: Any,
+    metrics: RuntimeMetrics,
+    persist: bool,
+    extra_memory: dict[str, Any] | None = None,
+    max_tokens: int | None = None,
+) -> RuntimeResult:
+    openai_tools = [tool.openai_schema() for tool in tools.values()]
+    tool_call_records: list[dict[str, Any]] = []
+
+    for round_index in range(MAX_TOOL_ROUNDS):
+        llm_started = time.perf_counter()
+        try:
+            global_client = make_global_client(client)
+            model_name = global_model_name()
+            payload: dict[str, Any] = {
+                "model": model_name,
+                "messages": messages,
+                "tools": openai_tools,
+                "tool_choice": "auto",
+                "temperature": global_temperature(legacy_agent.load_settings().temperature),
+            }
+            if max_tokens is not None:
+                payload["max_tokens"] = max_tokens
+            response = global_client.chat.completions.create(**payload)
+        except Exception as exc:
+            metrics.add_step("llm_tool_selection", llm_started, round=round_index + 1, ok=False, error=str(exc))
+            result = RuntimeResult(format_model_error(exc), subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+        metrics.llm_calls += 1
+        message = response.choices[0].message
+        assistant_message = normalize_message(message)
+        messages.append(assistant_message)
+        tool_calls = assistant_message.get("tool_calls") or []
+        record_usage(
+            metrics,
+            response,
+            "llm_tool_selection" if tool_calls else "llm_final",
+            model=model_name,
+            started_at=llm_started,
+        )
+        metrics.add_step("llm_tool_selection" if tool_calls else "llm_final", llm_started, round=round_index + 1, tool_calls=len(tool_calls))
+        if not tool_calls:
+            answer = str(assistant_message.get("content") or "").strip()
+            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+        latest_tool_result: dict[str, Any] | None = None
+        for tool_call in tool_calls:
+            tool_result, record = execute_tool_call(tool_call, tools, metrics)
+            latest_tool_result = tool_result
+            tool_call_records.append(record)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call["id"],
+                "name": tool_call["function"]["name"],
+                "content": json.dumps(tool_result, ensure_ascii=False, default=str),
+            })
+        direct = direct_tool_answer(tool_call_records, tools, latest_tool_result or {}, len(tool_calls))
+        if direct is not None:
+            answer, tool_name = direct
+            direct_started = time.perf_counter()
+            metrics.add_step("direct_tool_return", direct_started, tool=tool_name)
+            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
+
+    answer = "工具调用轮次过多，我先停止本轮处理。请把问题拆小一点，或明确要解释哪一步。"
+    result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
+    log_runtime(result)
+    if persist:
+        append_runtime_turn(session_id, user_input, result)
+    return result
 
 
 def run_standard_message_loop(
@@ -2325,6 +2645,7 @@ def run_standard_message_loop(
             output_format=str(args.get("output_format") or output_format),
             client=client,
             route_decision=followup_route_decision,
+            metrics=metrics,
         )
 
     tools = filter_tools_for_request(
@@ -2381,6 +2702,8 @@ def run_standard_message_loop(
                 parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
             )
 
+    dag_context_for_tool_selection: dict[str, Any] | None = None
+
     if (
         context_followup_tools_enabled()
         and not image_paths
@@ -2392,41 +2715,45 @@ def run_standard_message_loop(
             "user_query": user_input,
             "output_format": output_format,
         })
-        messages = build_dag_followup_messages(user_input, dag_context, output_format)
-        llm_started = time.perf_counter()
-        try:
-            global_client = make_global_client(client)
-            response = global_client.chat.completions.create(
-                model=global_model_name(),
-                messages=messages,
-                temperature=global_temperature(legacy_agent.load_settings().temperature),
-                max_tokens=DAG_FOLLOWUP_MAX_TOKENS,
-            )
-            metrics.llm_calls += 1
-            record_usage(metrics, response, "llm_dag_followup_final")
-            answer = str(response.choices[0].message.content or "").strip()
-            metrics.add_step(
-                "llm_dag_followup_final",
-                llm_started,
-                category=followup_route_decision.get("category"),
-                parent_turn_id=followup_route_decision.get("parent_turn_id"),
-                parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
-            )
-            result = RuntimeResult(
-                answer,
-                subject,
-                messages,
-                [],
-                metrics.as_dict(),
-                extra_memory={"followup_dag": dag_context.get("followup_dag")},
-            )
-        except Exception as exc:
-            metrics.add_step("llm_dag_followup_final", llm_started, ok=False, error=str(exc))
-            result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
-        log_runtime(result)
-        if persist:
-            append_runtime_turn(session_id, user_input, result)
-        return result
+        if dag_tool_selection_enabled():
+            dag_context_for_tool_selection = dag_context
+        else:
+            messages = build_dag_followup_messages(user_input, dag_context, output_format)
+            llm_started = time.perf_counter()
+            try:
+                global_client = make_global_client(client)
+                model_name = global_model_name()
+                response = global_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=global_temperature(legacy_agent.load_settings().temperature),
+                    max_tokens=DAG_FOLLOWUP_MAX_TOKENS,
+                )
+                metrics.llm_calls += 1
+                record_usage(metrics, response, "llm_dag_followup_final", model=model_name, started_at=llm_started)
+                answer = str(response.choices[0].message.content or "").strip()
+                metrics.add_step(
+                    "llm_dag_followup_final",
+                    llm_started,
+                    category=followup_route_decision.get("category"),
+                    parent_turn_id=followup_route_decision.get("parent_turn_id"),
+                    parent_turn_ids=followup_route_decision.get("parent_turn_ids") or [],
+                )
+                result = RuntimeResult(
+                    answer,
+                    subject,
+                    messages,
+                    [],
+                    metrics.as_dict(),
+                    extra_memory={"followup_dag": dag_context.get("followup_dag")},
+                )
+            except Exception as exc:
+                metrics.add_step("llm_dag_followup_final", llm_started, ok=False, error=str(exc))
+                result = RuntimeResult(format_model_error(exc), subject, messages, [], metrics.as_dict())
+            log_runtime(result)
+            if persist:
+                append_runtime_turn(session_id, user_input, result)
+            return result
 
     if (
         context_followup_tools_enabled()
@@ -2440,13 +2767,14 @@ def run_standard_message_loop(
         llm_started = time.perf_counter()
         try:
             global_client = make_global_client(client)
+            model_name = global_model_name()
             response = global_client.chat.completions.create(
-                model=global_model_name(),
+                model=model_name,
                 messages=messages,
                 temperature=global_temperature(legacy_agent.load_settings().temperature),
             )
             metrics.llm_calls += 1
-            record_usage(metrics, response, "llm_followup_clarification")
+            record_usage(metrics, response, "llm_followup_clarification", model=model_name, started_at=llm_started)
             answer = str(response.choices[0].message.content or "").strip()
             metrics.add_step(
                 "llm_followup_clarification",
@@ -2462,77 +2790,30 @@ def run_standard_message_loop(
             append_runtime_turn(session_id, user_input, result)
         return result
 
-    messages = build_messages(
+    messages = build_tool_selection_messages(
         user_input,
         history,
         output_format,
         subject=subject,
         recent_turns=recent_turns,
-        use_independent_context=(followup_route_decision or {}).get("category") == "independent",
+        followup_route_decision=followup_route_decision,
+        dag_context=dag_context_for_tool_selection,
     )
-    openai_tools = [tool.openai_schema() for tool in tools.values()]
-    tool_call_records: list[dict[str, Any]] = []
-
-    for round_index in range(MAX_TOOL_ROUNDS):
-        llm_started = time.perf_counter()
-        try:
-            global_client = make_global_client(client)
-            response = global_client.chat.completions.create(
-                model=global_model_name(),
-                messages=messages,
-                tools=openai_tools,
-                tool_choice="auto",
-                temperature=global_temperature(legacy_agent.load_settings().temperature),
-            )
-        except Exception as exc:
-            metrics.add_step("llm_tool_selection", llm_started, round=round_index + 1, ok=False, error=str(exc))
-            result = RuntimeResult(format_model_error(exc), subject, messages, tool_call_records, metrics.as_dict())
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-        metrics.llm_calls += 1
-        message = response.choices[0].message
-        assistant_message = normalize_message(message)
-        messages.append(assistant_message)
-        tool_calls = assistant_message.get("tool_calls") or []
-        record_usage(metrics, response, "llm_tool_selection" if tool_calls else "llm_final")
-        metrics.add_step("llm_tool_selection" if tool_calls else "llm_final", llm_started, round=round_index + 1, tool_calls=len(tool_calls))
-        if not tool_calls:
-            answer = str(assistant_message.get("content") or "").strip()
-            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-        latest_tool_result: dict[str, Any] | None = None
-        for tool_call in tool_calls:
-            tool_result, record = execute_tool_call(tool_call, tools, metrics)
-            latest_tool_result = tool_result
-            tool_call_records.append(record)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call["id"],
-                "name": tool_call["function"]["name"],
-                "content": json.dumps(tool_result, ensure_ascii=False, default=str),
-            })
-        direct = direct_tool_answer(tool_call_records, tools, latest_tool_result or {}, len(tool_calls))
-        if direct is not None:
-            answer, tool_name = direct
-            direct_started = time.perf_counter()
-            metrics.add_step("direct_tool_return", direct_started, tool=tool_name)
-            result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
-            log_runtime(result)
-            if persist:
-                append_runtime_turn(session_id, user_input, result)
-            return result
-
-    answer = "工具调用轮次过多，我先停止本轮处理。请把问题拆小一点，或明确要解释哪一步。"
-    result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict())
-    log_runtime(result)
-    if persist:
-        append_runtime_turn(session_id, user_input, result)
-    return result
+    return run_tool_selection_loop(
+        user_input=user_input,
+        session_id=session_id,
+        subject=subject,
+        messages=messages,
+        tools=tools,
+        client=client,
+        metrics=metrics,
+        persist=persist,
+        extra_memory=(
+            {"followup_dag": dag_context_for_tool_selection.get("followup_dag")}
+            if dag_context_for_tool_selection is not None
+            else None
+        ),
+    )
 
 
 def iter_text_chunks(text: str, chunk_size: int = 24) -> Iterable[str]:
@@ -2547,5 +2828,37 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--image", "-i", action="append", default=[], help="本地图片路径，可传多次")
     parser.add_argument("--format", choices=["ui", "terminal"], default="terminal")
     parser.add_argument("--no-memory", action="store_true", help="不写入短期会话")
+    parser.add_argument("--debug", action="store_true", help="输出 runtime metrics")
+    return parser
+
+
+def configure_cli_output_encoding() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+def main() -> None:
+    configure_cli_output_encoding()
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    result = run_standard_message_loop(
+        " ".join(args.query),
+        session_id=args.session,
+        image_paths=[Path(item) for item in args.image],
+        output_format=args.format,
+        persist=not args.no_memory,
+    )
+    print(result.answer)
+    if args.debug:
+        print("\n[metrics]")
+        print(json.dumps(result.metrics, ensure_ascii=False, indent=2, default=str))
+
+
 if __name__ == "__main__":
     main()
