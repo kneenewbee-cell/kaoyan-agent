@@ -314,4 +314,15 @@ def create_kaoyan_toolkit(agent_module: Any) -> KaoyanToolkit:
         ),
         judge_math_answer=_make_tool(
             name="judge_math_answer",
-            des
+            description="将考研数学真题的模型解答与资料库标准答案速查进行核心答案核对。",
+            func=judge_math_answer,
+            args_schema=JudgeMathAnswerInput,
+        ),
+        get_current_affairs=_make_tool(
+            name="get_current_affairs",
+            description="调用 Coze 时政小智能体，整理考研政治时政信息。",
+            func=get_current_affairs,
+            args_schema=CurrentAffairsInput,
+            return_direct=True,
+        ),
+    )
