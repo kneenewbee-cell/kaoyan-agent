@@ -91,6 +91,22 @@ GENERIC_TOOL_SELECTION_POLICY = """tool_selection 策略：
 - 指代不明或上下文不足时请用户澄清。"""
 
 
+DEFAULT_ANSWER_SHAPE_POLICY = """默认回答形态：
+- 默认目标是“最小充分回答”：够用但不啰嗦，不机械限制句数。
+- 先在内部判断问题类型：概念解释、题目求解、方法总结、对比辨析、背诵记忆、规划建议、真题解析、代码算法、分析题作答；不要把类型判断过程输出给用户。
+- 先回答核心问题，再补充理解当前问题必要的条件、理由、步骤或边界。
+- 长度控制是参考，不是硬性限制；默认一般不超过 8 句话，若为了说明清楚必须超过，可以适当增加，但不得无关扩展。
+- 简单事实类问题：1～3 句话即可。
+- 概念解释类问题：至少覆盖“是什么、成立条件/适用范围、核心结论、直观理解”，通常 4～8 句话。
+- 方法建议类问题：先给明确推荐，再给 3～5 条建议或取舍理由。
+- 规划类问题：可以分步骤，但默认不展开成完整长文。
+- 题目求解、真题解析、分析题作答、代码算法题：以完整解决问题为准，可以超过默认篇幅，但不得扩展无关背景。
+- 用户没有要求深入时，不主动展开证明、历史背景、大量例题或教材式长篇。
+- 只有用户明确要求“详细、展开、举例、完整推导、完整规划、对比分析”时，才展开长回答。
+- 回答必须完整收尾；若内容变长，优先保留结论、关键理由、必要步骤和必要公式。
+- 不确定、依赖实时信息或上下文不足时，说明不确定点或请求澄清，不编造。"""
+
+
 MAIN_SYSTEM_PROMPT = """你是考研小助手，当前优先服务数学问答。
 
 角色定义：
@@ -140,10 +156,11 @@ clarification 追问规则：
 - 语气友好
 
 优先级：
-- 明确数学、考研数学、计算、证明、极限、积分、矩阵、概率、泰勒、余项、步骤追问 -> math
+- 明确数学、考研数学、数学内容术语（如极限、求极限、导数、积分、矩阵、概率、泰勒、余项、洛必达、无穷比无穷、0/0型未定式）-> math
 - 考研政治知识点、时政、近期热点、新闻政策 -> politics
 - 考研英语 -> english
-- 无明确学科关键词时 -> 从近期历史推断；历史也不明确 -> unsupported + clarification
+- 年份、题号、分值、题型、真题外观、“怎么做/解析一下/这道题”等考试外观或问法不能单独作为具体学科证据
+- 无明确学科内容术语时 -> 从近期历史推断；历史也不明确 -> unsupported + clarification
 - 图片文件名只能作为弱线索
 注意：时政不是独立学科，它属于 politics；是否调用时政工具由后续 tool-calling 层决定。
 """
@@ -161,9 +178,12 @@ ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 J
 - 候选父节点范围只限 candidate_turns 中出现的 turn_id；超出范围的 parent 无效，会被系统清除。
 - 如果用户显式写了 turnN / 第N轮 / N轮，且 N 在 candidate_turns 中，优先选 turn N；如果 N 不在 candidate_turns 中，不能输出 N，应选择候选范围内最近的同主题祖先，仍无法定位则判 ambiguous。
 - parent_turn_ids 按时间从远到近排列。
-- 学科判定只能依据明确学科证据：当前输入中的明确学科关键词，或最近历史中稳定一致的学科上下文。
-- 年份、题号、分值、问法、做题意图、步骤口吻、真题外观等只说明用户在提问，不能作为具体学科证据。
-- 如果当前输入缺少明确学科关键词，且最近历史也不足以稳定继承学科，必须判为 unsupported，并给 clarification 追问能够区分学科的信息。
+- 学科判定只能依据明确学科内容证据：当前输入中的学科术语、图片 OCR/视觉内容，或最近历史中稳定一致的学科上下文。
+- “考试外观信息”不能单独作为具体学科证据，包括年份、题号、分值、选择题/填空题/大题、真题、试卷，以及“怎么做/解析一下/这道题/讲一下”等问法。
+- 但“学科内容术语”是强证据。数学术语包括但不限于：极限、求极限、导数、微分、积分、级数、泰勒、余项、洛必达、无穷小、无穷大、无穷比无穷、0/0型、∞/∞型、矩阵、行列式、向量、特征值、二次型、概率、随机变量、分布、期望、方差。出现这些术语时，应判 math。
+- 例：“21年第五题怎么做”只有考试外观信息，没有学科内容术语，应判 unsupported 并追问科目/卷种。
+- 例：“极限的无穷比无穷型能使用洛必达吗”包含明确数学术语，应判 math。
+- 如果当前输入缺少明确学科内容证据，且最近历史也不足以稳定继承学科，必须判为 unsupported，并给 clarification 追问能够区分学科的信息。
 - 不允许因为输入看起来像考研真题、题目解析或求解请求，就默认归到数学或任何具体学科。
 - 当前输入有明确学科关键词时，以当前输入为准，不被历史覆盖。
 - 但如果当前输入是“那/再/继续/如果/换成/你刚才说/回到/比较某轮”等追问形式，且没有明确切换到另一学科，应先定位被追问 parent，再继承该 parent 的学科。
@@ -1126,12 +1146,13 @@ MATH_STRONG_KEYWORDS = (
     "考研数学", "数学一", "数学二", "数学三", "数一", "数二", "数三", "math1", "math2", "math3",
     "初等函数", "基本初等函数", "复合函数", "反函数", "分段函数", "隐函数", "参数方程",
     "函数定义域", "函数值域", "函数奇偶性", "函数周期性", "函数单调性", "单调区间",
-    "数列极限", "函数极限", "极限定义", "ε-N定义", "ε-δ定义", "epsilon-delta", "epsilon-N",
+    "极限", "求极限", "数列极限", "函数极限", "极限定义", "ε-N定义", "ε-δ定义", "epsilon-delta", "epsilon-N",
     "去心邻域", "左极限", "右极限", "单侧极限", "双侧极限", "极限存在", "极限不存在",
     "极限唯一性", "极限保号性", "极限局部有界性", "极限四则运算法则", "左右极限相等",
     "无穷小量", "无穷大量", "等价无穷小", "高阶无穷小", "低阶无穷小", "同阶无穷小",
     "无穷小替换", "等价替换", "无穷小比较", "无穷大比较", "等价无穷大", "o符号", "O符号",
-    "未定式", "洛必达法则", "L'Hospital法则", "泰勒展开求极限", "重要极限", "两个重要极限",
+    "未定式", "未定型", "0/0型", "∞/∞型", "无穷比无穷", "无穷大比无穷大",
+    "洛必达", "洛必达法则", "L'Hospital", "L'Hospital法则", "泰勒展开求极限", "重要极限", "两个重要极限",
     "第一重要极限", "第二重要极限", "华里士公式", "Wallis公式", "斯特林公式", "Stirling公式",
     "夹逼准则", "夹挤准则", "迫敛性", "三明治定理", "Squeeze theorem", "单调有界准则",
     "单调有界收敛准则", "递推数列极限",
@@ -1532,6 +1553,12 @@ def normalize_followup_category(value: Any, fallback: str = "independent") -> st
     return category
 
 
+def normalize_is_followup(category: str) -> bool:
+    if category == "independent":
+        return False
+    return category in {"step_followup", "weak_nonstep_followup", "contextual_nonstep_followup", "ambiguous"}
+
+
 def candidate_turn_ids(candidates: list[dict[str, Any]]) -> set[int]:
     ids: set[int] = set()
     for turn in candidates:
@@ -1648,7 +1675,7 @@ def route_with_llm(
     clarification = data.get("clarification")
     return RouteDecision(
         subject=subject,
-        is_followup=bool(data.get("is_followup")) if not followup_locked else category != "independent",
+        is_followup=normalize_is_followup(category),
         followup_category=category,
         parent_turn_id=parent_id,
         parent_turn_ids=parent_ids,
@@ -1686,9 +1713,8 @@ def classify_subject(
     if route.clarification:
         global _last_clarification
         _last_clarification = route.clarification
-    if not subject_has_routing_evidence(route.subject, user_input, history, [], has_images, image_context):
+    if route.subject == "unsupported" and not route.clarification:
         _last_clarification = build_ambiguous_clarification(user_input, history)
-        return "unsupported"
     return route.subject
 
 
@@ -1908,9 +1934,7 @@ def build_route_decision(
         if route.subject != parent_subject:
             route.reason = f"{route.reason}；追问学科继承父节点 {parent_subject}。".strip("；")
         route.subject = parent_subject
-    has_parent_context = route.is_followup and bool(route.parent_turn_ids)
-    if not has_parent_context and not subject_has_routing_evidence(route.subject, user_input, history, recent_turns, has_images, image_context):
-        route.subject = "unsupported"
+    if route.subject == "unsupported" and not route.clarification:
         route.clarification = build_ambiguous_clarification(user_input, history)
         route.parent_turn_id = None
         route.parent_turn_ids = []
@@ -2351,7 +2375,8 @@ def append_tool_selection_policy(messages: list[dict[str, Any]], subject: str | 
     updated[0]["content"] = (
         f"{updated[0].get('content') or ''}\n\n"
         f"当前第二层上下文模式：{context_mode}。\n"
-        f"{policy}"
+        f"{policy}\n\n"
+        f"{DEFAULT_ANSWER_SHAPE_POLICY}"
     )
     return updated
 
@@ -2371,12 +2396,7 @@ def build_dag_tool_selection_messages(
         "回答或调用工具都只能沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
         "如果选择调用工具，必须在 tool arguments 中显式写出继承后的完整问题和必要上下文。"
         "如果链路不足以确定指代对象，请直接提出澄清问题，不要调用工具。"
-        "如果选择直接回答，认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
-        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
-        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
-        "如果选择直接回答，应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
-        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
-        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
+        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由。"
     )
     content = (
         "DAG 追问链路记忆：\n"
@@ -2392,7 +2412,8 @@ def build_dag_tool_selection_messages(
             "content": (
                 f"{system_prompt}\n\n{format_hint}\n\n"
                 f"当前第二层上下文模式：dag。\n"
-                f"{tool_selection_policy_for_subject(subject)}"
+                f"{tool_selection_policy_for_subject(subject)}\n\n"
+                f"{DEFAULT_ANSWER_SHAPE_POLICY}"
             ),
         },
         {"role": "user", "content": content},
@@ -2431,13 +2452,7 @@ def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], ou
         f"{MAIN_SYSTEM_PROMPT}\n\n{CONTEXT_FOLLOWUP_PROMPT}\n\n"
         "当前轮已经由 runtime 判定为非步骤追问；下面的 DAG 链路记忆替代最近 15 轮平铺历史。"
         "回答时只沿这条链继承对象、参数、条件、阶数和上一轮结论；不要虚构链路外的历史。"
-        "认真解决当前输入的核心问题，但不要主动延伸、不要主动举例、不要主动构造反例、不要展开无关背景。"
-        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由；"
-        "除非用户明确要求详细讲解，否则不要把回答扩展成完整专题。"
-        "回答时应按问题复杂度控制篇幅：短确认用简短结论，概念/条件说明给必要解释，比较或推导题给关键步骤。"
-        "不要为了显得完整而主动扩展成专题；除非用户要求详细展开，否则避免大段背景、长表格和无关例子。"
-        "回答必须完整收尾；若内容变长，优先保留结论、关键理由和必要公式。"
-        "只有当用户明确要求“详细讲”“细说”“展开”“举例”“完整推导”等时，才允许超过默认字数，但仍要优先保证结尾完整，不要停在列表或公式中途。"
+        "如果用户只问是否成立/是否一样/换成某条件如何，先给明确结论，再给必要理由。"
     )
     content = (
         "DAG 追问链路记忆：\n"
@@ -2448,7 +2463,7 @@ def build_dag_followup_messages(user_input: str, dag_context: dict[str, Any], ou
         f"{user_input}"
     )
     return [
-        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}"},
+        {"role": "system", "content": f"{system_prompt}\n\n{format_hint}\n\n{DEFAULT_ANSWER_SHAPE_POLICY}"},
         {"role": "user", "content": content},
     ]
 

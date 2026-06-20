@@ -337,6 +337,9 @@ class AgentRuntimeTest(unittest.TestCase):
             "施密特正交化步骤",
             "最大似然估计量怎么求？",
             "置信区间和假设检验",
+            "极限的无穷比无穷型能使用洛必达吗",
+            "我说求极限时，无穷比无穷型可以使用洛必达吗",
+            "0/0型未定式什么时候能用洛必达",
         ]
         for text in examples:
             with self.subTest(text=text):
@@ -356,11 +359,104 @@ class AgentRuntimeTest(unittest.TestCase):
                 self.assertIsNone(agent_runtime.classify_subject_heuristic(text))
 
     def test_subject_classifier_requires_evidence_for_ambiguous_input(self) -> None:
-        client = FakeClient([fake_response(content='{"subject":"english","reason":"用户问题本身模糊，需要按历史判断"}')])
+        client = FakeClient([fake_response(content='{"subject":"unsupported","reason":"用户问题本身模糊，需要按历史判断","clarification":"请补充题目或学科"}')])
         subject = agent_runtime.classify_subject("这道题怎么做？", [], client=client)
         self.assertEqual(subject, "unsupported")
         self.assertIsNotNone(agent_runtime.pop_last_clarification())
         self.assertEqual(len(client.chat.completions.calls), 1)
+
+    def test_route_corrects_unsupported_when_current_input_has_math_terms(self) -> None:
+        client = FakeClient([
+            fake_response(content='{"subject":"unsupported","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"过度保守","clarification":"请补充学科"}')
+        ])
+        route = agent_runtime.build_route_decision(
+            "极限的无穷比无穷型能使用洛必达吗",
+            [],
+            [],
+            False,
+            client,
+            agent_runtime.RuntimeMetrics("r", "s"),
+        )
+
+        self.assertEqual(route.subject, "math")
+        self.assertEqual(route.followup_category, "independent")
+
+    def test_route_prompt_handles_exam_appearance_only_as_unsupported(self) -> None:
+        client = FakeClient([
+            fake_response(content='{"subject":"unsupported","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"只有年份和题号，缺少科目卷种","clarification":"请问您指的是数学一、数学二还是数学三的题？"}')
+        ])
+        route = agent_runtime.build_route_decision(
+            "21年第五题怎么做",
+            [],
+            [],
+            False,
+            client,
+            agent_runtime.RuntimeMetrics("r", "s"),
+        )
+
+        self.assertEqual(route.subject, "unsupported")
+        self.assertIsNotNone(route.clarification)
+
+    def test_route_accepts_llm_math_when_heuristic_has_no_subject_evidence(self) -> None:
+        examples = [
+            "达朗贝尔判别法怎么用",
+            "傅里叶变换怎么求",
+            "拉普拉斯变换怎么做",
+        ]
+        for text in examples:
+            with self.subTest(text=text):
+                client = FakeClient([
+                    fake_response(content='{"subject":"math","is_followup":false,"followup_category":"independent","parent_turn_id":null,"parent_turn_ids":[],"reason":"LLM 识别为数学内容术语","clarification":null}')
+                ])
+                route = agent_runtime.build_route_decision(
+                    text,
+                    [],
+                    [],
+                    False,
+                    client,
+                    agent_runtime.RuntimeMetrics("r", "s"),
+                )
+
+                self.assertEqual(route.subject, "math")
+
+    def test_independent_route_forces_is_followup_false(self) -> None:
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":true,"followup_category":"independent","parent_turn_id":3,"parent_turn_ids":[3],"reason":"模型误把独立问题标成追问","clarification":null}')
+        ])
+        route = agent_runtime.route_with_llm(
+            "切平面和法线怎么求？",
+            [],
+            [{"turn_id": 3, "user_query": "上一题", "assistant_answer": "上一题答案"}],
+            client,
+        )
+
+        self.assertFalse(route.is_followup)
+        self.assertEqual(route.followup_category, "independent")
+        self.assertIsNone(route.parent_turn_id)
+        self.assertEqual(route.parent_turn_ids, [])
+
+    def test_followup_category_forces_is_followup_true(self) -> None:
+        recent_turns = [
+            {
+                "turn_id": 5,
+                "user_query": "讲一下洛必达法则。",
+                "assistant_answer": "洛必达用于 0/0 或无穷比无穷型。",
+                "route": {"subject": "math"},
+            }
+        ]
+        client = FakeClient([
+            fake_response(content='{"subject":"math","is_followup":false,"followup_category":"contextual_nonstep_followup","parent_turn_id":5,"parent_turn_ids":[5],"reason":"模型误把追问标成 false","clarification":null}')
+        ])
+        route = agent_runtime.route_with_llm(
+            "那刚才那个无穷比无穷能用吗？",
+            [],
+            recent_turns,
+            client,
+        )
+
+        self.assertTrue(route.is_followup)
+        self.assertEqual(route.followup_category, "contextual_nonstep_followup")
+        self.assertEqual(route.parent_turn_ids, [5])
 
     def test_route_payload_includes_image_context_only_for_image_input(self) -> None:
         image_context = {
@@ -554,6 +650,11 @@ class AgentRuntimeTest(unittest.TestCase):
     def test_route_classifier_prompt_documents_parent_priority_rules(self) -> None:
         prompt = agent_runtime.ROUTE_CLASSIFIER_PROMPT
         self.assertIn("父节点判定优先级", prompt)
+        self.assertIn("考试外观信息", prompt)
+        self.assertIn("不能单独作为具体学科证据", prompt)
+        self.assertIn("学科内容术语", prompt)
+        self.assertIn("极限的无穷比无穷型能使用洛必达吗", prompt)
+        self.assertIn("21年第五题怎么做", prompt)
         self.assertIn("纯粹新话题", prompt)
         self.assertIn("复合输入追问优先", prompt)
         self.assertIn("解释某概念/方法", prompt)
@@ -573,11 +674,12 @@ class AgentRuntimeTest(unittest.TestCase):
             "ui",
         )
         system_prompt = messages[0]["content"]
-        self.assertIn("按问题复杂度控制篇幅", system_prompt)
-        self.assertIn("短确认用简短结论", system_prompt)
-        self.assertIn("比较或推导题给关键步骤", system_prompt)
+        self.assertIn("默认回答形态", system_prompt)
+        self.assertIn("最小充分回答", system_prompt)
+        self.assertIn("默认一般不超过 8 句话", system_prompt)
         self.assertIn("必须完整收尾", system_prompt)
-        self.assertIn("优先保留结论、关键理由和必要公式", system_prompt)
+        self.assertIn("优先保留结论、关键理由、必要步骤和必要公式", system_prompt)
+        self.assertIn("只沿这条链继承对象", system_prompt)
         self.assertGreater(agent_runtime.DAG_FOLLOWUP_MAX_TOKENS, agent_runtime.DAG_FOLLOWUP_TARGET_CHARS)
         tool_selection_messages = agent_runtime.build_dag_tool_selection_messages(
             "那这个条件下还成立吗？",
@@ -589,11 +691,13 @@ class AgentRuntimeTest(unittest.TestCase):
             "math",
         )
         tool_selection_prompt = tool_selection_messages[0]["content"]
-        self.assertIn("按问题复杂度控制篇幅", tool_selection_prompt)
-        self.assertIn("短确认用简短结论", tool_selection_prompt)
-        self.assertIn("比较或推导题给关键步骤", tool_selection_prompt)
-        self.assertIn("不要主动延伸", tool_selection_prompt)
-        self.assertIn("不要把回答扩展成完整专题", tool_selection_prompt)
+        self.assertIn("默认回答形态", tool_selection_prompt)
+        self.assertIn("最小充分回答", tool_selection_prompt)
+        self.assertIn("默认一般不超过 8 句话", tool_selection_prompt)
+        self.assertIn("是什么、成立条件/适用范围、核心结论、直观理解", tool_selection_prompt)
+        self.assertIn("题目求解、真题解析、分析题作答、代码算法题", tool_selection_prompt)
+        self.assertIn("不确定、依赖实时信息或上下文不足", tool_selection_prompt)
+        self.assertIn("回答或调用工具都只能沿这条链继承对象", tool_selection_prompt)
 
     def test_image_context_flows_into_runtime_messages(self) -> None:
         image_context = {
@@ -970,6 +1074,8 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("先调用 get_current_affairs", joined)
         self.assertIn("再调用 search_politics_knowledge", joined)
         self.assertIn("材料 -> 原理 -> 考研答题表述", joined)
+        self.assertIn("默认回答形态", joined)
+        self.assertIn("最小充分回答", joined)
 
     def test_context_followup_uses_single_unified_route_before_answer(self) -> None:
         session_id = "unit2_unified_route"

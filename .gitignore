@@ -75,5 +75,6 @@ data/runtime/dag_followup_project_status.md
 
 # Runtime markdown records
 data/runtime/*.md
+!data/runtime/tool_selection_prompt_structure.md
 data/runtime/*.json
 data/runtime/*.jsonl
