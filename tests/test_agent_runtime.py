@@ -11,14 +11,13 @@ from typing import Any
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "scripts"
-if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-import agent_runtime
-import kaoyan_agent
-import politics_rag
-import usage_tracking
+import qa.agent_runtime as agent_runtime
+import qa.kaoyan_agent as kaoyan_agent
+import qa.politics_rag as politics_rag
+import qa.usage_tracking as usage_tracking
 
 
 TEST_SESSION_PREFIXES = ("unit", "real_api_smoke")
@@ -116,8 +115,8 @@ class AgentRuntimeTest(unittest.TestCase):
         with patch.object(
             sys,
             "argv",
-            ["agent_runtime.py", "测试", "问题", "--session", "unit_cli", "--format", "terminal", "--no-memory"],
-        ), patch("agent_runtime.run_standard_message_loop", return_value=result) as run_loop, patch("builtins.print") as mocked_print:
+            ["qa.agent_runtime.py", "测试", "问题", "--session", "unit_cli", "--format", "terminal", "--no-memory"],
+        ), patch("qa.agent_runtime.run_standard_message_loop", return_value=result) as run_loop, patch("builtins.print") as mocked_print:
             agent_runtime.main()
 
         run_loop.assert_called_once()
@@ -138,7 +137,7 @@ class AgentRuntimeTest(unittest.TestCase):
 
         stdout = FakeStream()
         stderr = FakeStream()
-        with patch("agent_runtime.sys.stdout", stdout), patch("agent_runtime.sys.stderr", stderr):
+        with patch("qa.agent_runtime.sys.stdout", stdout), patch("qa.agent_runtime.sys.stderr", stderr):
             agent_runtime.configure_cli_output_encoding()
 
         self.assertEqual(stdout.calls[0]["encoding"], "utf-8")
@@ -301,7 +300,7 @@ class AgentRuntimeTest(unittest.TestCase):
                 "MATH_API_KEY": "test-key",
                 "MATH_BASE_URL": "https://example.invalid/v1",
             },
-        ), patch("kaoyan_agent.make_math_client", return_value=client):
+        ), patch("qa.kaoyan_agent.make_math_client", return_value=client):
             answer = kaoyan_agent.chat_math_text(
                 "qwen-math-plus",
                 "system",
@@ -718,8 +717,8 @@ class AgentRuntimeTest(unittest.TestCase):
             func=lambda args: "direct answer",
             return_mode="direct",
         )
-        with patch("agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
-            "agent_runtime.select_tools",
+        with patch("qa.agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
+            "qa.agent_runtime.select_tools",
             return_value={"direct_math_tool": direct_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -760,8 +759,8 @@ class AgentRuntimeTest(unittest.TestCase):
             func=lambda args: "direct answer",
             return_mode="direct",
         )
-        with patch("agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
-            "agent_runtime.select_tools",
+        with patch("qa.agent_runtime.legacy_agent.recognize_images_for_routing", return_value=image_context), patch(
+            "qa.agent_runtime.select_tools",
             return_value={"direct_math_tool": direct_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -931,7 +930,7 @@ class AgentRuntimeTest(unittest.TestCase):
             }
 
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.legacy_agent.explain_math_followup_with_qwenmath",
+            "qa.agent_runtime.legacy_agent.explain_math_followup_with_qwenmath",
             side_effect=fake_followup,
         ):
             tools = agent_runtime.build_math_tools(followup_context_resolver=resolver)
@@ -960,7 +959,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="六阶近似加入 x^6/720。"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="math",
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1027,7 +1026,7 @@ class AgentRuntimeTest(unittest.TestCase):
             }]),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.select_tools",
+            "qa.agent_runtime.select_tools",
             return_value={"solve_general_math": solve_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1094,7 +1093,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="add the x^6/720 term"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             side_effect=AssertionError("subject classification should be part of unified route"),
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1186,7 +1185,7 @@ class AgentRuntimeTest(unittest.TestCase):
             return_mode="direct",
         )
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.select_tools",
+            "qa.agent_runtime.select_tools",
             return_value={"direct_math_tool": direct_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1224,10 +1223,10 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(tool_calls=[{"name": "direct_math_tool", "arguments": {}}]),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="math",
         ), patch(
-            "agent_runtime.select_tools",
+            "qa.agent_runtime.select_tools",
             return_value={
                 "answer_math_followup": agent_runtime.ToolSpec(
                     name="answer_math_followup",
@@ -1264,7 +1263,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="第二个函数的余项应沿 cosh x 的偶次展开判断。"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="math",
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1296,7 +1295,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="积分第一中值定理偏积分估计，泰勒中值定理偏局部近似。"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="math",
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1333,7 +1332,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="你这里的“这个”是指罗尔定理，还是积分第一中值定理？"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="math",
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1377,10 +1376,10 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(content="politics followup answer"),
         ])
         with patch.dict(os.environ, {"ENABLE_CONTEXT_FOLLOWUP_TOOLS": "1"}), patch(
-            "agent_runtime.classify_subject",
+            "qa.agent_runtime.classify_subject",
             return_value="politics",
         ), patch(
-            "agent_runtime.select_tools",
+            "qa.agent_runtime.select_tools",
             return_value={"search_politics_knowledge": politics_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1452,7 +1451,7 @@ class AgentRuntimeTest(unittest.TestCase):
             solve_math_exam=lambda args: calls["solve"].append(args) or "最终答案：A",
             judge_math_answer=lambda args: {"match": True},
         )
-        with patch("agent_runtime.legacy_agent.get_toolkit", return_value=fake_toolkit):
+        with patch("qa.agent_runtime.legacy_agent.get_toolkit", return_value=fake_toolkit):
             tools = agent_runtime.build_math_tools()
             answer = tools["solve_exam_question"].func({
                 "exam_type": "math1",
@@ -1478,7 +1477,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(tool_calls=[{"name": "dummy_math_tool", "arguments": {"x": 2}}]),
             fake_response(content="最终答案：3"),
         ])
-        with patch("agent_runtime.classify_subject", return_value="math"), patch("agent_runtime.select_tools", return_value={"dummy_math_tool": dummy_tool}):
+        with patch("qa.agent_runtime.classify_subject", return_value="math"), patch("qa.agent_runtime.select_tools", return_value={"dummy_math_tool": dummy_tool}):
             result = agent_runtime.run_standard_message_loop(
                 "算一下",
                 session_id="unit2_loop",
@@ -1505,7 +1504,7 @@ class AgentRuntimeTest(unittest.TestCase):
         client = FakeClient([
             fake_response(tool_calls=[{"name": "direct_math_tool", "arguments": {"x": 2}}]),
         ])
-        with patch("agent_runtime.classify_subject", return_value="math"), patch("agent_runtime.select_tools", return_value={"direct_math_tool": direct_tool}):
+        with patch("qa.agent_runtime.classify_subject", return_value="math"), patch("qa.agent_runtime.select_tools", return_value={"direct_math_tool": direct_tool}):
             result = agent_runtime.run_standard_message_loop(
                 "算一下",
                 session_id="unit2_direct",
@@ -1536,8 +1535,8 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(tool_calls=[{"name": "direct_math_tool", "arguments": {}}]),
             fake_response(content="总控总结后的答案"),
         ])
-        with patch("agent_runtime.classify_subject", return_value="math"), patch(
-            "agent_runtime.select_tools",
+        with patch("qa.agent_runtime.classify_subject", return_value="math"), patch(
+            "qa.agent_runtime.select_tools",
             return_value={"evidence_tool": evidence_tool, "direct_math_tool": direct_tool},
         ):
             result = agent_runtime.run_standard_message_loop(
@@ -1561,7 +1560,7 @@ class AgentRuntimeTest(unittest.TestCase):
             fake_response(tool_calls=[{"name": "broken_tool", "arguments": {}}]),
             fake_response(content="工具失败，需要澄清。"),
         ])
-        with patch("agent_runtime.classify_subject", return_value="math"), patch("agent_runtime.select_tools", return_value={"broken_tool": broken_tool}):
+        with patch("qa.agent_runtime.classify_subject", return_value="math"), patch("qa.agent_runtime.select_tools", return_value={"broken_tool": broken_tool}):
             result = agent_runtime.run_standard_message_loop(
                 "测试异常",
                 session_id="unit2_error",
@@ -1603,7 +1602,7 @@ class AgentRuntimeTest(unittest.TestCase):
             }]),
             fake_response(content="第 2 步来自前面的变形。"),
         ])
-        with patch("agent_runtime.select_tools", return_value={"explain_math_step": dummy_tool}):
+        with patch("qa.agent_runtime.select_tools", return_value={"explain_math_step": dummy_tool}):
             result = agent_runtime.run_standard_message_loop(
                 "第 2 步怎么来的？",
                 session_id=session_id,

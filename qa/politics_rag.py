@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Iterable
 
 from dotenv import load_dotenv
-from usage_tracking import notify_usage
+from .usage_tracking import notify_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_POLITICS_DIR = ROOT / "data" / "raw" / "politics"
@@ -26,7 +26,7 @@ def load_settings() -> dict[str, str | int | None]:
         "base_url": os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
         "model": os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
         "dimensions": int(os.getenv("EMBEDDING_DIMENSIONS", "1024")),
-        "chat_model": os.getenv("QWEN_CHAT_MODEL", "qwen-max"),
+        "chat_model": os.getenv("QWEN_CHAT_MODEL", "qwen3.6-flash-2026-04-16"),
     }
 
 
@@ -261,7 +261,7 @@ def answer_with_qwen(question: str, contexts: list[dict]) -> str:
     settings = load_settings()
     api_key = settings["api_key"]
     if not api_key:
-        raise SystemExit("Please set DASHSCOPE_API_KEY in .env before using qwen-max.")
+        raise SystemExit("Please set DASHSCOPE_API_KEY in .env before using QWEN_CHAT_MODEL.")
 
     from openai import OpenAI
 

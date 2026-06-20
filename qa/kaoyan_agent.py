@@ -15,8 +15,8 @@ from typing import Any
 from urllib.parse import unquote
 
 from dotenv import load_dotenv
-from kaoyan_tools import create_kaoyan_toolkit
-from usage_tracking import notify_usage
+from .kaoyan_tools import create_kaoyan_toolkit
+from .usage_tracking import notify_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 MATH_EXAM_ROOT = ROOT / "data" / "raw" / "math" / "exam_papers"
@@ -151,7 +151,7 @@ def get_toolkit():
 
 def load_settings() -> AgentSettings:
     load_dotenv(ROOT / ".env", encoding="utf-8-sig")
-    chat_model = os.getenv("QWEN_CHAT_MODEL", "qwen-max")
+    chat_model = os.getenv("QWEN_CHAT_MODEL", "qwen3.6-flash-2026-04-16")
     return AgentSettings(
         api_key=os.getenv("DASHSCOPE_API_KEY"),
         base_url=os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
@@ -1183,7 +1183,7 @@ def answer_math_query(
     output_format: str = "ui",
     debug: bool = False,
 ) -> str:
-    from agent_runtime import run_standard_message_loop
+    from .agent_runtime import run_standard_message_loop
 
     return run_standard_message_loop(
         user_query,
@@ -1201,7 +1201,7 @@ def answer_math_query_result(
     session_id: str | None = None,
     session: dict[str, Any] | None = None,
 ) -> AgentResult:
-    from agent_runtime import run_standard_message_loop
+    from .agent_runtime import run_standard_message_loop
 
     result = run_standard_message_loop(
         user_query,
@@ -1225,7 +1225,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    from agent_runtime import main as runtime_main
+    from .agent_runtime import main as runtime_main
 
     runtime_main()
 

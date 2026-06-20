@@ -14,8 +14,8 @@ from typing import Any, Callable, Iterable
 
 from dotenv import load_dotenv
 
-import kaoyan_agent as legacy_agent
-from usage_tracking import reset_usage_callback, set_usage_callback
+from . import kaoyan_agent as legacy_agent
+from .usage_tracking import reset_usage_callback, set_usage_callback
 
 ROOT = Path(__file__).resolve().parents[1]
 SESSION_MD_DIR = ROOT / "data" / "runtime" / "sessions_md"
@@ -1126,7 +1126,7 @@ def build_current_affairs_tools() -> dict[str, ToolSpec]:
 def build_politics_tools() -> dict[str, ToolSpec]:
     """政治知识点 RAG 工具。"""
     try:
-        from politics_rag import retrieve_politics, answer_with_qwen
+        from .politics_rag import retrieve_politics, answer_with_qwen
     except Exception:
         return {}
     return {

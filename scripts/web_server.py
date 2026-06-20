@@ -15,17 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
 UPLOAD_DIR = ROOT / "data" / "runtime" / "uploads"
 
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from kaoyan_agent import (  # noqa: E402
+from qa.kaoyan_agent import (  # noqa: E402
     load_session,
     safe_session_id,
     save_session,
     session_vector_path,
     session_path,
 )
-from agent_runtime import iter_text_chunks, md_session_path, run_standard_message_loop  # noqa: E402
+from qa.agent_runtime import iter_text_chunks, md_session_path, run_standard_message_loop  # noqa: E402
 
 app = FastAPI(title="Kaoyan Assistant")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
