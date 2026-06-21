@@ -26,9 +26,11 @@ from qa.kaoyan_agent import (  # noqa: E402
     session_path,
 )
 from qa.agent_runtime import iter_text_chunks, md_session_path, run_standard_message_loop  # noqa: E402
+from materials.api import router as materials_router  # noqa: E402
 
 app = FastAPI(title="Kaoyan Assistant")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+app.include_router(materials_router)
 
 
 @app.get("/")

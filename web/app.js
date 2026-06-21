@@ -10,6 +10,14 @@ const md = window.markdownit({
   },
 });
 
+const pages = {
+  chat: document.querySelector("#chatPage"),
+  materials: document.querySelector("#materialsPage"),
+  plan: document.querySelector("#planPage"),
+  school: document.querySelector("#schoolPage"),
+};
+
+const navButtons = [...document.querySelectorAll(".nav-button")];
 const form = document.querySelector("#chatForm");
 const input = document.querySelector("#messageInput");
 const imageInput = document.querySelector("#imageInput");
@@ -22,61 +30,42 @@ const newSessionButton = document.querySelector("#newSessionButton");
 const deleteSessionButton = document.querySelector("#deleteSessionButton");
 const debugInput = document.querySelector("#debugInput");
 
+const materialsUserIdInput = document.querySelector("#materialsUserId");
+const materialsUploadForm = document.querySelector("#materialsUploadForm");
+const materialsFileInput = document.querySelector("#materialsFileInput");
+const materialsSubject = document.querySelector("#materialsSubject");
+const materialsType = document.querySelector("#materialsType");
+const materialsStatus = document.querySelector("#materialsStatus");
+const materialsError = document.querySelector("#materialsError");
+const materialsRefreshButton = document.querySelector("#materialsRefreshButton");
+const materialsList = document.querySelector("#materialsList");
+const materialsSearchForm = document.querySelector("#materialsSearchForm");
+const materialsSearchInput = document.querySelector("#materialsSearchInput");
+const materialsSearchResults = document.querySelector("#materialsSearchResults");
+
 const welcomeMessage = "试试：`2021 年数学一第 9 题怎么做`\n\n也可以上传数学题图片后输入：`这道题怎么做`";
+const deleteConfirmMessage = "确定要删除这份资料吗？此操作会删除该资料的原文件副本、解析结果、chunks 和索引。";
 
 let selectedFiles = [];
 let selectedImageUrls = [];
+let currentMaterials = [];
+let currentSearchResults = [];
 
-function addMessage(role, content, attachments = []) {
-  const article = document.createElement("article");
-  article.className = `message ${role}`;
-
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.dataset.rawContent = content || "";
-  bubble.innerHTML = role === "assistant"
-    ? md.render(normalizeMathMarkdown(content || ""))
-    : escapeHtml(content || "").replace(/\n/g, "<br>");
-
-  if (attachments.length > 0) {
-    const attachmentList = document.createElement("div");
-    attachmentList.className = "message-attachments";
-
-    for (const attachment of attachments) {
-      const item = document.createElement("figure");
-      item.className = "message-attachment";
-
-      const img = document.createElement("img");
-      img.src = attachment.url;
-      img.alt = attachment.name;
-
-      const caption = document.createElement("figcaption");
-      caption.textContent = attachment.name;
-
-      item.appendChild(img);
-      item.appendChild(caption);
-      attachmentList.appendChild(item);
-    }
-
-    bubble.appendChild(attachmentList);
-  }
-
-  article.appendChild(bubble);
-  messages.appendChild(article);
-  messages.scrollTop = messages.scrollHeight;
-  return bubble;
-}
-
-function renderMessages(items) {
-  messages.innerHTML = "";
-  if (!items || items.length === 0) {
-    addMessage("assistant", welcomeMessage);
-    return;
-  }
-  for (const item of items) {
-    addMessage(item.role, item.content || "");
+function setActivePage(pageId) {
+  navButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.page === pageId);
+  });
+  Object.entries(pages).forEach(([key, element]) => {
+    element.classList.toggle("active", key === pageId);
+  });
+  if (pageId === "materials") {
+    void refreshMaterialsList();
   }
 }
+
+navButtons.forEach((button) => {
+  button.addEventListener("click", () => setActivePage(button.dataset.page));
+});
 
 function escapeHtml(value) {
   return value.replace(/[&<>"']/g, (char) => ({
@@ -98,10 +87,55 @@ function normalizeMathMarkdown(value) {
     });
 }
 
-function clearSelectedImageUrls() {
-  for (const url of selectedImageUrls) {
-    URL.revokeObjectURL(url);
+function addMessage(role, content, attachments = []) {
+  const article = document.createElement("article");
+  article.className = `message ${role}`;
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.dataset.rawContent = content || "";
+  bubble.innerHTML = role === "assistant"
+    ? md.render(normalizeMathMarkdown(content || ""))
+    : escapeHtml(content || "").replace(/\n/g, "<br>");
+
+  if (attachments.length > 0) {
+    const attachmentList = document.createElement("div");
+    attachmentList.className = "message-attachments";
+    attachments.forEach((attachment) => {
+      const item = document.createElement("figure");
+      item.className = "message-attachment";
+
+      const img = document.createElement("img");
+      img.src = attachment.url;
+      img.alt = attachment.name;
+
+      const caption = document.createElement("figcaption");
+      caption.textContent = attachment.name;
+
+      item.appendChild(img);
+      item.appendChild(caption);
+      attachmentList.appendChild(item);
+    });
+    bubble.appendChild(attachmentList);
   }
+
+  article.appendChild(bubble);
+  messages.appendChild(article);
+  messages.scrollTop = messages.scrollHeight;
+  return bubble;
+}
+
+function renderMessages(items) {
+  messages.innerHTML = "";
+  if (!items || items.length === 0) {
+    addMessage("assistant", welcomeMessage);
+    return;
+  }
+  items.forEach((item) => addMessage(item.role, item.content || ""));
+}
+
+function clearSelectedImageUrls() {
+  selectedImageUrls.forEach((url) => URL.revokeObjectURL(url));
   selectedImageUrls = [];
 }
 
@@ -110,11 +144,28 @@ function getSelectedAttachments(files) {
   return files.map((file) => {
     const url = URL.createObjectURL(file);
     selectedImageUrls.push(url);
-    return {
-      name: file.name,
-      url,
-    };
+    return { name: file.name, url };
   });
+}
+
+function syncImageInputFiles() {
+  if (selectedFiles.length === 0) {
+    imageInput.value = "";
+    return;
+  }
+  try {
+    const transfer = new DataTransfer();
+    selectedFiles.forEach((file) => transfer.items.add(file));
+    imageInput.files = transfer.files;
+  } catch (error) {
+    // Ignore browsers that disallow programmatic FileList assignment.
+  }
+}
+
+function removeSelectedFile(index) {
+  selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
+  syncImageInputFiles();
+  renderImagePreview();
 }
 
 function renderImagePreview() {
@@ -145,8 +196,6 @@ function renderImagePreview() {
     removeButton.type = "button";
     removeButton.className = "image-preview-remove";
     removeButton.textContent = "×";
-    removeButton.setAttribute("aria-label", `移除 ${file.name}`);
-    removeButton.title = "移除";
     removeButton.addEventListener("click", () => removeSelectedFile(index));
 
     item.appendChild(name);
@@ -157,46 +206,18 @@ function renderImagePreview() {
   imagePreview.appendChild(list);
 }
 
-function syncImageInputFiles() {
-  if (selectedFiles.length === 0) {
-    imageInput.value = "";
-    return;
-  }
-  try {
-    const transfer = new DataTransfer();
-    for (const file of selectedFiles) {
-      transfer.items.add(file);
-    }
-    imageInput.files = transfer.files;
-  } catch (error) {
-    // Some browsers do not allow programmatic FileList updates; submission uses selectedFiles.
-  }
-}
-
-function removeSelectedFile(index) {
-  selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
-  syncImageInputFiles();
-  renderImagePreview();
-}
-
 function activeSessionId() {
   return sessionInput.value.trim() || "default";
 }
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : {};
   if (!response.ok) {
-    throw new Error(await response.text());
+    throw new Error(payload.detail || text || "Request failed");
   }
-  return response.json();
-}
-
-function appendAssistantChunk(bubble, chunk) {
-  const next = (bubble.dataset.rawContent || "") + chunk;
-  bubble.dataset.rawContent = next;
-  bubble.dataset.progressText = "";
-  renderAssistantBubble(bubble);
-  messages.scrollTop = messages.scrollHeight;
+  return payload;
 }
 
 function renderAssistantBubble(bubble) {
@@ -209,25 +230,24 @@ function renderAssistantBubble(bubble) {
   bubble.innerHTML = html || '<div class="progress-line">处理中...</div>';
 }
 
+function appendAssistantChunk(bubble, chunk) {
+  bubble.dataset.rawContent = (bubble.dataset.rawContent || "") + chunk;
+  bubble.dataset.progressText = "";
+  renderAssistantBubble(bubble);
+  messages.scrollTop = messages.scrollHeight;
+}
+
 function stepLabel(name) {
   const labels = {
     subject_classifier: "判断问题类型",
     llm_tool_selection: "选择工具",
-    llm_final: "整理最终回复",
+    llm_final: "整理最终回答",
     "tool:solve_exam_question": "运行真题解题流程",
     "tool:solve_general_math": "解答普通数学题",
     "tool:ocr_math_image": "识别上传图片",
     "tool:explain_math_step": "解释局部步骤",
-    "tool:show_math_exam_question": "读取本地题面",
-    "tool:show_math_exam_answer": "读取本地答案",
-    "skill:solve_exam_question:search_math_exam": "查找本地真题",
-    "skill:solve_exam_question:collect_images": "收集题库图片",
-    "skill:solve_exam_question:ocr_math_image": "识别题图",
-    "skill:solve_exam_question:solve_math_exam": "数学模型解题",
-    "skill:solve_exam_question:judge_math_answer": "核对标准答案",
-    "skill:solve_exam_question:fallback_explanation": "按标准答案纠偏",
   };
-  return labels[name] || name || "处理步骤";
+  return labels[name] || name || "处理中";
 }
 
 function formatProgress(payload) {
@@ -237,13 +257,7 @@ function formatProgress(payload) {
   const seconds = typeof step.latency_ms === "number"
     ? `，用时 ${(step.latency_ms / 1000).toFixed(2)} 秒`
     : "";
-  const extra = [];
-  if (typeof step.total_tokens === "number") extra.push(`${step.total_tokens} tokens`);
-  if (typeof step.ocr_images === "number") extra.push(`${step.ocr_images} 张图`);
-  if (typeof step.image_count === "number") extra.push(`${step.image_count} 张图`);
-  if (typeof step.attempt === "number") extra.push(`第 ${step.attempt} 次`);
-  const suffix = extra.length ? `（${extra.join("，")}）` : "";
-  return `${stepLabel(name)}完成${seconds}${suffix}`;
+  return `${stepLabel(name)}完成${seconds}`;
 }
 
 function updateAssistantProgress(bubble, payload) {
@@ -256,12 +270,10 @@ function updateAssistantProgress(bubble, payload) {
 function renderSessionList(sessions) {
   sessionList.innerHTML = "";
   const current = activeSessionId();
-
-  for (const session of sessions) {
+  sessions.forEach((session) => {
     const item = document.createElement("button");
     item.type = "button";
     item.className = `session-item${session.id === current ? " active" : ""}`;
-    item.dataset.sessionId = session.id;
 
     const title = document.createElement("span");
     title.className = "session-title";
@@ -275,7 +287,7 @@ function renderSessionList(sessions) {
     item.appendChild(meta);
     item.addEventListener("click", () => switchSession(session.id));
     sessionList.appendChild(item);
-  }
+  });
 }
 
 async function loadSessions() {
@@ -316,6 +328,151 @@ async function deleteCurrentSession() {
   await fetchJson(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
   await loadSessions();
   await switchSession("default");
+}
+
+function currentMaterialsUserId() {
+  return (materialsUserIdInput.value || "").trim() || "tester";
+}
+
+function setBanner(element, message) {
+  element.hidden = !message;
+  element.textContent = message || "";
+}
+
+function clearMaterialsFeedback() {
+  setBanner(materialsStatus, "");
+  setBanner(materialsError, "");
+}
+
+function materialMetaLine(item) {
+  return [
+    `subject: ${item.subject || "unknown"}`,
+    `type: ${item.material_type || "unknown"}`,
+    `status: ${item.parse_status || "unknown"}`,
+    `chunks: ${item.chunk_count ?? 0}`,
+  ].join(" · ");
+}
+
+function renderMaterialsList(items) {
+  currentMaterials = items;
+  materialsList.innerHTML = "";
+  if (!items || items.length === 0) {
+    materialsList.className = "materials-list empty-state";
+    materialsList.textContent = "还没有资料，先上传一份 `.md` 或 `.txt` 吧。";
+    return;
+  }
+
+  materialsList.className = "materials-list";
+  items.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "material-card";
+
+    const header = document.createElement("div");
+    header.className = "material-card-header";
+
+    const titleBlock = document.createElement("div");
+    const title = document.createElement("h4");
+    title.textContent = item.original_filename || item.material_id;
+    const meta = document.createElement("p");
+    meta.className = "material-meta";
+    meta.textContent = materialMetaLine(item);
+    const ids = document.createElement("p");
+    ids.className = "material-path";
+    ids.textContent = `material_id: ${item.material_id}`;
+    titleBlock.appendChild(title);
+    titleBlock.appendChild(meta);
+    titleBlock.appendChild(ids);
+
+    const actions = document.createElement("div");
+    actions.className = "material-actions";
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "danger-button inline-danger";
+    deleteButton.textContent = "删除";
+    deleteButton.addEventListener("click", () => void deleteMaterial(item.material_id));
+    actions.appendChild(deleteButton);
+
+    header.appendChild(titleBlock);
+    header.appendChild(actions);
+    card.appendChild(header);
+
+    const footer = document.createElement("p");
+    footer.className = "material-footer";
+    footer.textContent = `created_at: ${item.created_at || "-"} · updated_at: ${item.updated_at || "-"}${item.error ? ` · error: ${item.error}` : ""}`;
+    card.appendChild(footer);
+    materialsList.appendChild(card);
+  });
+}
+
+function renderSearchResults(results) {
+  currentSearchResults = results;
+  materialsSearchResults.innerHTML = "";
+  if (!results || results.length === 0) {
+    materialsSearchResults.className = "search-results empty-state";
+    materialsSearchResults.textContent = "当前用户资料库中没有找到相关内容";
+    return;
+  }
+
+  materialsSearchResults.className = "search-results";
+  results.forEach((result) => {
+    const card = document.createElement("article");
+    card.className = "search-card";
+
+    const title = document.createElement("h4");
+    title.textContent = `${result.original_filename || result.material_id} · score ${Number(result.score).toFixed(4)}`;
+    const meta = document.createElement("p");
+    meta.className = "material-meta";
+    meta.textContent = `material_id: ${result.material_id} · chunk_id: ${result.chunk_id}`;
+    const preview = document.createElement("pre");
+    preview.className = "search-preview";
+    preview.textContent = result.text_preview || result.text || "";
+    const assets = document.createElement("p");
+    assets.className = "material-path";
+    assets.textContent = `asset_paths: ${Array.isArray(result.asset_paths) && result.asset_paths.length ? result.asset_paths.join(", ") : "(none)"}`;
+
+    card.appendChild(title);
+    card.appendChild(meta);
+    card.appendChild(preview);
+    card.appendChild(assets);
+    materialsSearchResults.appendChild(card);
+  });
+}
+
+async function refreshMaterialsList() {
+  clearMaterialsFeedback();
+  try {
+    const userId = currentMaterialsUserId();
+    const data = await fetchJson(`/api/materials/list?user_id=${encodeURIComponent(userId)}`);
+    renderMaterialsList(data.items || []);
+  } catch (error) {
+    renderMaterialsList([]);
+    setBanner(materialsError, `资料列表加载失败：${error.message}`);
+  }
+}
+
+async function deleteMaterial(materialId) {
+  if (!window.confirm(deleteConfirmMessage)) {
+    return;
+  }
+  clearMaterialsFeedback();
+  try {
+    const userId = currentMaterialsUserId();
+    await fetchJson(`/api/materials/${encodeURIComponent(materialId)}?user_id=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+    setBanner(materialsStatus, "资料已删除");
+    await refreshMaterialsList();
+    currentSearchResults = currentSearchResults.filter((result) => result.material_id !== materialId);
+    if (currentSearchResults.length === 0) {
+      materialsSearchInput.value = "";
+      renderSearchResults([]);
+      materialsSearchResults.textContent = "输入关键词后开始搜索。";
+    } else {
+      renderSearchResults(currentSearchResults);
+    }
+  } catch (error) {
+    setBanner(materialsError, `删除失败：${error.message}`);
+  }
 }
 
 imageInput.addEventListener("change", () => {
@@ -368,9 +525,7 @@ form.addEventListener("submit", async (event) => {
   formData.append("session", activeSessionId());
   formData.append("output_format", "ui");
   formData.append("debug", debugInput.checked ? "true" : "false");
-  for (const file of files) {
-    formData.append("images", file);
-  }
+  files.forEach((file) => formData.append("images", file));
 
   try {
     const assistantBubble = addMessage("assistant", "");
@@ -385,26 +540,27 @@ form.addEventListener("submit", async (event) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
+
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const events = buffer.split("\n\n");
       buffer = events.pop() || "";
-      for (const event of events) {
-        const lines = event.split("\n");
-        const eventLine = lines.find((item) => item.startsWith("event: "));
-        const dataLine = lines.find((item) => item.startsWith("data: "));
-        if (!dataLine) continue;
+      events.forEach((entry) => {
+        const lines = entry.split("\n");
+        const eventLine = lines.find((line) => line.startsWith("event: "));
+        const dataLine = lines.find((line) => line.startsWith("data: "));
+        if (!dataLine) return;
         const eventName = eventLine ? eventLine.slice(7).trim() : "message";
         const payload = dataLine.slice(6);
-        if (payload === "{}") continue;
+        if (payload === "{}") return;
         if (eventName === "progress") {
           updateAssistantProgress(assistantBubble, JSON.parse(payload));
         } else {
           appendAssistantChunk(assistantBubble, JSON.parse(payload));
         }
-      }
+      });
     }
 
     imageInput.value = "";
@@ -419,7 +575,68 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+materialsUploadForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearMaterialsFeedback();
+
+  const file = materialsFileInput.files[0];
+  if (!file) {
+    setBanner(materialsError, "请选择要上传的 .md 或 .txt 文件");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("user_id", currentMaterialsUserId());
+  formData.append("subject", materialsSubject.value);
+  formData.append("material_type", materialsType.value);
+
+  try {
+    const data = await fetchJson("/api/materials/upload", {
+      method: "POST",
+      body: formData,
+    });
+    setBanner(materialsStatus, `资料已入库，生成 ${data.chunk_count} 个 chunks`);
+    materialsUploadForm.reset();
+    materialsUserIdInput.value = currentMaterialsUserId();
+    materialsSubject.value = "unknown";
+    materialsType.value = "unknown";
+    await refreshMaterialsList();
+  } catch (error) {
+    setBanner(materialsError, `上传失败：${error.message}`);
+  }
+});
+
+materialsRefreshButton.addEventListener("click", () => {
+  void refreshMaterialsList();
+});
+
+materialsSearchForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  clearMaterialsFeedback();
+  const query = materialsSearchInput.value.trim();
+  if (!query) {
+    setBanner(materialsError, "请输入搜索关键词");
+    return;
+  }
+
+  try {
+    const userId = currentMaterialsUserId();
+    const data = await fetchJson(`/api/materials/search?user_id=${encodeURIComponent(userId)}&query=${encodeURIComponent(query)}`);
+    renderSearchResults(data.results || []);
+    if (!data.results || data.results.length === 0) {
+      setBanner(materialsStatus, "当前用户资料库中没有找到相关内容");
+    }
+  } catch (error) {
+    renderSearchResults([]);
+    setBanner(materialsError, `搜索失败：${error.message}`);
+  }
+});
+
 switchSession(activeSessionId()).catch(() => {
   renderMessages([]);
   loadSessions().catch(() => {});
 });
+
+renderSearchResults([]);
+setActivePage("chat");

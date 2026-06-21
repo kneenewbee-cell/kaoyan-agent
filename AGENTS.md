@@ -1,616 +1,210 @@
 # AGENTS.md
 
 > 项目：考研 Agent 助手  
-> 当前优先任务：低风险目录重构 + 新增用户资料整理 / 资料解析模块  
-> 适用对象：Codex / 其他 AI coding agent / 维护者  
-> 执行要求：先调整文件结构，再新增 materials 模块。每完成一项，把清单 `- [ ]` 改为 `- [x]`，并记录验证结果。
+> 当前阶段：模块化已完成，进入“网页版资料库模块”建设阶段  
+> 当前默认测试用户：`tester`  
+> 当前优先任务：完善网页版“我的资料库”页面，让 tester 可以上传、查看、搜索、删除自己的资料  
+> 适用对象：Codex / Claude Code / 其他 AI coding agent / 维护者
 
 ---
 
-## 0. 任务背景
+## 0. 当前项目状态
 
-当前项目已经具备问答模块和部分检索能力，但业务核心代码较多集中在 `scripts/`。本轮目标是做一次**低风险、可回滚、不过度设计**的结构整理，并新增独立的用户资料整理模块。
-
-请严格按顺序执行：
-
-1. 先检查现有结构。
-2. 再把问答核心脚本迁移到 `qa/`。
-3. 修复 import 并验证原功能。
-4. 再新增 `materials/`。
-5. 实现单文件资料入库 MVP。
-6. 最后让问答模块以低耦合方式调用用户资料检索。
-
-不要一开始就大拆数学、政治、runtime。
-
----
-
-## 1. 全局硬规则
-
-### 1.1 禁止事项
-
-- [ ] 禁止直接删除旧文件；移动文件前确认引用关系。
-- [ ] 禁止一次性大拆 `math`、`politics`、`runtime` 子模块。
-- [ ] 禁止重写现有问答主流程。
-- [ ] 禁止把 MinerU 调用散落到 `qa/` 里。
-- [ ] 禁止让 `qa/` 直接 import `materials/parsers/mineru_parser.py`。
-- [ ] 禁止删除或破坏 `skills/math/`、`skills/politics/`、`skills/followup/`、`skills/project/`。
-- [ ] 禁止删除 `data/raw/`、`data/processed/` 中已有资料。
-- [ ] 禁止在本阶段实现复杂 ZIP 批量解析；只预留接口。
-- [ ] 禁止丢弃无法识别的图片、图表、公式截图、408 图示。
-- [ ] 禁止把密钥、API Key、cookie、个人绝对路径写入仓库。
-
-### 1.2 必须事项
-
-- [x] 每个阶段完成后运行对应验证命令。
-- [x] 每次修改 import 后检查入口脚本是否还能启动。
-- [ ] 新增资料模块必须保持与 `qa` 低耦合。
-- [ ] 用户资料必须按 `user_id/material_id` 隔离。
-- [ ] 每份资料必须保存 manifest。
-- [ ] 每个 chunk 必须保留来源信息和图片资源路径。
-- [ ] 如果实现困难，优先留清晰占位和错误信息，不要静默失败。
-- [ ] 如果出现循环导入，优先使用函数内部局部导入解决，不要趁机大改架构。
-
----
-
-## 2. 目标目录结构
-
-本轮结束后，结构应接近：
+当前项目已经完成基础模块化：
 
 ```text
-python_project/
-├── qa/
-│   ├── __init__.py
-│   ├── agent_runtime.py
-│   ├── kaoyan_agent.py
-│   ├── kaoyan_tools.py
-│   ├── politics_rag.py
-│   ├── usage_tracking.py
-│   └── web_server.py
-│
-├── materials/
-│   ├── __init__.py
-│   ├── service.py
-│   ├── schemas.py
-│   ├── detector.py
-│   ├── resolver.py
-│   ├── router.py
-│   ├── storage.py
-│   ├── search.py
-│   ├── tools.py
-│   ├── api.py
-│   │
-│   ├── parsers/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── mineru_parser.py
-│   │   ├── docx_parser.py
-│   │   ├── image_parser.py
-│   │   ├── markdown_parser.py
-│   │   ├── text_parser.py
-│   │   └── unsupported.py
-│   │
-│   ├── postprocess/
-│   │   ├── __init__.py
-│   │   ├── markdown_cleaner.py
-│   │   ├── asset_rewriter.py
-│   │   ├── formula_cleaner.py
-│   │   └── metadata_extractor.py
-│   │
-│   ├── chunking/
-│   │   ├── __init__.py
-│   │   ├── chunker.py
-│   │   ├── section_splitter.py
-│   │   └── token_counter.py
-│   │
-│   └── indexing/
-│       ├── __init__.py
-│       ├── embedding_builder.py
-│       └── material_indexer.py
-│
-├── scripts/
-│   ├── ask_kaoyan.py
-│   ├── ask_math.py
-│   ├── ask_politics.py
-│   ├── build_politics_db.py
-│   ├── query_politics.py
-│   ├── ingest_material.py
-│   ├── query_materials.py
-│   └── run_web.py
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── user_materials/
-│
-├── skills/
-│   ├── math/
-│   ├── politics/
-│   ├── followup/
-│   ├── project/
-│   └── materials/
-│       └── SKILL.md
-│
-├── tests/
-├── web/
-├── CLAUDE.md
-└── AGENTS.md
+qa/          当前问答核心模块
+materials/   用户资料整理 / 资料解析 / 用户资料库模块
+scripts/     启动脚本、调试脚本、构建脚本
+web/         前端页面资源
+skills/      各模块开发规范
+data/        数据与用户资料库
 ```
 
----
-
-## 3. 技术栈与实现策略
-
-### 3.1 沿用技术
-
-- Python：沿用项目当前版本，优先兼容 Python 3.11+。
-- FastAPI：继续使用已有 Web 服务。
-- Pydantic：定义资料、parser、chunk、manifest schema。
-- pathlib / shutil / hashlib / json：本地文件处理。
-- Markdown：作为资料解析中间格式。
-- JSONL：保存 chunks、index、debug 数据。
-- MinerU：封装为 parser，不直接暴露给问答模块。
-
-### 3.2 MVP 策略
-
-先跑通：
+当前重点不再是迁移 `qa/`，也不是重写问答主流程，而是继续完善：
 
 ```text
-单文件上传/传入路径
-↓
-识别格式
-↓
-解析成 Markdown
-↓
-清洗
-↓
-保留图片路径
-↓
-chunk
-↓
-保存 manifest/chunks
-↓
-用户资料检索
+网页版资料库模块
 ```
 
-MVP 必须先支持：
+当前阶段的产品目标是：
 
-- [ ] `.md`
-- [ ] `.txt`
-
-MVP 可先占位：
-
-- [ ] `.pdf`
-- [ ] `.docx`
-- [ ] `.png/.jpg/.jpeg/.webp`
-
-ZIP 本阶段只预留接口：
-
-- [ ] 检测到 zip 时返回明确错误：`ZIP upload is reserved but not implemented yet`
-
----
-
-## 4. 阶段 0：现状检查
-
-- [x] 运行 `git status`。
-- [x] 查看 `scripts/` 下 `.py` 文件。
-- [x] 查看现有 `skills/*/SKILL.md`。
-- [x] 确认当前可运行入口。
-- [x] 确认是否已有 `qa/` 或 `materials/`。
-- [x] 如果已有同名文件，先读取，不要盲目覆盖。
-
-建议命令：
-
-```bash
-git status
-find scripts -maxdepth 1 -type f -name "*.py" | sort
-find skills -maxdepth 2 -name "SKILL.md" | sort
-find . -maxdepth 2 -type d | sort
+```text
+tester 用户可以在网页“我的资料库”页面上传资料、看到资料列表、搜索资料、删除资料。
 ```
 
 ---
 
-## 5. 阶段 1：创建 qa 包并迁移问答核心
+## 1. 本阶段核心目标
 
-### 5.1 创建 qa
+本阶段只聚焦资料库基础交互闭环：
 
-- [x] 创建 `qa/`。
-- [x] 创建 `qa/__init__.py`。
-
-### 5.2 移动核心脚本
-
-移动：
-
-- [x] `scripts/agent_runtime.py` → `qa/agent_runtime.py`
-- [x] `scripts/kaoyan_agent.py` → `qa/kaoyan_agent.py`
-- [x] `scripts/kaoyan_tools.py` → `qa/kaoyan_tools.py`
-- [x] `scripts/politics_rag.py` → `qa/politics_rag.py`
-- [x] `scripts/usage_tracking.py` → `qa/usage_tracking.py`
-
-可选移动：
-
-- [ ] `scripts/web_server.py` → `qa/web_server.py`
-
-如果移动 Web Server，启动命令改为：
-
-```bash
-python -m uvicorn qa.web_server:app --host 127.0.0.1 --port 8000
+```text
+打开网页
+↓
+进入“我的资料库”
+↓
+当前用户默认为 tester
+↓
+上传 .md / .txt 资料
+↓
+资料进入 data/user_materials/tester/{material_id}/
+↓
+页面显示资料列表
+↓
+可以搜索该用户资料
+↓
+可以删除该用户资料
 ```
 
-### 5.3 scripts 保留范围
+优先级：
 
-`scripts/` 只保留：
-
-- [x] CLI 入口脚本
-- [x] Web 启动脚本
-- [x] 构建脚本
-- [x] 调试脚本
-- [x] 一次性数据处理脚本
+1. Web 资料上传；
+2. Web 资料列表；
+3. Web 资料删除；
+4. Web 资料搜索；
+5. 后端 API 稳定；
+6. 用户隔离；
+7. 错误提示；
+8. 保证原问答入口不被破坏。
 
 ---
 
-## 6. 阶段 2：修复 import
+## 2. 本阶段不做
 
-### 6.1 scripts 中使用绝对导入
+本阶段暂不做：
 
-示例：
+- [ ] 聊天中上传文件并自动入库；
+- [ ] 根据用户资料库自动回答；
+- [ ] 资料库自然语言助手；
+- [ ] PDF / MinerU 深度解析；
+- [ ] DOCX 完整解析；
+- [ ] 图片 OCR / VLM caption；
+- [ ] ZIP 批量解析；
+- [ ] 登录注册系统；
+- [ ] 复杂权限系统；
+- [ ] Obsidian 插件；
+- [ ] 大规模重构 `qa/`；
+- [ ] 大规模重构前端框架。
 
-```python
-from qa.agent_runtime import ...
-from qa.kaoyan_agent import ...
-from qa.kaoyan_tools import ...
-from qa.politics_rag import ...
-from qa.usage_tracking import ...
-```
-
-需要检查：
-
-- [x] `scripts/ask_kaoyan.py`
-- [x] `scripts/ask_math.py`
-- [x] `scripts/ask_politics.py`
-- [x] `scripts/build_politics_db.py`
-- [x] `scripts/query_politics.py`
-- [ ] `scripts/run_web.py`
-- [x] 其他仍留在 scripts 的入口脚本
-
-### 6.2 qa 内部使用相对导入
-
-示例：
-
-```python
-from .kaoyan_agent import ...
-from .kaoyan_tools import ...
-from .politics_rag import ...
-from .usage_tracking import ...
-```
-
-需要检查：
-
-- [x] `qa/agent_runtime.py`
-- [x] `qa/kaoyan_agent.py`
-- [x] `qa/kaoyan_tools.py`
-- [x] `qa/politics_rag.py`
-- [ ] `qa/web_server.py`，如果存在
-
-### 6.3 循环导入处理
-
-如果出现循环导入：
-
-- [ ] 优先把 import 移入函数内部。
-- [ ] 不要大拆模块。
-- [ ] 只在必要时抽出最小公共 schema/常量。
+如果看到 PDF、DOCX、图片、ZIP 相关入口，允许保留接口或返回明确错误，不要为了这些阻塞 `.md/.txt` 和资料库页面闭环。
 
 ---
 
-## 7. 阶段 3：验证原有功能
+## 3. 必须遵守的规范
 
-运行：
-
-```bash
-python scripts/ask_kaoyan.py
-python scripts/ask_math.py
-python scripts/ask_politics.py
-python scripts/build_politics_db.py
-python scripts/query_politics.py
-```
-
-Web：
-
-```bash
-python -m uvicorn qa.web_server:app --host 127.0.0.1 --port 8000
-```
-
-或保留旧入口：
-
-```bash
-python -m uvicorn scripts.web_server:app --host 127.0.0.1 --port 8000
-```
-
-完成标准：
-
-- [x] 原有问答入口能启动。
-- [x] 原有政治检索/构建能启动。
-- [x] 原 Web 服务能启动。
-- [x] import 迁移没有破坏主流程。
-
-验证记录（本轮 qa 迁移）：
-
-- `python -m py_compile qa/*.py scripts/ask_*.py scripts/build_politics_db.py scripts/query_politics.py scripts/math_agent.py scripts/web_server.py`：通过。
-- `python scripts/ask_kaoyan.py` / `python scripts/ask_math.py`：入口可加载，因未提供必填 `query` 按 argparse usage 退出。
-- `python scripts/ask_kaoyan.py 极限是什么 --no-memory --format terminal` / `python scripts/ask_math.py 极限是什么 --no-memory --format terminal`：通过。
-- `python scripts/build_politics_db.py`：通过，写入 192 个政治知识块。
-- `python scripts/query_politics.py`：入口可加载，因未提供必填 query 按 usage 退出。
-- `python scripts/query_politics.py 主要矛盾和矛盾的主要方面有什么区别`：通过。
-- `python scripts/ask_politics.py 主要矛盾和矛盾的主要方面有什么区别`：import 与检索通过，最终 Qwen 调用失败，原因是账号免费额度耗尽返回 403。
-- `python -m uvicorn scripts.web_server:app --host 127.0.0.1 --port 8000`：应用启动通过，但 8000 端口已被占用；改用高位端口 `18765` 验证 Web 服务可启动。
-- `python -m unittest tests.test_agent_runtime`：通过，61 个测试通过，1 个跳过。
-
----
-
-## 8. 阶段 4：创建 materials 模块骨架
-
-创建：
-
-- [ ] `materials/__init__.py`
-- [ ] `materials/schemas.py`
-- [ ] `materials/service.py`
-- [ ] `materials/detector.py`
-- [ ] `materials/resolver.py`
-- [ ] `materials/router.py`
-- [ ] `materials/storage.py`
-- [ ] `materials/search.py`
-- [ ] `materials/tools.py`
-- [ ] `materials/api.py`
-
-创建子目录：
-
-- [ ] `materials/parsers/__init__.py`
-- [ ] `materials/parsers/base.py`
-- [ ] `materials/parsers/markdown_parser.py`
-- [ ] `materials/parsers/text_parser.py`
-- [ ] `materials/parsers/mineru_parser.py`
-- [ ] `materials/parsers/docx_parser.py`
-- [ ] `materials/parsers/image_parser.py`
-- [ ] `materials/parsers/unsupported.py`
-
-- [ ] `materials/postprocess/__init__.py`
-- [ ] `materials/postprocess/markdown_cleaner.py`
-- [ ] `materials/postprocess/asset_rewriter.py`
-- [ ] `materials/postprocess/formula_cleaner.py`
-- [ ] `materials/postprocess/metadata_extractor.py`
-
-- [ ] `materials/chunking/__init__.py`
-- [ ] `materials/chunking/chunker.py`
-- [ ] `materials/chunking/section_splitter.py`
-- [ ] `materials/chunking/token_counter.py`
-
-- [ ] `materials/indexing/__init__.py`
-- [ ] `materials/indexing/embedding_builder.py`
-- [ ] `materials/indexing/material_indexer.py`
-
----
-
-## 9. 阶段 5：创建 materials skill
-
-如果不存在，创建：
+涉及 `materials/`、资料上传、资料列表、删除、搜索、资料库页面时，必须阅读并遵守：
 
 ```text
 skills/materials/SKILL.md
 ```
 
-内容至少包含：
-
-- [ ] 用户资料必须按 `data/user_materials/{user_id}/{material_id}/` 存储。
-- [ ] 图片资源不能丢。
-- [ ] Parser 与 QA 解耦。
-- [ ] ZIP 预留但本阶段不实现。
-- [ ] Chunk 必须保留来源和 `asset_paths`。
-- [ ] Search 必须用户隔离。
-
----
-
-## 10. 阶段 6：实现资料存储结构
-
-推荐结构：
+涉及问答、数学、政治、追问、项目通用规则时，尽量遵守：
 
 ```text
-data/user_materials/
-└── {user_id}/
-    └── {material_id}/
-        ├── original/
-        │   └── source.{ext}
-        ├── parsed/
-        │   ├── content.md
-        │   ├── content.json
-        │   └── layout.json
-        ├── assets/
-        │   └── images/
-        ├── chunks/
-        │   ├── chunks.jsonl
-        │   └── chunks_debug.md
-        ├── index/
-        │   ├── embeddings.jsonl
-        │   └── search_index.json
-        └── manifest.json
+skills/math/SKILL.md
+skills/politics/SKILL.md
+skills/followup/SKILL.md
+skills/project/SKILL.md
 ```
 
-实现：
+如果规范与当前代码存在差异，优先级为：
 
-- [ ] `create_material_dir`
-- [ ] `save_original`
-- [ ] `save_markdown`
-- [ ] `save_json`
-- [ ] `save_asset_image`
-- [ ] `save_chunks_jsonl`
-- [ ] `save_manifest`
-- [ ] `load_manifest`
-
----
-
-## 11. 阶段 7：实现格式识别和 parser 路由
-
-### 11.1 detector
-
-- [ ] 识别扩展名。
-- [ ] 识别 mime type。
-- [ ] 计算 sha256。
-- [ ] 输出统一 `DetectedFile`。
-
-### 11.2 resolver
-
-- [ ] 当前只支持单文件。
-- [ ] zip 返回明确未实现错误。
-- [ ] 目录返回明确未实现错误。
-- [ ] 预留未来扩展接口。
-
-### 11.3 router
-
-- [ ] `.md` → MarkdownParser
-- [ ] `.txt` → TextParser
-- [ ] `.pdf` → MinerUParser
-- [ ] 图片 → ImageParser 或 MinerUParser
-- [ ] `.docx` → DocxParser
-- [ ] 其他 → UnsupportedParser
-
----
-
-## 12. 阶段 8：实现 parser MVP
-
-### 12.1 Base Parser
-
-- [ ] 定义 `BaseMaterialParser`。
-- [ ] 定义 `ParseResult`。
-- [ ] 定义 `ParsedAsset`。
-- [ ] 统一 `parse(...)` 接口。
-
-### 12.2 MarkdownParser
-
-- [ ] 读取 `.md`。
-- [ ] 保存 `parsed/content.md`。
-- [ ] 保留图片引用。
-- [ ] 返回 ParseResult。
-
-### 12.3 TextParser
-
-- [ ] 读取 `.txt`。
-- [ ] 转成 Markdown。
-- [ ] 保存 `parsed/content.md`。
-- [ ] 返回 ParseResult。
-
-### 12.4 MinerUParser
-
-- [ ] 封装 MinerU CLI/API。
-- [ ] 不可用时返回明确错误。
-- [ ] 输出进入当前 material 目录。
-- [ ] 保留图片、layout/json、表格等资源。
-
-### 12.5 占位 parser
-
-- [ ] DocxParser 可先占位。
-- [ ] ImageParser 可先占位。
-- [ ] UnsupportedParser 返回明确错误。
-
----
-
-## 13. 阶段 9：后处理与图片保留
-
-### 13.1 markdown cleaner
-
-- [ ] 清理多余空行。
-- [ ] 清理轻量噪声。
-- [ ] 不破坏公式。
-- [ ] 不删除图片引用。
-
-### 13.2 asset rewriter
-
-- [ ] 重写 Markdown 图片路径。
-- [ ] 图片保存到 `assets/images/`。
-- [ ] 无法识别文字的图片也保留。
-- [ ] chunk 中保留 `asset_paths`。
-
-图片占位建议：
-
-```md
-![第 23 页图 1：原文图片，OCR 未识别，已保留原图](../assets/images/page_023_img_001.png)
+```text
+不破坏现有可运行功能
+↓
+保持用户资料隔离
+↓
+逐步补齐资料库页面功能
+↓
+每一步都可验证
 ```
 
-### 13.3 408 / 数学资料规则
+---
 
-- [ ] 结构图不能丢。
-- [ ] 表格图不能丢。
-- [ ] 流程图不能丢。
-- [ ] 树图、Cache 图、页表图不能丢。
-- [ ] 公式截图不能丢。
+## 4. 硬性禁止事项
+
+- [ ] 不要再次大规模迁移 `qa/`。
+- [ ] 不要拆分 `qa/math`、`qa/politics`、`qa/runtime` 等新大模块。
+- [ ] 不要重写现有问答主流程。
+- [ ] 不要删除现有可运行的 CLI 脚本。
+- [ ] 不要删除 `data/raw/`、`data/processed/` 中已有资料。
+- [ ] 不要删除用户已经上传生成的 `data/user_materials/`，除非用户明确要求。
+- [ ] 不要把 MinerU 调用散落到 `qa/` 或 Web 前端里。
+- [ ] 不要让 `qa/` 直接 import `materials/parsers/mineru_parser.py`。
+- [ ] 不要把真实 API Key、cookie、token、`.env` 内容写入代码或文档。
+- [ ] 不要依赖 Qwen 调用完成 materials 页面功能；Qwen 403 不能阻塞资料库上传、列表、删除、搜索。
+- [ ] 不要在本阶段强行实现 ZIP 批量解析。
+- [ ] 不要在本阶段做复杂登录系统。
+- [ ] 不要让 `tester` 可以看到、搜索、删除其他 user_id 的资料。
 
 ---
 
-## 14. 阶段 10：chunk、index、search
+## 5. 当前默认测试用户规则
 
-### 14.1 chunk
+当前阶段默认测试用户为：
 
-- [ ] 按标题优先切分。
-- [ ] 超长 section 按段落切分。
-- [ ] 保留 heading path。
-- [ ] 保留 page no，如果有。
-- [ ] 保留 asset paths。
-- [ ] 写入 `chunks/chunks.jsonl`。
-- [ ] 写入 `chunks/chunks_debug.md`。
+```text
+tester
+```
 
-### 14.2 index
+这意味着：
 
-- [ ] 读取 chunks。
-- [ ] 生成 search index。
-- [ ] 预留 embedding。
-- [ ] 可先使用 mock/local hash。
+1. Web 资料库页面默认显示 `tester`；
+2. 上传时不传 `user_id`，默认进入 `tester`；
+3. 列表不传 `user_id`，默认列出 `tester`；
+4. 搜索不传 `user_id`，默认搜索 `tester`；
+5. 删除不传 `user_id`，默认删除 `tester` 名下指定资料；
+6. CLI 脚本不传 `--user-id`，默认也可以使用 `tester`。
 
-### 14.3 search
+不要使用操作系统用户名、Windows 登录名、Linux 用户名、机器名、uvicorn 启动用户作为业务用户。
 
-- [ ] 实现 `search_user_materials(user_id, query, top_k=5, filters=None)`。
-- [ ] 只搜索当前 user_id。
-- [ ] 返回 chunk text、metadata、source、asset_paths。
-- [ ] 支持按 material_id、subject、material_type 过滤。
-
----
-
-## 15. 阶段 11：新增调试脚本
-
-### 15.1 ingest_material.py
-
-新增：
+启动命令：
 
 ```bash
-python scripts/ingest_material.py --user-id test_user --file path/to/demo.md
+python -m uvicorn scripts.web_server:app --host 127.0.0.1 --port 8000
 ```
 
-要求：
-
-- [ ] 调用 `materials.service.MaterialIngestionService`。
-- [ ] 打印 material_id。
-- [ ] 打印 parse status。
-- [ ] 打印 markdown path。
-- [ ] 打印 chunk count。
-- [ ] 失败时打印错误。
-
-### 15.2 query_materials.py
-
-新增：
-
-```bash
-python scripts/query_materials.py --user-id test_user --query "罗尔定理"
-```
-
-要求：
-
-- [ ] 调用 `materials.search.search_user_materials`。
-- [ ] 打印 top_k 结果。
-- [ ] 打印来源 material_id、chunk_id、asset_paths。
+只代表服务启动，不代表业务用户。业务用户由 query/header/body/默认值决定。
 
 ---
 
-## 16. 阶段 12：接入 qa
+## 6. 用户资料隔离要求
 
-只允许 qa 调用检索接口：
+所有资料必须存储在：
 
-允许：
+```text
+data/user_materials/{user_id}/{material_id}/
+```
+
+当前阶段 tester 上传的资料必须进入：
+
+```text
+data/user_materials/tester/{material_id}/
+```
+
+`list`、`search`、`delete` 必须只作用于当前 `user_id`。
+
+例如 `tester` 不能 list/search/delete：
+
+```text
+test_user_a
+test_user_b
+local_dev_user
+其他用户
+```
+
+除非显式传入对应 `user_id` 并且操作范围仍然被限制在该用户目录内。
+
+---
+
+## 7. 必须保持的模块边界
+
+### 7.1 qa/
+
+负责问答、路由、工具调用、学科问答逻辑、追问处理。
+
+`qa/` 允许低耦合调用：
 
 ```python
 from materials.search import search_user_materials
@@ -628,88 +222,454 @@ from materials.tools import search_user_materials_tool
 from materials.parsers.mineru_parser import MinerUParser
 ```
 
-需要完成：
+### 7.2 materials/
 
-- [ ] 在问答工具注册处新增用户资料检索工具。
-- [ ] 工具入参包含 `user_id`、`query`、`top_k`、可选 filters。
-- [ ] 当用户明确说“根据我上传的资料/我的资料库”时，优先检索用户资料库。
-- [ ] 用户未要求时，不默认强行检索用户资料库。
-- [ ] 回答时保留资料来源信息。
+负责资料上传接收、文件识别、parser 路由、Markdown/Text 入库、后处理、chunk 切分、index/search、manifest 管理、资料列表、资料删除。
+
+### 7.3 scripts/
+
+只保留启动脚本、调试脚本、构建脚本、CLI 测试入口。
+
+### 7.4 web/
+
+负责左侧导航、考研问答页面、我的资料库页面、资料上传、资料列表、资料删除、资料搜索、状态提示、错误提示。
 
 ---
 
-## 17. 验收命令
+## 8. 当前资料库页面目标
 
-至少运行：
+### 8.1 tester 上传资料
 
-```bash
-python scripts/ingest_material.py --user-id test_user --file data/demo/test.md
-python scripts/ingest_material.py --user-id test_user --file data/demo/test.txt
-python scripts/query_materials.py --user-id test_user --query "罗尔定理"
-python scripts/ask_kaoyan.py
-python scripts/ask_math.py
-python scripts/ask_politics.py
+- [ ] 默认用户显示为 `tester`；
+- [ ] 可以修改 user_id，但默认是 `tester`；
+- [ ] 可以选择文件；
+- [ ] 可以选择学科 `subject`；
+- [ ] 可以选择资料类型 `material_type`；
+- [ ] 调用 `POST /api/materials/upload`；
+- [ ] 上传成功后显示结果；
+- [ ] 上传成功后刷新资料列表；
+- [ ] 上传失败后显示明确错误。
+
+当前优先支持：
+
+```text
+.md
+.txt
 ```
 
-Web：
+PDF、DOCX、图片、ZIP 可以显示明确错误，不要阻塞页面。
 
-```bash
-python -m uvicorn qa.web_server:app --host 127.0.0.1 --port 8000
+### 8.2 tester 查看资料列表
+
+- [ ] 调用 `GET /api/materials/list`；
+- [ ] 默认列出 `tester` 的资料；
+- [ ] 显示文件名；
+- [ ] 显示 material_id；
+- [ ] 显示 subject；
+- [ ] 显示 material_type；
+- [ ] 显示 parse_status；
+- [ ] 显示 chunk_count；
+- [ ] 显示 created_at / updated_at；
+- [ ] 提供刷新按钮；
+- [ ] manifest 损坏时不要让整个列表崩溃。
+
+### 8.3 tester 删除资料
+
+本阶段需要实现或完善删除能力。
+
+推荐后端：
+
+```text
+DELETE /api/materials/{material_id}
 ```
 
-验收：
+要求：
 
-- [ ] `.md` 入库成功。
-- [ ] `.txt` 入库成功。
-- [ ] unsupported 格式有明确错误。
-- [ ] zip 有“预留但未实现”的明确错误。
-- [ ] manifest 生成。
-- [ ] chunks 生成。
-- [ ] 图片引用不会被 cleaner 删除。
-- [ ] 用户资料检索不跨用户。
-- [ ] 原有问答入口仍可用。
-- [ ] Web 服务仍可启动。
+- [ ] 默认 user_id 为 `tester`；
+- [ ] 只能删除 `data/user_materials/tester/{material_id}/`；
+- [ ] 不允许删除其他用户资料；
+- [ ] 不允许路径穿越；
+- [ ] 删除前前端必须确认；
+- [ ] 删除成功后刷新资料列表；
+- [ ] 删除成功后清理或刷新搜索结果；
+- [ ] 删除失败时显示明确错误。
+
+前端删除确认文案建议：
+
+```text
+确定要删除这份资料吗？此操作会删除该资料的原文件副本、解析结果、chunks 和索引。
+```
+
+### 8.4 tester 搜索资料
+
+- [ ] 调用 `GET /api/materials/search`；
+- [ ] 默认搜索 `tester`；
+- [ ] 展示命中的 chunk；
+- [ ] 展示 material_id；
+- [ ] 展示 chunk_id；
+- [ ] 展示 score；
+- [ ] 展示 asset_paths，如果有；
+- [ ] 没有结果时显示友好提示。
 
 ---
 
-## 18. 完成汇报要求
+## 9. 推荐 API 设计
 
-每次任务结束必须汇报：
+本阶段后端至少应具备：
 
-- [ ] 移动了哪些文件。
-- [ ] 修改了哪些 import。
-- [ ] 新增了哪些 materials 文件。
-- [ ] 哪些 parser 已实现。
-- [ ] 哪些 parser 是占位。
-- [ ] 运行了哪些验证命令。
-- [ ] 哪些命令失败。
-- [ ] 失败原因和下一步建议。
-- [ ] 已勾选哪些任务，未完成哪些任务。
+```text
+POST   /api/materials/upload
+GET    /api/materials/list
+GET    /api/materials/search
+DELETE /api/materials/{material_id}
+```
+
+### 9.1 POST /api/materials/upload
+
+输入：
+
+```text
+file
+user_id，可选，默认 tester
+subject，可选，默认 unknown
+material_type，可选，默认 unknown
+```
+
+输出建议：
+
+```json
+{
+  "ok": true,
+  "material_id": "string",
+  "user_id": "tester",
+  "parse_status": "ready",
+  "manifest_path": "string",
+  "markdown_path": "string|null",
+  "chunk_count": 0,
+  "error": null
+}
+```
+
+### 9.2 GET /api/materials/list
+
+输入：
+
+```text
+user_id，可选，默认 tester
+subject，可选
+material_type，可选
+```
+
+### 9.3 GET /api/materials/search
+
+输入：
+
+```text
+user_id，可选，默认 tester
+query，必填
+top_k，可选，默认 5
+material_id，可选
+subject，可选
+material_type，可选
+```
+
+### 9.4 DELETE /api/materials/{material_id}
+
+输入：
+
+```text
+path: material_id
+query/header/body: user_id，可选，默认 tester
+```
+
+输出建议：
+
+```json
+{
+  "ok": true,
+  "user_id": "tester",
+  "material_id": "string",
+  "deleted": true
+}
+```
 
 ---
 
-## 19. 最终总清单
+## 10. 删除功能安全要求
 
-- [x] 已完成现状检查。
-- [x] 已创建 `qa/` 包。
-- [x] 已迁移问答核心脚本。
-- [x] 已修复 scripts import。
-- [x] 已修复 qa 内部 import。
-- [x] 已验证原问答入口。
-- [ ] 已创建 `materials/` 模块。
-- [ ] 已创建 `skills/materials/SKILL.md`。
-- [ ] 已实现 storage。
-- [ ] 已实现 detector。
-- [ ] 已实现 resolver。
-- [ ] 已实现 router。
-- [ ] 已实现 MarkdownParser。
-- [ ] 已实现 TextParser。
-- [ ] 已封装 MinerUParser 接口。
-- [ ] 已实现 cleaner。
-- [ ] 已实现 asset rewriter。
-- [ ] 已实现 chunker。
-- [ ] 已实现 index/search MVP。
-- [ ] 已新增 ingest/query 脚本。
-- [ ] 已接入 qa 用户资料检索工具。
-- [ ] 已完成最小验收。
-- [ ] 已向用户汇报结果。
+删除功能必须非常谨慎。
+
+### 10.1 路径校验
+
+必须确认待删除目录在：
+
+```text
+data/user_materials/{user_id}/
+```
+
+之下。
+
+推荐逻辑：
+
+```python
+base = DATA_DIR / "user_materials" / safe_user_id
+target = base / safe_material_id
+target.resolve().relative_to(base.resolve())
+```
+
+如果 `relative_to` 失败，拒绝删除。
+
+### 10.2 ID 校验
+
+`user_id` 和 `material_id` 建议只允许：
+
+```text
+A-Z
+a-z
+0-9
+_
+-
+```
+
+禁止：
+
+```text
+/
+\
+..
+空字符串
+```
+
+### 10.3 删除范围
+
+允许删除：
+
+```text
+data/user_materials/{user_id}/{material_id}/
+```
+
+禁止删除：
+
+```text
+data/raw/
+data/processed/
+qa/
+materials/
+scripts/
+web/
+其他 user_id 的资料目录
+```
+
+### 10.4 删除失败
+
+删除失败时返回清晰错误：
+
+```text
+Invalid material_id
+Material not found
+Permission denied
+Failed to delete material
+```
+
+不要静默失败。
+
+---
+
+## 11. 前端交互建议
+
+资料库页面推荐结构：
+
+```text
+我的资料库
+├── 当前用户
+│   └── user_id 输入框，默认 tester
+│
+├── 上传资料
+│   ├── 文件选择
+│   ├── 学科选择
+│   ├── 资料类型选择
+│   └── 上传按钮
+│
+├── 资料列表
+│   ├── 刷新按钮
+│   ├── 文件名
+│   ├── 学科
+│   ├── 类型
+│   ├── 状态
+│   ├── chunks
+│   └── 删除按钮
+│
+└── 搜索资料库
+    ├── 搜索框
+    └── 搜索结果
+```
+
+上传成功提示：
+
+```text
+资料已入库，生成 {chunk_count} 个 chunks
+```
+
+删除成功提示：
+
+```text
+资料已删除
+```
+
+搜索无结果提示：
+
+```text
+当前用户资料库中没有找到相关内容
+```
+
+上传、列表、删除、搜索失败都必须在页面显示错误，不要只写 `console.error`。
+
+---
+
+## 12. 当前阶段不要求的功能
+
+本阶段不要求：
+
+```text
+聊天中上传并自动入库
+资料库自然语言助手
+根据资料生成总结
+根据资料制定复习计划
+PDF/MinerU 完整解析
+ZIP 批量上传
+登录注册
+复杂权限系统
+Obsidian 插件
+```
+
+---
+
+## 13. 验证命令
+
+### 13.1 启动 Web
+
+```bash
+python -m uvicorn scripts.web_server:app --host 127.0.0.1 --port 8000
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:8000
+```
+
+进入“我的资料库”，默认用户应为：
+
+```text
+tester
+```
+
+### 13.2 CLI 验证
+
+```bash
+python scripts/ingest_material.py --user-id tester --file data/demo/test.md
+python scripts/ingest_material.py --user-id tester --file data/demo/test.txt
+python scripts/query_materials.py --user-id tester --query "罗尔定理"
+```
+
+### 13.3 API 验证
+
+上传：
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/materials/upload?user_id=tester" -F "file=@data/demo/test.md"
+```
+
+列表：
+
+```bash
+curl "http://127.0.0.1:8000/api/materials/list?user_id=tester"
+```
+
+搜索：
+
+```bash
+curl "http://127.0.0.1:8000/api/materials/search?user_id=tester&query=罗尔定理"
+```
+
+删除：
+
+```bash
+curl -X DELETE "http://127.0.0.1:8000/api/materials/{material_id}?user_id=tester"
+```
+
+### 13.4 用户隔离验证
+
+需要验证：
+
+- [ ] `tester` 上传的资料只进入 `data/user_materials/tester/`；
+- [ ] `tester` 只能 list 自己的资料；
+- [ ] `tester` 只能 search 自己的资料；
+- [ ] `tester` 只能 delete 自己的资料；
+- [ ] `tester` 删除不了 `test_user_a` 或 `test_user_b` 的资料；
+- [ ] 不传 user_id 时默认使用 `tester`。
+
+### 13.5 原有功能验证
+
+尽量运行：
+
+```bash
+python scripts/ask_kaoyan.py 极限是什么 --no-memory --format terminal
+python scripts/ask_math.py 极限是什么 --no-memory --format terminal
+python -m unittest tests.test_agent_runtime
+```
+
+如果 Qwen 403 导致问答命令失败，说明是账号额度问题，不要误判为资料库模块失败。
+
+---
+
+## 14. 完成汇报要求
+
+每次修改后必须汇报：
+
+- [ ] 新增/修改了哪些文件；
+- [ ] 是否改动了 `qa` 主流程；
+- [ ] tester 上传功能是否可用；
+- [ ] tester 列表功能是否可用；
+- [ ] tester 删除功能是否可用；
+- [ ] tester 搜索功能是否可用；
+- [ ] 用户隔离是否验证；
+- [ ] 运行了哪些命令；
+- [ ] 哪些命令失败，原因是什么；
+- [ ] 下一步建议。
+
+---
+
+## 15. 当前阶段完成标准
+
+本阶段完成标准：
+
+- [ ] 网页能打开；
+- [ ] 左侧能进入“我的资料库”；
+- [ ] 默认用户为 `tester`；
+- [ ] `tester` 能上传 `.md` 或 `.txt`；
+- [ ] 上传后资料进入 `data/user_materials/tester/{material_id}/`；
+- [ ] 页面能展示 tester 的资料列表；
+- [ ] 页面能搜索 tester 的资料；
+- [ ] 页面能删除 tester 的资料；
+- [ ] 删除后对应 material 目录被移除；
+- [ ] 删除后列表刷新；
+- [ ] 删除后搜索不到该资料；
+- [ ] 不会跨用户 list/search/delete；
+- [ ] 原问答入口未被破坏。
+
+---
+
+## 16. 后续阶段建议
+
+完成本阶段后，再考虑：
+
+1. 资料详情页；
+2. 查看 chunks；
+3. 重新解析；
+4. PDF/MinerU 接入；
+5. 图片 OCR / VLM caption；
+6. 聊天中上传并入库；
+7. 聊天中根据用户资料库回答；
+8. 资料库自然语言助手；
+9. Obsidian 插件客户端接入。

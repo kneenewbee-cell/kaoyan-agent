@@ -3,15 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>考研小助手</title>
+  <title>考研 Agent 助手</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
-  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260621-scroll-lock" />
 </head>
 <body>
   <main class="app-shell">
-    <section class="sidebar">
-      <h1>考研小助手</h1>
-      <section class="session-panel">
+    <aside class="sidebar">
+      <div class="brand">
+        <p class="eyebrow">Kaoyan Agent</p>
+        <h1>考研助手</h1>
+        <p class="brand-copy">聊天问答和资料库分开展示，默认测试用户是 <code>tester</code>。</p>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-button active" type="button" data-page="chat">考研问答</button>
+        <button class="nav-button" type="button" data-page="materials">我的资料库</button>
+        <button class="nav-button" type="button" data-page="plan">复习规划</button>
+        <button class="nav-button" type="button" data-page="school">院校查询</button>
+      </nav>
+
+      <section class="sidebar-card">
         <div class="session-header">
           <span>会话</span>
           <button id="newSessionButton" class="small-button" type="button">新建</button>
@@ -20,39 +32,140 @@
         <div id="sessionList" class="session-list"></div>
         <button id="deleteSessionButton" class="danger-button" type="button">删除当前会话</button>
       </section>
+
       <label class="check-row">
         <input id="debugInput" type="checkbox" />
         显示调试信息
       </label>
+
       <div class="hint">
-        支持考研数学真题、普通数学题、图片题和时政信息。数学公式会用 KaTeX 渲染。
+        聊天页保留原问答能力。资料库页支持上传 `.md/.txt`、查看列表、搜索和删除。
       </div>
-    </section>
+    </aside>
 
-    <section class="chat-panel">
-      <div id="messages" class="messages">
-        <article class="message assistant">
-          <div class="bubble">
-            试试：<code>2021 年数学一第 9 题怎么做</code><br>
-            或上传数学题图片后输入：<code>这道题怎么做</code>
-          </div>
-        </article>
-      </div>
-
-      <form id="chatForm" class="composer">
-        <textarea id="messageInput" rows="3" placeholder="输入你的问题，例如：求极限 lim_{x->0} (sin x - x)/x^3"></textarea>
-        <div id="imagePreview" class="image-preview" hidden></div>
-        <div class="composer-actions">
-          <input id="imageInput" type="file" accept="image/*" multiple />
-          <button id="sendButton" type="submit">发送</button>
+    <section class="page-shell">
+      <section id="chatPage" class="page active">
+        <div id="messages" class="messages">
+          <article class="message assistant">
+            <div class="bubble">
+              试试：<code>2021 年数学一第 9 题怎么做</code><br>
+              或上传题图后输入：<code>这道题怎么做</code>
+            </div>
+          </article>
         </div>
-      </form>
+
+        <form id="chatForm" class="composer">
+          <textarea id="messageInput" rows="3" placeholder="输入你的问题，例如：求极限 lim_{x->0} (sin x - x)/x^3"></textarea>
+          <div id="imagePreview" class="image-preview" hidden></div>
+          <div class="composer-actions">
+            <input id="imageInput" type="file" accept="image/*" multiple />
+            <button id="sendButton" type="submit">发送</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="materialsPage" class="page">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">Materials MVP</p>
+            <h2>我的资料库</h2>
+            <p class="section-copy">默认用户为 <code>tester</code>，支持上传、查看、搜索、删除自己的 `.md/.txt` 资料。</p>
+          </div>
+        </header>
+
+        <div class="materials-layout">
+          <section class="panel">
+            <h3>当前用户</h3>
+            <label class="field">
+              <span>user_id</span>
+              <input id="materialsUserId" type="text" value="tester" />
+            </label>
+            <p class="helper-text">不填写时默认使用 <code>tester</code>。</p>
+          </section>
+
+          <section class="panel">
+            <h3>上传资料</h3>
+            <form id="materialsUploadForm" class="stack-form">
+              <label class="field">
+                <span>文件</span>
+                <input id="materialsFileInput" type="file" accept=".md,.txt" required />
+              </label>
+              <label class="field">
+                <span>学科</span>
+                <select id="materialsSubject">
+                  <option value="unknown">unknown</option>
+                  <option value="math">math</option>
+                  <option value="politics">politics</option>
+                  <option value="408">408</option>
+                  <option value="english">english</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>资料类型</span>
+                <select id="materialsType">
+                  <option value="unknown">unknown</option>
+                  <option value="lecture">lecture</option>
+                  <option value="note">note</option>
+                  <option value="exam">exam</option>
+                  <option value="wrong_book">wrong_book</option>
+                  <option value="school_info">school_info</option>
+                </select>
+              </label>
+              <button id="materialsUploadButton" type="submit">上传资料</button>
+            </form>
+          </section>
+        </div>
+
+        <div id="materialsStatus" class="status-banner" hidden></div>
+        <div id="materialsError" class="error-banner" hidden></div>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>资料列表</h3>
+              <p class="helper-text">只展示当前用户目录下的资料。</p>
+            </div>
+            <button id="materialsRefreshButton" type="button" class="small-button dark-button">刷新</button>
+          </div>
+          <div id="materialsList" class="materials-list empty-state">还没有资料，先上传一份 `.md` 或 `.txt` 吧。</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>搜索资料库</h3>
+              <p class="helper-text">命中结果会展示 chunk、分数和关联资源路径。</p>
+            </div>
+          </div>
+          <form id="materialsSearchForm" class="search-form">
+            <input id="materialsSearchInput" type="text" placeholder="输入关键词，例如：罗尔定理" />
+            <button type="submit">搜索</button>
+          </form>
+          <div id="materialsSearchResults" class="search-results empty-state">输入关键词后开始搜索。</div>
+        </section>
+      </section>
+
+      <section id="planPage" class="page placeholder-page">
+        <div class="placeholder-card">
+          <p class="eyebrow">Plan</p>
+          <h2>复习规划</h2>
+          <p>功能开发中</p>
+        </div>
+      </section>
+
+      <section id="schoolPage" class="page placeholder-page">
+        <div class="placeholder-card">
+          <p class="eyebrow">School</p>
+          <h2>院校查询</h2>
+          <p>功能开发中</p>
+        </div>
+      </section>
     </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
-  <script src="/static/app.js?v=20260601-file-remove"></script>
+  <script src="/static/app.js?v=20260621-sidebar-fit"></script>
 </body>
 </html>
