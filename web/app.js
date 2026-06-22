@@ -344,12 +344,52 @@ function clearMaterialsFeedback() {
   setBanner(materialsError, "");
 }
 
+const MATERIAL_SUBJECT_LABELS = {
+  unknown: "未分类",
+  math: "数学",
+  politics: "政治",
+  408: "计算机 408",
+  cs408: "计算机 408",
+  english: "英语",
+  other: "其他",
+};
+
+const MATERIAL_TYPE_LABELS = {
+  unknown: "未分类",
+  lecture: "课程讲义",
+  note: "学习笔记",
+  exam: "试卷真题",
+  wrong_book: "错题本",
+  school_info: "院校信息",
+  other: "其他",
+};
+
+const MATERIAL_STATUS_LABELS = {
+  unknown: "未知",
+  pending: "等待处理",
+  processing: "处理中",
+  ready: "已就绪",
+  failed: "处理失败",
+};
+
+function materialLabel(labels, value) {
+  return labels[value] || value || "未知";
+}
+
+function formatMaterialDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 function materialMetaLine(item) {
   return [
-    `subject: ${item.subject || "unknown"}`,
-    `type: ${item.material_type || "unknown"}`,
-    `status: ${item.parse_status || "unknown"}`,
-    `chunks: ${item.chunk_count ?? 0}`,
+    `学科：${materialLabel(MATERIAL_SUBJECT_LABELS, item.subject)}`,
+    `资料类型：${materialLabel(MATERIAL_TYPE_LABELS, item.material_type)}`,
+    `状态：${materialLabel(MATERIAL_STATUS_LABELS, item.parse_status)}`,
+    `分块数：${item.chunk_count ?? 0}`,
   ].join(" · ");
 }
 
@@ -372,16 +412,12 @@ function renderMaterialsList(items) {
 
     const titleBlock = document.createElement("div");
     const title = document.createElement("h4");
-    title.textContent = item.original_filename || item.material_id;
+    title.textContent = item.original_filename || "未命名资料";
     const meta = document.createElement("p");
     meta.className = "material-meta";
     meta.textContent = materialMetaLine(item);
-    const ids = document.createElement("p");
-    ids.className = "material-path";
-    ids.textContent = `material_id: ${item.material_id}`;
     titleBlock.appendChild(title);
     titleBlock.appendChild(meta);
-    titleBlock.appendChild(ids);
 
     const actions = document.createElement("div");
     actions.className = "material-actions";
@@ -398,7 +434,7 @@ function renderMaterialsList(items) {
 
     const footer = document.createElement("p");
     footer.className = "material-footer";
-    footer.textContent = `created_at: ${item.created_at || "-"} · updated_at: ${item.updated_at || "-"}${item.error ? ` · error: ${item.error}` : ""}`;
+    footer.textContent = `创建时间：${formatMaterialDate(item.created_at)} · 更新时间：${formatMaterialDate(item.updated_at)}${item.error ? ` · 错误：${item.error}` : ""}`;
     card.appendChild(footer);
     materialsList.appendChild(card);
   });
@@ -419,10 +455,10 @@ function renderSearchResults(results) {
     card.className = "search-card";
 
     const title = document.createElement("h4");
-    title.textContent = `${result.original_filename || result.material_id} · score ${Number(result.score).toFixed(4)}`;
+    title.textContent = `${result.original_filename || "未命名资料"} · 相关度 ${Number(result.score).toFixed(4)}`;
     const meta = document.createElement("p");
     meta.className = "material-meta";
-    meta.textContent = `material_id: ${result.material_id} · chunk_id: ${result.chunk_id}`;
+    meta.textContent = `分块：${result.chunk_id}`;
     const preview = document.createElement("pre");
     preview.className = "search-preview";
     preview.textContent = result.text_preview || result.text || "";
@@ -590,13 +626,19 @@ materialsUploadForm.addEventListener("submit", async (event) => {
   formData.append("user_id", currentMaterialsUserId());
   formData.append("subject", materialsSubject.value);
   formData.append("material_type", materialsType.value);
+  formData.append("use_llm_cleanup", "true");
 
   try {
+    materialsUploadButton.disabled = true;
+    materialsUploadButton.textContent = "AI 整理中...";
+    setBanner(materialsStatus, "正在上传并调用 Qwen 生成清洗策略，请稍等。");
     const data = await fetchJson("/api/materials/upload", {
       method: "POST",
       body: formData,
     });
-    setBanner(materialsStatus, `资料已入库，生成 ${data.chunk_count} 个 chunks`);
+    const cleaning = data.metadata?.raw_markdown_cleaning;
+    const source = cleaning?.strategy_source ? `，策略来源：${cleaning.strategy_source}` : "";
+    setBanner(materialsStatus, `资料已入库，生成 ${data.chunk_count} 个 chunks${source}`);
     materialsUploadForm.reset();
     materialsUserIdInput.value = currentMaterialsUserId();
     materialsSubject.value = "unknown";
@@ -604,6 +646,9 @@ materialsUploadForm.addEventListener("submit", async (event) => {
     await refreshMaterialsList();
   } catch (error) {
     setBanner(materialsError, `上传失败：${error.message}`);
+  } finally {
+    materialsUploadButton.disabled = false;
+    materialsUploadButton.textContent = "上传资料";
   }
 });
 

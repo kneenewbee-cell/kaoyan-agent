@@ -32,7 +32,7 @@ class MaterialsMvpTest(unittest.TestCase):
         self.demo_txt = Path("data/demo/test.txt")
 
     def test_md_ingest_success(self) -> None:
-        result = self.service.ingest_file(self.demo_md, user_id="tester")
+        result = self.service.ingest_file(self.demo_md, user_id="tester", use_llm_cleanup=False)
         self.assertEqual(result.user_id, "tester")
         self.assertEqual(result.parse_status.value, "ready")
         material_dir = self.base_dir / "tester" / result.material_id
@@ -42,32 +42,32 @@ class MaterialsMvpTest(unittest.TestCase):
         self.assertTrue((material_dir / "index" / "search_index.json").exists())
 
     def test_txt_ingest_success(self) -> None:
-        result = self.service.ingest_file(self.demo_txt, user_id="tester")
+        result = self.service.ingest_file(self.demo_txt, user_id="tester", use_llm_cleanup=False)
         self.assertEqual(result.parse_status.value, "ready")
         self.assertGreaterEqual(result.chunk_count, 1)
 
     def test_default_user_is_tester(self) -> None:
-        result = self.service.ingest_file(self.demo_md)
+        result = self.service.ingest_file(self.demo_md, use_llm_cleanup=False)
         self.assertEqual(result.user_id, "tester")
         self.assertTrue((self.base_dir / "tester" / result.material_id).exists())
 
     def test_search_finds_expected_content(self) -> None:
-        result = self.service.ingest_file(self.demo_md, user_id="tester")
+        result = self.service.ingest_file(self.demo_md, user_id="tester", use_llm_cleanup=False)
         self.assertEqual(result.parse_status.value, "ready")
         matches = search_user_materials("tester", "罗尔定理", storage=MaterialStorage(self.base_dir))
         self.assertTrue(matches)
         self.assertTrue(any("罗尔定理" in match.text for match in matches))
 
     def test_delete_removes_current_user_material(self) -> None:
-        result = self.service.ingest_file(self.demo_md, user_id="tester")
+        result = self.service.ingest_file(self.demo_md, user_id="tester", use_llm_cleanup=False)
         material_dir = self.base_dir / "tester" / result.material_id
         payload = self.service.delete_material("tester", result.material_id)
         self.assertTrue(payload["deleted"])
         self.assertFalse(material_dir.exists())
 
     def test_user_isolation(self) -> None:
-        tester_result = self.service.ingest_file(self.demo_md, user_id="tester")
-        other_result = self.service.ingest_file(self.demo_txt, user_id="test_user_a")
+        tester_result = self.service.ingest_file(self.demo_md, user_id="tester", use_llm_cleanup=False)
+        other_result = self.service.ingest_file(self.demo_txt, user_id="test_user_a", use_llm_cleanup=False)
         tester_items = self.service.list_materials("tester")
         other_items = self.service.list_materials("test_user_a")
 
@@ -83,7 +83,7 @@ class MaterialsMvpTest(unittest.TestCase):
     def test_unsupported_file_returns_clear_error(self) -> None:
         bad_file = self.base_dir / "unsupported.csv"
         bad_file.write_text("a,b,c\n1,2,3\n", encoding="utf-8")
-        result = self.service.ingest_file(bad_file, user_id="tester")
+        result = self.service.ingest_file(bad_file, user_id="tester", use_llm_cleanup=False)
         self.assertEqual(result.parse_status.value, "failed")
         self.assertIn("Unsupported file type", result.error or "")
 
@@ -92,7 +92,7 @@ class MaterialsMvpTest(unittest.TestCase):
             upload_response = self.client.post(
                 "/api/materials/upload",
                 files={"file": ("test.md", file, "text/markdown")},
-                data={"subject": "unknown", "material_type": "unknown"},
+                data={"subject": "unknown", "material_type": "unknown", "use_llm_cleanup": "false"},
             )
         self.assertEqual(upload_response.status_code, 200)
         upload_payload = upload_response.json()

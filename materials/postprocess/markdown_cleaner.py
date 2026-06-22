@@ -1,7 +1,8 @@
 """
-materials/postprocess/markdown_cleaner.py — Markdown 后处理清洗。
+materials/postprocess/markdown_cleaner.py — Markdown 基础清洗。
 
-清理多余空行、轻量噪声，不破坏公式和图片引用。
+职责：raw markdown → cleaner markdown 的第一层清洗。
+原则：保守、可重复、不改写用户语义；保护代码块、公式块、表格、图片引用。
 """
 
 from __future__ import annotations
@@ -9,70 +10,70 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+TRAILING_SPACE_RE = re.compile(r"[ \t]+$")
+
+
+def normalize_newlines(content: str) -> str:
+    return content.replace("\r\n", "\n").replace("\r", "\n")
+
 
 def clean_markdown(content: str) -> str:
+    """轻量清洗 Markdown。
+
+    做：
+    - 统一换行；
+    - 去控制字符；
+    - 去行尾空白；
+    - 连续空行最多保留 2 个；
+    - 保留代码块、公式块、图片、表格。
     """
-    对 Markdown 内容做轻量清洗。
+    content = normalize_newlines(content)
+    content = CONTROL_CHARS_RE.sub("", content)
 
-    规则：
-    1. 合并连续多个空行为最多两个空行。
-    2. 去除行首行尾空白。
-    3. 不删除图片引用 ![...](...)。
-    4. 不破坏数学公式 $$...$$ / $...$。
-    5. 不删除表格。
-    6. 不强行改写任何结构。
-
-    参数
-    ----
-    content : str
-        原始 Markdown 字符串。
-
-    返回
-    ----
-    str : 清洗后的 Markdown。
-    """
-    lines = content.splitlines()
     cleaned: list[str] = []
     blank_count = 0
+    in_fenced_block = False
+    fence_marker: str | None = None
 
-    for line in lines:
-        stripped = line.rstrip()
+    for raw_line in content.split("\n"):
+        line = TRAILING_SPACE_RE.sub("", raw_line)
+        stripped = line.strip()
+
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            marker = stripped[:3]
+            if not in_fenced_block:
+                in_fenced_block = True
+                fence_marker = marker
+            elif fence_marker == marker:
+                in_fenced_block = False
+                fence_marker = None
+            cleaned.append(line)
+            blank_count = 0
+            continue
+
+        if in_fenced_block:
+            cleaned.append(line)
+            continue
 
         if stripped == "":
             blank_count += 1
-            # 最多保留 2 个连续空行
             if blank_count <= 2:
                 cleaned.append("")
-        else:
-            blank_count = 0
-            cleaned.append(stripped)
+            continue
 
-    # 去掉末尾多余空行
+        blank_count = 0
+        cleaned.append(line)
+
     while cleaned and cleaned[-1] == "":
         cleaned.pop()
 
-    return "\n".join(cleaned)
+    return "\n".join(cleaned) + "\n"
 
 
 def clean_markdown_file(input_path: Path, output_path: Path | None = None) -> str:
-    """
-    读取 Markdown 文件并清洗后保存。
-
-    参数
-    ----
-    input_path : Path
-        输入 Markdown 文件路径。
-    output_path : Path | None
-        输出路径，为 None 则覆盖原文件。
-
-    返回
-    ----
-    str : 清洗后的 Markdown 内容。
-    """
     content = input_path.read_text(encoding="utf-8")
     cleaned = clean_markdown(content)
-
     target = output_path or input_path
     target.write_text(cleaned, encoding="utf-8")
-
     return cleaned

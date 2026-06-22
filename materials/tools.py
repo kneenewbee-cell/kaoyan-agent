@@ -49,12 +49,14 @@ def ingest_user_material(
     user_id: str = "tester",
     subject: str = "unknown",
     material_type: str = "unknown",
+    use_llm_cleanup: bool = True,
 ) -> dict[str, Any]:
     result = MaterialIngestionService().ingest_file(
         file_path=file_path,
         user_id=resolve_user_id(user_id),
         subject=subject,
         material_type=material_type,
+        use_llm_cleanup=use_llm_cleanup,
     )
 
     return {

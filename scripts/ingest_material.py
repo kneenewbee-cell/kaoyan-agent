@@ -52,6 +52,11 @@ def main() -> None:
         choices=["lecture", "note", "exam", "wrong_book", "school_info", "unknown"],
         help="Material type, default: unknown",
     )
+    parser.add_argument(
+        "--no-llm-cleanup",
+        action="store_true",
+        help="Disable Qwen strategy generation and use local/default cleaning strategy only.",
+    )
 
     args = parser.parse_args()
     file_path = Path(args.file)
@@ -70,6 +75,7 @@ def main() -> None:
         user_id=args.user_id,
         subject=args.subject,
         material_type=args.material_type,
+        use_llm_cleanup=not args.no_llm_cleanup,
     )
 
     print(f"material_id   : {result.material_id}")

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from .security import resolve_material_id
 from .service import MaterialIngestionService
@@ -26,6 +27,7 @@ async def upload_material(
     user_id: str | None = Form(None),
     subject: str = Form("unknown"),
     material_type: str = Form("unknown"),
+    use_llm_cleanup: bool = Form(True),
 ) -> dict[str, Any]:
     uid = _resolve_user_id(request, user_id)
     if not file.filename:
@@ -36,11 +38,13 @@ async def upload_material(
     try:
         with temp_path.open("wb") as output_file:
             shutil.copyfileobj(file.file, output_file)
-        result = MaterialIngestionService().ingest_file(
+        result = await run_in_threadpool(
+            MaterialIngestionService().ingest_file,
             file_path=temp_path,
             user_id=uid,
             subject=subject,
             material_type=material_type,
+            use_llm_cleanup=use_llm_cleanup,
         )
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -56,6 +60,9 @@ async def upload_material(
         "manifest_path": result.manifest_path,
         "markdown_path": result.markdown_path,
         "chunk_count": result.chunk_count,
+        "quality_status": result.quality_status,
+        "warnings": result.warnings,
+        "metadata": result.metadata,
         "error": None,
     }
 

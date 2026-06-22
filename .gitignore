@@ -47,6 +47,7 @@ data/runtime/logs/
 data/runtime/sessions/
 data/runtime/sessions_md/
 data/runtime/uploads/
+data/user_materials/
 
 # =========================
 # Runtime cache / generated cache
