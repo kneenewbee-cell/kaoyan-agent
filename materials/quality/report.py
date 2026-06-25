@@ -47,6 +47,9 @@ def _score_structure(metrics: dict[str, Any], text_char_count: int, warnings: li
         warnings.append("strategy_execution_incomplete")
     if "main_section_matches_below_threshold" in warnings:
         score -= 0.20
+    if "qwen_strategy_invalid_fallback_to_local" in warnings or "strategy_schema_validation_failed" in warnings:
+        score -= 0.08
+        warnings.append("llm_strategy_fallback")
     return clamp_score(score)
 
 
@@ -77,6 +80,9 @@ def _score_chunks(metrics: dict[str, Any], warnings: list[str]) -> float:
     if metrics["missing_heading_path_count"] == metrics["chunk_count"] and metrics["chunk_count"] > 1:
         score -= 0.12
         warnings.append("chunks_missing_heading_path")
+    if metrics.get("unique_heading_path_count", 0) <= 1 and metrics["chunk_count"] >= 10:
+        score -= 0.12
+        warnings.append("low_chunk_heading_path_diversity")
     return clamp_score(score)
 
 

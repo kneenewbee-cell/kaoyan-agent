@@ -1,17 +1,187 @@
 from __future__ import annotations
 
+import copy
 import json
+import re
 from typing import Any
 
 from pydantic import ValidationError
 
-from .strategy_schema import CleaningStrategy
+from ..pipeline_logger import sanitize_for_log
+from .strategy_schema import CleaningStrategy, HeadingFamily
 
 
 DANGEROUS_TOKENS = ("eval", "exec", "import", "subprocess", "os.system", "open(", "__")
+CHINESE_NUM = "零〇一二三四五六七八九十百千万两"
+HEADING_FAMILY_KEYS = {
+    "id",
+    "enabled",
+    "kind",
+    "anchors",
+    "anchor_position",
+    "ordinal_styles",
+    "ordinal_required",
+    "units",
+    "separators",
+    "title_required",
+    "parent_hints",
+    "min_repeats",
+    "examples",
+}
 
 
-def default_conservative_strategy(*, reason: str = "未获得可信结构策略") -> CleaningStrategy:
+def _strip_markdown_heading_marker(value: str) -> str:
+    return re.sub(r"^\s*#{1,6}\s+", "", value.strip())
+
+
+def _family_examples(family: dict[str, Any]) -> list[str]:
+    examples = family.get("examples")
+    if not isinstance(examples, list):
+        return []
+    return [_strip_markdown_heading_marker(str(example)) for example in examples if str(example).strip()]
+
+
+def _looks_like_alpha_outline_family(family: dict[str, Any]) -> bool:
+    family_id = str(family.get("id") or "").lower()
+    if any(hint in family_id for hint in ("alpha", "letter", "字母")):
+        return True
+    for example in _family_examples(family):
+        if re.match(r"^[A-Z]\s*[\u4e00-\u9fff]\S+", example.strip()):
+            return True
+    return False
+
+
+def _family_has_matcher_shape(family: dict[str, Any]) -> bool:
+    return bool(family.get("anchors") or family.get("ordinal_styles") or family.get("units"))
+
+
+def _normalize_outline_family_shape(family: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    for key in list(family):
+        if key in HEADING_FAMILY_KEYS:
+            continue
+        normalized_key = re.sub(r"[^A-Za-z_]", "", str(key))
+        if normalized_key == "separators":
+            if "separators" not in family and isinstance(family.get(key), list):
+                family["separators"] = family[key]
+            family.pop(key, None)
+            warnings.append("strategy_family_malformed_key_repaired")
+            continue
+        family.pop(key, None)
+        warnings.append("strategy_family_extra_key_dropped")
+
+    original_kind = family.get("kind")
+    anchors = family.get("anchors")
+    styles = family.get("ordinal_styles")
+    units = family.get("units")
+    if not isinstance(anchors, list):
+        anchors = []
+    if not isinstance(styles, list):
+        styles = []
+    if not isinstance(units, list):
+        units = []
+
+    cleaned_anchors = [str(anchor).strip() for anchor in anchors if str(anchor).strip()]
+    cleaned_units = [str(unit).strip() for unit in units if str(unit).strip()]
+    anchor_set = set(cleaned_anchors)
+
+    examples = family.get("examples")
+    if isinstance(examples, list):
+        cleaned_examples = [_strip_markdown_heading_marker(str(example)) for example in examples]
+        cleaned_examples = [example for example in cleaned_examples if example]
+        if cleaned_examples != examples:
+            family["examples"] = cleaned_examples
+            warnings.append("strategy_family_examples_heading_markers_stripped")
+
+    if family.get("kind") == "strong_boundary" and cleaned_anchors and cleaned_units:
+        boundary_units = {"篇", "章", "节", "部分", "卷", "课"}
+        normalized_anchors: list[str] = []
+        changed = False
+        for anchor in cleaned_anchors:
+            normalized = anchor
+            for unit in cleaned_units:
+                if unit in boundary_units and anchor.startswith("第") and anchor.endswith(unit) and anchor != "第":
+                    normalized = anchor[: -len(unit)] or "第"
+                    changed = True
+                    break
+            normalized_anchors.append(normalized)
+        if changed:
+            family["anchors"] = list(dict.fromkeys(normalized_anchors))
+            cleaned_anchors = [str(anchor).strip() for anchor in family["anchors"] if str(anchor).strip()]
+            anchor_set = set(cleaned_anchors)
+            warnings.append("strategy_family_chapter_anchor_repaired")
+
+    if family.get("kind") != "strong_boundary" and cleaned_anchors and cleaned_units and family.get("ordinal_required"):
+        overlapped_units = {
+            unit
+            for unit in cleaned_units
+            if any(anchor.endswith(unit) and len(anchor) > len(unit) for anchor in cleaned_anchors)
+        }
+        if overlapped_units:
+            family["units"] = [unit for unit in cleaned_units if unit not in overlapped_units]
+            warnings.append("strategy_family_anchor_unit_overlap_repaired")
+
+    if family.get("kind") == "strong_boundary" and not family.get("units") and styles:
+        family["kind"] = "major_section"
+        warnings.append("strategy_family_strong_boundary_without_units_repaired")
+
+    chinese_outline = all(re.fullmatch(rf"[{CHINESE_NUM}]+、", anchor) for anchor in cleaned_anchors) if cleaned_anchors else False
+    paren_chinese = all(
+        re.fullmatch(rf"[（(]\s*[{CHINESE_NUM}]+\s*[）)]", anchor) for anchor in cleaned_anchors
+    ) if cleaned_anchors else False
+    paren_arabic = all(re.fullmatch(r"[（(]\s*\d+\s*[）)]", anchor) for anchor in cleaned_anchors) if cleaned_anchors else False
+    arabic_outline = all(re.fullmatch(r"\d+[.．、]", anchor) for anchor in cleaned_anchors) if cleaned_anchors else False
+
+    if not cleaned_anchors and not cleaned_units and not styles and _looks_like_alpha_outline_family(family):
+        family["anchors"] = []
+        if original_kind not in {"major_section", "block", "item", "strong_boundary"}:
+            family["kind"] = "major_section"
+        family["ordinal_styles"] = ["alpha"]
+        family["ordinal_required"] = True
+        family["separators"] = ["", " "]
+        warnings.append("strategy_family_alpha_outline_repaired")
+    elif chinese_outline:
+        family["anchors"] = []
+        if original_kind not in {"major_section", "block", "item", "strong_boundary"}:
+            family["kind"] = "outline"
+        family["ordinal_styles"] = ["chinese"]
+        family["ordinal_required"] = True
+        family["separators"] = ["、"]
+        warnings.append("strategy_family_outline_anchors_normalized")
+    elif paren_chinese or (bool(cleaned_anchors) and anchor_set <= {"(", "（"} and "chinese" in styles):
+        family["anchors"] = []
+        if original_kind not in {"major_section", "block", "item", "strong_boundary"}:
+            family["kind"] = "outline"
+        family["ordinal_styles"] = ["paren_chinese"]
+        family["ordinal_required"] = True
+        family["separators"] = ["", " "]
+        warnings.append("strategy_family_outline_anchors_normalized")
+    elif paren_arabic or (bool(cleaned_anchors) and anchor_set <= {"(", "（"} and "arabic" in styles):
+        family["anchors"] = []
+        if original_kind not in {"major_section", "block", "item", "strong_boundary"}:
+            family["kind"] = "outline"
+        family["ordinal_styles"] = ["paren_arabic"]
+        family["ordinal_required"] = True
+        family["separators"] = ["", " "]
+        warnings.append("strategy_family_outline_anchors_normalized")
+    elif arabic_outline:
+        family["anchors"] = []
+        if original_kind not in {"major_section", "block", "item", "strong_boundary"}:
+            family["kind"] = "outline"
+        family["ordinal_styles"] = ["arabic"]
+        family["ordinal_required"] = True
+        family["separators"] = [".", "．", "、"]
+        warnings.append("strategy_family_outline_anchors_normalized")
+
+    if not family.get("anchors") and family.get("kind") not in {"outline", "strong_boundary", "major_section", "block", "item"}:
+        family["kind"] = "outline"
+        family["ordinal_required"] = True
+        warnings.append("strategy_family_kind_normalized_to_outline")
+
+    return warnings
+
+
+def default_conservative_strategy(*, reason: str = "No reliable structure strategy") -> CleaningStrategy:
     return CleaningStrategy(
         document_profile={"subject": "unknown", "document_type": "unknown", "language": "zh", "confidence": 0.3},
         main_section_rule={
@@ -63,34 +233,254 @@ def parse_strategy_payload(payload: str | dict[str, Any] | CleaningStrategy) -> 
     return parsed, []
 
 
+def summarize_strategy_payload(data: dict[str, Any]) -> dict[str, Any]:
+    heading_rules = data.get("heading_rules", []) or []
+    heading_families = data.get("heading_families", []) or []
+    document_zones = data.get("document_zones") or {}
+    front_matter_zones = []
+    if isinstance(document_zones, dict):
+        raw_zones = document_zones.get("front_matter_zones", []) or []
+        if isinstance(raw_zones, list):
+            front_matter_zones = [
+                {
+                    "type": zone.get("type"),
+                    "start_line": zone.get("start_line"),
+                    "end_line": zone.get("end_line"),
+                    "action": zone.get("action"),
+                    "chunk_policy": zone.get("chunk_policy"),
+                    "confidence": zone.get("confidence"),
+                }
+                for zone in raw_zones
+                if isinstance(zone, dict)
+            ]
+    return sanitize_for_log(
+        {
+            "top_level_keys": sorted(str(key) for key in data.keys()),
+            "version": data.get("version"),
+            "strategy_source": data.get("strategy_source"),
+            "document_profile": data.get("document_profile"),
+            "document_zones": {
+                "body_start_line": document_zones.get("body_start_line") if isinstance(document_zones, dict) else None,
+                "confidence": document_zones.get("confidence") if isinstance(document_zones, dict) else None,
+                "front_matter_zones": front_matter_zones[:8],
+            },
+            "main_section_rule": data.get("main_section_rule"),
+            "subsection_rule_count": len(data.get("subsection_rules", []) or []),
+            "heading_family_count": len(heading_families),
+            "heading_families": [
+                {
+                    "id": family.get("id"),
+                    "kind": family.get("kind"),
+                    "anchors": family.get("anchors"),
+                    "ordinal_styles": family.get("ordinal_styles"),
+                    "ordinal_required": family.get("ordinal_required"),
+                    "units": family.get("units"),
+                    "parent_hints": family.get("parent_hints"),
+                    "min_repeats": family.get("min_repeats"),
+                }
+                for family in heading_families
+                if isinstance(family, dict)
+            ],
+            "heading_rule_count": len(heading_rules),
+            "heading_rules": [
+                {
+                    "id": rule.get("id"),
+                    "role": rule.get("role"),
+                    "target_level": rule.get("target_level"),
+                    "parent_rule": rule.get("parent_rule"),
+                    "priority": rule.get("priority"),
+                    "min_repeats": rule.get("min_repeats"),
+                    "pattern_types": [
+                        token.get("type")
+                        for token in (rule.get("pattern", []) or [])
+                        if isinstance(token, dict)
+                    ],
+                }
+                for rule in heading_rules
+                if isinstance(rule, dict)
+            ],
+        }
+    )
+
+
+def _validation_errors_for_log(exc: ValidationError) -> list[dict[str, Any]]:
+    errors: list[dict[str, Any]] = []
+    for error in exc.errors():
+        loc = ".".join(str(part) for part in error.get("loc", ()))
+        errors.append(
+            {
+                "loc": loc,
+                "type": error.get("type"),
+                "msg": error.get("msg"),
+            }
+        )
+    return errors
+
+
+def _repair_strategy_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    repaired = copy.deepcopy(data)
+    warnings: list[str] = []
+    if "document_zones" in repaired:
+        repaired.pop("document_zones", None)
+        warnings.append("strategy_document_zones_ignored")
+    families = repaired.get("heading_families")
+    if isinstance(families, list):
+        candidate_families: list[dict[str, Any]] = []
+        dropped_family_ids: set[str] = set()
+        for family in families:
+            if not isinstance(family, dict):
+                warnings.append("strategy_family_invalid_entry_dropped")
+                continue
+            warnings.extend(_normalize_outline_family_shape(family))
+            examples = family.get("examples")
+            if isinstance(examples, list) and len(examples) > 8:
+                family["examples"] = examples[:8]
+                warnings.append("strategy_family_examples_truncated")
+            separators = family.get("separators")
+            if separators == []:
+                family["separators"] = ["", " ", "、", ".", "．", "|", "：", ":"]
+                warnings.append("strategy_family_separators_defaulted")
+            if _family_has_matcher_shape(family):
+                candidate_families.append(family)
+            else:
+                family_id = family.get("id")
+                if isinstance(family_id, str):
+                    dropped_family_ids.add(family_id)
+                warnings.append("strategy_family_without_matcher_dropped")
+
+        repaired_families: list[dict[str, Any]] = []
+        seen_family_ids: set[str] = set()
+        for family in candidate_families:
+            family_id = family.get("id")
+            family_id_text = family_id.strip() if isinstance(family_id, str) else ""
+            if family_id_text and family_id_text in seen_family_ids:
+                dropped_family_ids.add(family_id_text)
+                warnings.append("strategy_family_duplicate_id_dropped")
+                continue
+            try:
+                validated_family = HeadingFamily.model_validate(family)
+            except ValidationError:
+                if family_id_text:
+                    dropped_family_ids.add(family_id_text)
+                warnings.append("strategy_family_invalid_dropped")
+                continue
+            if family_id_text:
+                seen_family_ids.add(family_id_text)
+            repaired_families.append(validated_family.model_dump(mode="json"))
+
+        if dropped_family_ids:
+            for family in repaired_families:
+                parent_hints = family.get("parent_hints")
+                if not isinstance(parent_hints, list):
+                    continue
+                cleaned_parent_hints = [
+                    hint
+                    for hint in parent_hints
+                    if not (isinstance(hint, str) and hint in dropped_family_ids)
+                ]
+                if cleaned_parent_hints != parent_hints:
+                    family["parent_hints"] = cleaned_parent_hints
+                    warnings.append("strategy_family_parent_hints_repaired")
+        repaired["heading_families"] = repaired_families
+    rules = repaired.get("heading_rules")
+    if isinstance(rules, list):
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            examples = rule.get("examples")
+            if isinstance(examples, list) and len(examples) > 8:
+                rule["examples"] = examples[:8]
+                warnings.append("strategy_examples_truncated")
+            if isinstance(examples, list):
+                cleaned_examples = [_strip_markdown_heading_marker(str(example)) for example in rule.get("examples", [])]
+                cleaned_examples = [example for example in cleaned_examples if example]
+                if cleaned_examples != rule.get("examples"):
+                    rule["examples"] = cleaned_examples
+                    warnings.append("strategy_examples_heading_markers_stripped")
+
+        for _ in range(len(rules) + 1):
+            changed = False
+            rules_by_id = {
+                rule.get("id"): rule
+                for rule in rules
+                if isinstance(rule, dict) and isinstance(rule.get("id"), str)
+            }
+            for rule in rules:
+                if not isinstance(rule, dict):
+                    continue
+                parent_id = rule.get("parent_rule")
+                parent = rules_by_id.get(parent_id)
+                if not isinstance(parent, dict):
+                    continue
+                parent_level = parent.get("target_level")
+                child_level = rule.get("target_level")
+                if not isinstance(parent_level, int) or not isinstance(child_level, int):
+                    continue
+                if parent_level >= child_level and parent_level < 6:
+                    rule["target_level"] = parent_level + 1
+                    warnings.append("strategy_parent_level_repaired")
+                    changed = True
+                elif parent_level >= child_level and parent_level >= 6:
+                    rule["parent_rule"] = None
+                    warnings.append("strategy_parent_rule_dropped_at_max_depth")
+                    changed = True
+            if not changed:
+                break
+    return repaired, sorted(set(warnings))
+
+
 def validate_cleaning_strategy(
     payload: str | dict[str, Any] | CleaningStrategy,
     *,
     fallback_source: str = "default",
+    diagnostics: dict[str, Any] | None = None,
 ) -> tuple[CleaningStrategy, list[str], bool]:
     warnings: list[str] = []
     data, parse_warnings = parse_strategy_payload(payload)
     warnings.extend(parse_warnings)
+    if diagnostics is not None:
+        diagnostics["parse_warnings"] = list(parse_warnings)
     if data is None:
-        strategy = default_conservative_strategy(reason="strategy JSON 不合法")
+        if diagnostics is not None:
+            diagnostics["result"] = "payload_parse_failed"
+        strategy = default_conservative_strategy(reason="strategy payload is not valid JSON")
         strategy.strategy_source = "default"
         return strategy, warnings, True
 
+    if diagnostics is not None:
+        diagnostics["payload_summary"] = summarize_strategy_payload(data)
+
     if _contains_dangerous_token(data):
         warnings.append("strategy_rejected_dangerous_token")
-        strategy = default_conservative_strategy(reason="strategy 包含危险字段或内容")
+        if diagnostics is not None:
+            diagnostics["result"] = "dangerous_token_rejected"
+        strategy = default_conservative_strategy(reason="strategy contains dangerous tokens")
         strategy.strategy_source = "default"
         return strategy, warnings, True
+
+    data, repair_warnings = _repair_strategy_payload(data)
+    warnings.extend(repair_warnings)
+    if diagnostics is not None and repair_warnings:
+        diagnostics["repair_warnings"] = list(repair_warnings)
+        diagnostics["repaired_payload_summary"] = summarize_strategy_payload(data)
 
     try:
         strategy = CleaningStrategy.model_validate(data)
     except ValidationError as exc:
         warnings.append("strategy_schema_validation_failed")
         warnings.extend(error["type"] for error in exc.errors()[:5])
-        strategy = default_conservative_strategy(reason="strategy schema 校验失败")
+        if diagnostics is not None:
+            schema_errors = _validation_errors_for_log(exc)
+            diagnostics["result"] = "schema_validation_failed"
+            diagnostics["schema_error_count"] = len(schema_errors)
+            diagnostics["schema_errors"] = schema_errors[:20]
+        strategy = default_conservative_strategy(reason="strategy schema validation failed")
         strategy.strategy_source = "default"
         return strategy, warnings, True
 
     if strategy.strategy_source == "default" and fallback_source in {"qwen", "local"}:
-        strategy.strategy_source = fallback_source  # preserve source when payload omitted the optional field
+        strategy.strategy_source = fallback_source
+    if diagnostics is not None:
+        diagnostics["result"] = "valid"
+        diagnostics["validated_strategy_source"] = strategy.strategy_source
     return strategy, warnings, False

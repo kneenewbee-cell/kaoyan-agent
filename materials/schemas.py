@@ -254,6 +254,9 @@ class MaterialManifest:
         "parse_report": None,
         "format_probe": None,
         "cleaning_strategy": None,
+        "document_zones": None,
+        "zone_report": None,
+        "pipeline_log": None,
     })
     chunk_count: int = 0
     asset_count: int = 0
@@ -302,6 +305,9 @@ class MaterialManifest:
         paths.setdefault("parse_report", None)
         paths.setdefault("format_probe", None)
         paths.setdefault("cleaning_strategy", None)
+        paths.setdefault("document_zones", None)
+        paths.setdefault("zone_report", None)
+        paths.setdefault("pipeline_log", None)
         return cls(
             material_id=d["material_id"],
             user_id=d["user_id"],

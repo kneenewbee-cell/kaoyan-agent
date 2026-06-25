@@ -1,0 +1,8 @@
+{"id":"politics_subject_concept_contradiction_001","user_input":"主要矛盾和矛盾主要方面有什么区别？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_current_affairs_001","user_input":"二十届三中全会的新质生产力是什么？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_theory_mapping_001","user_input":"新质生产力体现了哪些马原哲学原理？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_mao_001","user_input":"毛中特里社会主义本质怎么背？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_history_001","user_input":"史纲里近代中国的主要矛盾是什么？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_ideology_001","user_input":"思修里理想信念的作用怎么答？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_dialectics_gap_001","user_input":"量变和质变的辩证关系是什么？","history":[],"expected":{"subject":"politics"}}
+{"id":"politics_subject_history_inherit_001","history":[{"turn_id":1,"user_query":"主要矛盾和矛盾主要方面有什么区别？","assistant_answer":"这是考研政治马原中的矛盾分析法。","route":{"subject":"politics"}}],"user_input":"如果写分析题，答案怎么组织？","expected":{"subject":"politics"}}

@@ -8,13 +8,14 @@ import shutil
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from dotenv import load_dotenv
 
 from . import kaoyan_agent as legacy_agent
+from .prompts import load_prompt
 from .usage_tracking import reset_usage_callback, set_usage_callback
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,166 +51,28 @@ def route_debug_log_enabled() -> bool:
     return env_flag("ROUTE_DEBUG_LOG", default=False)
 
 
-CONTEXT_FOLLOWUP_PROMPT = f"""非步骤追问规则：
-- “那如果...呢”“换成...还成立吗”“第一个/第二个题的余项”“总结一下”“改得更简洁”等不是步骤追问时，不要硬切到 explain_math_step。
-- 这类问题应优先使用 answer_math_followup / summarize_math_solution / rewrite_math_answer；answer_math_followup 会由 runtime 根据最近 {FOLLOWUP_DAG_LOOKBACK} 个 turn 的 DAG 溯源结果补齐 root_context 与 followup_context。
-- 当前轮显式给出的参数覆盖历史参数；没有显式修改的函数、展开点、目标点、阶数、误差要求应从历史继承。
-- 执行性很弱的非步骤追问（例如“这个呢”“为什么成立”“继续”“那如果换成...”）默认先指向上一轮；如果历史中存在多个可能 root，且最近 {FOLLOWUP_DAG_LOOKBACK} 轮仍不足以定位，先请用户澄清。
-"""
+CONTEXT_FOLLOWUP_PROMPT = load_prompt("context_followup_prompt", FOLLOWUP_DAG_LOOKBACK=FOLLOWUP_DAG_LOOKBACK)
 
 
-MATH_TOOL_SELECTION_POLICY = """数学 tool_selection 策略：
-- 你可以直接回答，也可以调用工具；不要为了调用工具而调用工具。
-- 先判定当前数学问题难度：simple/easy 难度由你直接回答；medium/high 难度调用合适工具。不要把难度判定过程单独输出给用户。
-- simple/easy 通常包括：常见概念、标准定理短证明、基础公式推导、公式含义确认、短条件说明、简短 DAG 追问，且不需要题库、OCR、标准答案核对或长链计算。
-- medium/high 通常包括：复杂完整解题、长链多步推导、非常规证明、易错计算、严谨步骤解释、OCR 后解题，或任何你不能不借助工具可靠完成的问题。
-- 简单概念解释、公式确认、短条件说明、常规定理证明、基础公式推导、简短 DAG 追问，如果你能基于输入和上下文给出可靠完整答案，可以直接回答。
-- 明确年份 + 科目 + 题号的真题请求必须调用 solve_exam_question；这不是因为题目一定难，而是因为需要本地题库、题图 OCR 和标准答案核对。
-- 复杂完整解题、长链多步推导、非常规证明、易错计算、严谨步骤解释、OCR 后解题时，应调用合适工具。
-- 步骤追问优先 explain_math_step；普通数学题或非真题推导优先 solve_general_math。
-- 如果当前消息来自 DAG 链路，调用工具时必须把继承后的完整问题写入 tool arguments，不能只传“这个”“那一步”“继续”等省略说法。
-- 如果 DAG 链路仍不足以确定指代对象，请直接向用户澄清，不要硬调工具。
-- 对 medium 难度数学工具可传 thinking=\"disabled\"；对 high 难度或完整真题解答可传 thinking=\"light\"。"""
+MATH_TOOL_SELECTION_POLICY = load_prompt("math_tool_selection_policy")
 
 
-POLITICS_TOOL_SELECTION_POLICY = """政治 tool_selection 策略：
-- 先判断当前政治问题类型，不要为了调用工具而调用工具。
-- simple/easy：常识性概念、非常基础的区别说明、用户只要一句话解释，且不涉及考研标准表述/官方提法/近期时政时，可以直接回答。
-- 教材知识点、考研政治概念、马原/毛中特/史纲/思修标准表述、选择题/分析题答题表述、背诵口径，应调用 search_politics_knowledge。
-- 近期会议、政策热点、时政新闻、月份时政、中央会议精神、最新政策，应调用 get_current_affairs。
-- 如果问题同时包含“时政会议/政策/新闻材料”和“体现什么原理/马原/哲学/政治理论/考研知识点”，必须按组合题处理：先调用 get_current_affairs 获取时政材料和官方表述，再调用 search_politics_knowledge 获取理论标准表述，最后综合回答“材料 -> 原理 -> 考研答题表述”。
-- 例如“某个会议体现了什么马原哲学原理”“用新质生产力解释高质量发展”“中央经济工作会议体现了哪些辩证法原理”，都属于时政材料 + 理论映射题，通常需要两个工具协同；若问题只需其中一种材料，不要重复调用。
-- DAG 追问时，如果调用工具，必须把被追问对象、父轮主题、用户当前追问补全进 query，不能只传“这个”“那它呢”。
-- 如果用户问的是考研主观题/分析题怎么答，优先调用知识库获取标准表述，再组织成可背诵答案。
-- 如果材料不足或指代不明，直接澄清，不要编造官方表述。"""
+POLITICS_TOOL_SELECTION_POLICY = load_prompt("politics_tool_selection_policy")
 
 
-GENERIC_TOOL_SELECTION_POLICY = """tool_selection 策略：
-- 在已知学科和上下文的前提下，判断直接回答还是调用工具。
-- 能基于当前输入和上下文可靠完成的短问题可以直接回答。
-- 需要外部知识库、题库、OCR、标准答案核对或复杂推理时调用工具。
-- 指代不明或上下文不足时请用户澄清。"""
+GENERIC_TOOL_SELECTION_POLICY = load_prompt("generic_tool_selection_policy")
 
 
-DEFAULT_ANSWER_SHAPE_POLICY = """默认回答形态：
-- 默认目标是“最小充分回答”：够用但不啰嗦，不机械限制句数。
-- 先在内部判断问题类型：概念解释、题目求解、方法总结、对比辨析、背诵记忆、规划建议、真题解析、代码算法、分析题作答；不要把类型判断过程输出给用户。
-- 先回答核心问题，再补充理解当前问题必要的条件、理由、步骤或边界。
-- 长度控制是参考，不是硬性限制；默认一般不超过 8 句话，若为了说明清楚必须超过，可以适当增加，但不得无关扩展。
-- 简单事实类问题：1～3 句话即可。
-- 概念解释类问题：至少覆盖“是什么、成立条件/适用范围、核心结论、直观理解”，通常 4～8 句话。
-- 方法建议类问题：先给明确推荐，再给 3～5 条建议或取舍理由。
-- 规划类问题：可以分步骤，但默认不展开成完整长文。
-- 题目求解、真题解析、分析题作答、代码算法题：以完整解决问题为准，可以超过默认篇幅，但不得扩展无关背景。
-- 用户没有要求深入时，不主动展开证明、历史背景、大量例题或教材式长篇。
-- 只有用户明确要求“详细、展开、举例、完整推导、完整规划、对比分析”时，才展开长回答。
-- 回答必须完整收尾；若内容变长，优先保留结论、关键理由、必要步骤和必要公式。
-- 不确定、依赖实时信息或上下文不足时，说明不确定点或请求澄清，不编造。"""
+DEFAULT_ANSWER_SHAPE_POLICY = load_prompt("default_answer_shape_policy")
 
 
-MAIN_SYSTEM_PROMPT = """你是考研小助手，当前优先服务数学问答。
-
-角色定义：
-- 你是严谨、可核验、面向学习过程的考研助教。
-- 你应该先理解用户真实意图，再选择工具；不确定时先追问澄清。
-- 数学题、真题、步骤解释、符号解释、图片题 OCR 等任务，优先使用工具，不要编造数据或标准答案。
-
-通用行为准则：
-- 只基于用户输入、对话历史、工具返回和本地题库作答。
-- 工具能查到的数据，以工具结果为准；工具失败时说明失败原因，不要假装查到了。
-- 用户问概念时可以直接解释；用户问真题、答案、步骤、局部推导时必须调用对应工具。
-- 工具返回数学解法后，最终回复要忠实整理工具结果，不得自行引入新的区域设定、积分边界或“纠错”叙述。
-- 输出给用户时不要暴露内部 tool_call JSON、日志路径、路由细节或模型调度细节。
-
-追问处理规则：
-- 每次调用时都会附带最近 15 轮用户消息和助手回复，这些历史是原文上下文，禁止提前改写历史。
-- 当用户提到“第 x 步”“这一步怎么来的”“这里为什么”“上面那个式子”“它/这个/那一步”等细节追问时，必须调用 explain_math_step 或对应学科工具。
-- 处理步骤追问时，要从历史中定位原始解题过程作为 context，而不是只看上一轮回复。
-- 如果追问省略了函数、展开点、参数、题目编号等，应继承其 root 对话中的相关参数；本轮显式修改的参数优先。
-- 如果指代不明，或者历史中存在多个可能 root，必须请用户澄清。
-
-学科路由规则：
-- 先通过轻量学科分类器动态加载工具列表，减少无关工具干扰。
-- 当前只完整实现数学；英语、政治完整真题等未接入时应直接说明。
-- 数学真题优先使用 solve_exam_question / show_math_exam_question / show_math_exam_answer。
-- 普通数学题使用 solve_general_math；图片数学题先 ocr_math_image，再解题。
-- solve_exam_question 会自动识别本地题库题图；不要忽略工具返回的 OCR 文本。
-- 上传图片时，图片文件名只能作为弱线索，不能据此断定年份、科目、题号或真题来源。
-- 只有用户文本明确给出年份、科目和题号时，才允许按真题调用 solve_exam_question / show_math_exam_question / show_math_exam_answer；否则图片题一律先 OCR，再作为普通数学题处理。
-"""
+MAIN_SYSTEM_PROMPT = load_prompt("main_system_prompt")
 
 
-SUBJECT_CLASSIFIER_PROMPT = """判断用户输入属于哪个学科。如果输入信息充分可以确定学科，输出：
-{"subject":"math|politics|english|unsupported","reason":"一句话","clarification":null}
-
-如果用户输入明显模糊、缺少关键信息导致无法确定学科，不要直接判 unsupported，而是输出：
-{"subject":"unsupported","reason":"一句话","clarification":"向用户追问的一句话"}
-
-核心规则——历史优先：
-- 当前输入中学科关键词充分的，以当前输入为准。
-- 当前输入本身没有明确的学科关键词时（如「这道题」「一两金子」「它还成立吗」「讲一下」等），必须优先从传入的 recent_history 中推断学科。如果最近几轮历史有清晰一致的学科（如连续多轮都是政治经济学讨论或连续多轮都是数学解题），应当继承那个学科，不要判 unsupported。
-- 只有当前输入和历史都无法确定学科时，才判 unsupported 并输出 clarification 追问。
-
-clarification 追问规则：
-- 只追问最关键的 1-2 个缺失信息
-- 给用户提供可选的例子或范围
-- 语气友好
-
-优先级：
-- 明确数学、考研数学、数学内容术语（如极限、求极限、导数、积分、矩阵、概率、泰勒、余项、洛必达、无穷比无穷、0/0型未定式）-> math
-- 考研政治知识点、时政、近期热点、新闻政策 -> politics
-- 考研英语 -> english
-- 年份、题号、分值、题型、真题外观、“怎么做/解析一下/这道题”等考试外观或问法不能单独作为具体学科证据
-- 无明确学科内容术语时 -> 从近期历史推断；历史也不明确 -> unsupported + clarification
-- 图片文件名只能作为弱线索
-注意：时政不是独立学科，它属于 politics；是否调用时政工具由后续 tool-calling 层决定。
-"""
+SUBJECT_CLASSIFIER_PROMPT = load_prompt("subject_classifier_prompt")
 
 
-ROUTE_CLASSIFIER_PROMPT = f"""你是考研助手的路由判定器，只输出 JSON，不回答问题。
-
-任务：根据当前输入、最近 {ROUTING_HISTORY_TURNS} 轮历史和 hints，同时判断学科、是否追问、追问类型和父节点。
-
-输出 JSON：
-{{"subject":"math|politics|english|unsupported","is_followup":true/false,"followup_category":"independent|step_followup|weak_nonstep_followup|contextual_nonstep_followup|ambiguous","parent_turn_id":number|null,"parent_turn_ids":[number],"reason":"一句话","clarification":string|null}}
-
-规则：
-- 如果 subject_locked=true，必须沿用 subject_hint；如果 followup_locked=true，必须沿用 followup_hint。
-- 候选父节点范围只限 candidate_turns 中出现的 turn_id；超出范围的 parent 无效，会被系统清除。
-- 如果用户显式写了 turnN / 第N轮 / N轮，且 N 在 candidate_turns 中，优先选 turn N；如果 N 不在 candidate_turns 中，不能输出 N，应选择候选范围内最近的同主题祖先，仍无法定位则判 ambiguous。
-- parent_turn_ids 按时间从远到近排列。
-- 学科判定只能依据明确学科内容证据：当前输入中的学科术语、图片 OCR/视觉内容，或最近历史中稳定一致的学科上下文。
-- “考试外观信息”不能单独作为具体学科证据，包括年份、题号、分值、选择题/填空题/大题、真题、试卷，以及“怎么做/解析一下/这道题/讲一下”等问法。
-- 但“学科内容术语”是强证据。数学术语包括但不限于：极限、求极限、导数、微分、积分、级数、泰勒、余项、洛必达、无穷小、无穷大、无穷比无穷、0/0型、∞/∞型、矩阵、行列式、向量、特征值、二次型、概率、随机变量、分布、期望、方差。出现这些术语时，应判 math。
-- 例：“21年第五题怎么做”只有考试外观信息，没有学科内容术语，应判 unsupported 并追问科目/卷种。
-- 例：“极限的无穷比无穷型能使用洛必达吗”包含明确数学术语，应判 math。
-- 如果当前输入缺少明确学科内容证据，且最近历史也不足以稳定继承学科，必须判为 unsupported，并给 clarification 追问能够区分学科的信息。
-- 不允许因为输入看起来像考研真题、题目解析或求解请求，就默认归到数学或任何具体学科。
-- 当前输入有明确学科关键词时，以当前输入为准，不被历史覆盖。
-- 但如果当前输入是“那/再/继续/如果/换成/你刚才说/回到/比较某轮”等追问形式，且没有明确切换到另一学科，应先定位被追问 parent，再继承该 parent 的学科。
-- 如果 has_images=true 且提供 image_context，必须把 image_context.ocr_text 和 visual_summary 作为本轮输入上下文一起判断；不要只根据 user_input 判断。
-- image_context.subject_hint 只是图片内容线索，不是强制锁定；当 confidence 较高且 OCR/视觉内容一致时可以采用。
-- 如果图片 OCR 显示为数学题、政治材料、英语文本或时政材料，即使 user_input 只有“怎么做/讲一下/这题”，也应结合图片内容判定对应学科。
-- 如果 image_context 仍无法提供足够学科证据，再输出 unsupported + clarification；不要根据图片文件名判断学科。
-- 父节点判定优先级：
-  1. 当前输入是纯粹新话题/完整新题目（无任何回指词、引用关系，如“简述...”“计算...”“证明...”“换政治题...”且题面或概念完整）时，判 independent，parent 为空，不要因为上一轮同学科或相邻就挂父节点。
-  2. 复合输入追问优先：如果当前输入同时包含新话题/新概念和明确回指词或应用关系（典型结构是“解释某概念/方法 + 刚才/上一题/这道题能否使用或如何应用”），不要因为前半句是新话题就判 independent；应判 contextual_nonstep_followup，parent 定位到被回指对象，新话题部分留给回答阶段自行解释。
-  3. 当前输入含明确回指词（如“刚才/之前/回到刚才/你刚才提到/上面那个/这道题”）时，必须在候选 turn 中寻找被回指的具体对象；如果回指词后带有主题限定（如“数学证明”“概率题”“毛泽东思想”“实践检验”），优先挂到最近的同主题 turn，而不是简单挂上一轮。
-  4. 当前输入是纠错或改条件（如“不好意思写错了”“应该是...”“改成...”“重新计算”“换成...还成立吗”）时，挂到被纠错/被改条件的上一道实质题或结论。
-  5. “这题呢/那这题呢”且本轮有 image_context 显示一张新题时，通常判 independent，parent 为空；只有用户明确说“沿用上一题/和上一题比较/把上一题条件换成...”才挂父节点。
-  6. 多个候选都能解释当前指代且没有主题限定时，判 ambiguous 并给 clarification，不要硬选最近一轮。
-- 当前输入很省略时，如“这个呢”“还成立吗”“我说的是...”“不是这个”，优先从最近历史继承学科并定位 parent；但若本轮明确切换学科或 image_context 显示新题，应按新话题处理。
-- 当前输入包含“你刚才说/刚才提到/上一轮说/你说的”并引用某个词句或结论时，优先选择最近一轮 whose assistant answer 中出现该词句或结论的 turn 作为 parent；不要为了追到主题源头而跳过这轮。
-- 数学步骤追问，如“这一步怎么来的”“第 2 步为什么”，判为 step_followup。
-- 非步骤追问，如条件替换、概念澄清、继续解释、反驳上一轮，判为 weak_nonstep_followup 或 contextual_nonstep_followup。
-- 多对象追问，如“这两个区别”“第二个呢”，可以返回多个 parent_turn_ids。
-- 多对象比较中，如果用户明确命名“某某问题/某某定理/换序问题/分布问题/特征值问题”等历史主题，优先选择该主题首次出现的独立 turn 作为 parent；只有用户明确说“上一轮说法/这个步骤/这个例子/刚才结论”时，才选择最近的相关子节点。
-- 如果无法确定 parent，但明显是追问，followup_category 设为 ambiguous，并给 clarification。
-- subject=unsupported 表示学科证据不足，不是错误状态；此时 followup_category 仍应按输入本身判断，通常为 independent 或 ambiguous。
-- 时政、会议热点、新闻政策、新质生产力等都属于 politics，不要输出 current_affairs；时政工具由后续工具选择层决定。
-- parent_turn_id 和 parent_turn_ids 只能来自给定历史 turn_id；独立问题 parent_turn_id=null 且 parent_turn_ids=[]。
-- 注意系统后处理：followup_category=independent 时系统会强制清空 parent；超出 candidate_turns 的 parent 会被清除。若需要挂父节点，就不要判 independent。
-"""
+ROUTE_CLASSIFIER_PROMPT = load_prompt("route_classifier_prompt", ROUTING_HISTORY_TURNS=ROUTING_HISTORY_TURNS)
 
 
 ROUTE_CLASSIFIER_PROMPT += (
@@ -1117,16 +980,29 @@ def build_current_affairs_tools() -> dict[str, ToolSpec]:
     return {
         "get_current_affairs": ToolSpec(
             "get_current_affairs",
-            "调用 Coze 时政智能体整理近期时政、政策、新闻热点。典型问法：“2026 年 5 月考研政治时政热点”。边界：数学题不要使用。",
-            json_schema({"query": {"type": "string", "description": "时政查询或整理请求"}}, ["query"]),
+            (
+                "调用自研新闻搜索链路整理近期时政、政策、新闻热点。"
+                "典型问法：“2026 年 5 月考研政治时政热点”。边界：数学题不要使用。"
+            ),
+            json_schema(
+                {
+                    "query": {
+                        "type": "string",
+                        "description": "时政查询或整理请求",
+                    },
+                },
+                ["query"],
+            ),
             lambda args: _call_tool(toolkit.get_current_affairs, args),
+            return_mode="evidence",
         )
     }
+
 
 def build_politics_tools() -> dict[str, ToolSpec]:
     """政治知识点 RAG 工具。"""
     try:
-        from .politics_rag import retrieve_politics, answer_with_qwen
+        from .politics_rag import answer_politics_knowledge, retrieve_politics
     except Exception:
         return {}
     return {
@@ -1136,6 +1012,28 @@ def build_politics_tools() -> dict[str, ToolSpec]:
             json_schema({"query": {"type": "string", "description": "政治知识查询"}}, ["query"]),
             lambda args: json.dumps(retrieve_politics(str(args["query"]), top_k=3), ensure_ascii=False, default=str),
             return_mode="evidence",
+        ),
+        "answer_politics_knowledge": ToolSpec(
+            "answer_politics_knowledge",
+            (
+                "政治最终成文工具。适用于 search_politics_knowledge 返回 evidence 后、多个政治工具输出需要合并时，"
+                "或需要把时政材料与考研政治原理组织成面向用户的最终答案时。不要用于数学题。"
+            ),
+            json_schema({
+                "question": {"type": "string", "description": "当前用户政治问题，需补全必要指代"},
+                "tool_outputs": {"type": "string", "description": "前面工具输出或 evidence，JSON 字符串或文本均可"},
+                "history_brief": {"type": "string", "description": "必要历史摘要；独立问题可为空"},
+                "mode": {"type": "string", "enum": ["auto", "news_only", "knowledge_only", "combo"]},
+                "output_format": {"type": "string", "enum": ["ui", "terminal"]},
+            }, ["question", "tool_outputs"]),
+            lambda args: answer_politics_knowledge(
+                question=str(args.get("question") or ""),
+                tool_outputs=args.get("tool_outputs") or "",
+                history_brief=str(args.get("history_brief") or ""),
+                mode=str(args.get("mode") or "auto"),
+                output_format=str(args.get("output_format") or "ui"),
+            ),
+            return_mode="direct",
         ),
     }
 
@@ -2169,7 +2067,14 @@ def format_model_error(exc: Exception) -> str:
     return f"模型接口调用失败：{exc}"
 
 
-def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], metrics: RuntimeMetrics) -> tuple[dict[str, Any], dict[str, Any]]:
+def execute_tool_call(
+    tool_call: dict[str, Any],
+    tools: dict[str, ToolSpec],
+    metrics: RuntimeMetrics,
+    user_input: str | None = None,
+    messages: list[dict[str, Any]] | None = None,
+    output_format: str = "ui",
+) -> tuple[dict[str, Any], dict[str, Any]]:
     started = time.perf_counter()
     name = tool_call.get("function", {}).get("name", "")
     raw_arguments = tool_call.get("function", {}).get("arguments", "{}")
@@ -2187,6 +2092,13 @@ def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], met
         result = {"ok": False, "error": f"Unknown tool: {name}", "available_tools": sorted(tools)}
         metrics.add_step(f"tool:{name}", started, ok=False, error=result["error"])
         return result, {"name": name, "arguments": arguments, "ok": False, "error": result["error"]}
+    execution_arguments = prepare_tool_arguments_for_execution(
+        name=name,
+        arguments=arguments,
+        messages=messages,
+        user_input=user_input,
+        output_format=output_format,
+    )
     usage_token = set_usage_callback(
         lambda item: metrics.add_tool_usage({
             **item,
@@ -2194,11 +2106,11 @@ def execute_tool_call(tool_call: dict[str, Any], tools: dict[str, ToolSpec], met
         })
     )
     try:
-        value = spec.func(arguments)
+        value = spec.func(execution_arguments)
         metrics.tool_success += 1
         result = {"ok": True, "result": value}
         metrics.add_step(f"tool:{name}", started, ok=True)
-        return result, {"name": name, "arguments": arguments, "ok": True}
+        return result, {"name": name, "arguments": execution_arguments, "ok": True}
     except Exception as exc:
         metrics.tool_errors += 1
         result = {"ok": False, "error": str(exc)}
@@ -2214,9 +2126,11 @@ def direct_tool_answer(
     latest_tool_result: dict[str, Any],
     current_round_tool_count: int,
 ) -> tuple[str, str] | None:
-    if current_round_tool_count != 1 or len(tool_call_records) != 1:
+    if current_round_tool_count != 1 or not tool_call_records:
         return None
-    record = tool_call_records[0]
+    record = tool_call_records[-1]
+    if len(tool_call_records) != 1 and str(record.get("name") or "") != "answer_politics_knowledge":
+        return None
     if not record.get("ok") or not latest_tool_result.get("ok"):
         return None
     spec = tools.get(str(record.get("name") or ""))
@@ -2229,6 +2143,201 @@ def direct_tool_answer(
     if not answer:
         return None
     return answer, spec.name
+
+
+def should_auto_answer_politics(tool_call_records: list[dict[str, Any]]) -> bool:
+    names = [str(record.get("name") or "") for record in tool_call_records if record.get("ok")]
+    if "answer_politics_knowledge" in names:
+        return False
+    politics_tools = {"search_politics_knowledge", "get_current_affairs"}
+    return any(name in politics_tools for name in names)
+
+
+def infer_politics_answer_mode(tool_outputs: list[dict[str, Any]]) -> str:
+    names = {str(item.get("tool") or "") for item in tool_outputs}
+    if "get_current_affairs" in names and "search_politics_knowledge" in names:
+        return "combo"
+    if "get_current_affairs" in names:
+        return "news_only"
+    if "search_politics_knowledge" in names:
+        return "knowledge_only"
+    return "auto"
+
+
+def politics_tool_outputs_from_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    outputs: list[dict[str, Any]] = []
+    current_affairs_contents: list[str] = []
+    for message in messages:
+        if message.get("role") != "tool":
+            continue
+        name = str(message.get("name") or "")
+        if name not in {"search_politics_knowledge", "get_current_affairs"}:
+            continue
+        if name == "get_current_affairs":
+            current_affairs_contents.append(str(message.get("content") or ""))
+            continue
+        outputs.append({
+            "tool": name,
+            "content": message.get("content") or "",
+        })
+    if current_affairs_contents:
+        outputs.insert(0, {
+            "tool": "get_current_affairs",
+            "content": merge_current_affairs_tool_contents(current_affairs_contents),
+        })
+    return outputs
+
+
+def parse_json_or_raw(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return ""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def merge_current_affairs_tool_contents(contents: list[str]) -> str:
+    structured_results: list[dict[str, Any]] = []
+    raw_results: list[Any] = []
+    for content in contents:
+        parsed = parse_json_or_raw(content)
+        result = parsed.get("result") if isinstance(parsed, dict) and "result" in parsed else parsed
+        result = parse_json_or_raw(result)
+        if isinstance(result, dict) and isinstance(result.get("items"), list):
+            structured_results.append(result)
+        else:
+            raw_results.append(result)
+
+    if not structured_results:
+        return json.dumps(raw_results, ensure_ascii=False, default=str)
+
+    try:
+        from .tools.current_affairs_search.verify import deduplicate_evidence_items
+    except Exception:
+        deduplicate_evidence_items = None  # type: ignore[assignment]
+
+    items: list[dict[str, Any]] = []
+    queries: list[str] = []
+    warnings: list[str] = []
+    base = dict(structured_results[0])
+    for result in structured_results:
+        query = str(result.get("query") or "").strip()
+        if query and query not in queries:
+            queries.append(query)
+        warnings.extend(str(item) for item in result.get("warnings") or [] if str(item).strip())
+        items.extend(item for item in result.get("items") or [] if isinstance(item, dict))
+    if deduplicate_evidence_items is not None:
+        items = deduplicate_evidence_items(items)
+    base["type"] = "current_affairs_evidence"
+    base["query"] = "；".join(queries) if queries else str(base.get("query") or "")
+    base["queries"] = queries
+    base["items"] = items
+    base["warnings"] = list(dict.fromkeys(warnings))
+    base["merged_tool_calls"] = len(structured_results)
+    if raw_results:
+        base["raw_unmerged_outputs"] = raw_results
+    return json.dumps(base, ensure_ascii=False, default=str)
+
+
+def prepare_tool_arguments_for_execution(
+    *,
+    name: str,
+    arguments: dict[str, Any],
+    messages: list[dict[str, Any]] | None,
+    user_input: str | None,
+    output_format: str,
+) -> dict[str, Any]:
+    prepared = dict(arguments)
+    if name != "answer_politics_knowledge":
+        return prepared
+
+    if user_input:
+        prepared["question"] = user_input
+    prepared.setdefault("history_brief", "")
+    prepared["output_format"] = output_format
+
+    tool_outputs = politics_tool_outputs_from_messages(messages or [])
+    if tool_outputs:
+        prepared["tool_outputs"] = json.dumps(tool_outputs, ensure_ascii=False, default=str)
+        prepared["mode"] = str(prepared.get("mode") or "auto")
+        evidence_tools = {str(item.get("tool") or "") for item in tool_outputs}
+        if {"get_current_affairs", "search_politics_knowledge"}.issubset(evidence_tools):
+            prepared["mode"] = "combo"
+    else:
+        prepared.setdefault("tool_outputs", "[]")
+        prepared["mode"] = str(prepared.get("mode") or "auto")
+    return prepared
+
+
+def auto_answer_politics_knowledge(
+    *,
+    user_input: str,
+    messages: list[dict[str, Any]],
+    tools: dict[str, ToolSpec],
+    tool_call_records: list[dict[str, Any]],
+    metrics: RuntimeMetrics,
+    output_format: str,
+) -> tuple[str, str] | None:
+    if not should_auto_answer_politics(tool_call_records):
+        return None
+    if "answer_politics_knowledge" not in tools:
+        return None
+    tool_outputs = politics_tool_outputs_from_messages(messages)
+    if not tool_outputs:
+        return None
+    tool_call = {
+        "id": "auto_answer_politics_knowledge",
+        "function": {
+            "name": "answer_politics_knowledge",
+            "arguments": json.dumps({
+                "question": user_input,
+                "tool_outputs": json.dumps(tool_outputs, ensure_ascii=False, default=str),
+                "history_brief": "",
+                "mode": "auto",
+                "output_format": output_format,
+            }, ensure_ascii=False),
+        },
+    }
+    messages.append({"role": "assistant", "content": "", "tool_calls": [tool_call]})
+    tool_result, record = execute_tool_call(
+        tool_call,
+        tools,
+        metrics,
+        user_input=user_input,
+        messages=messages,
+        output_format=output_format,
+    )
+    tool_call_records.append(record)
+    messages.append({
+        "role": "tool",
+        "tool_call_id": tool_call["id"],
+        "name": tool_call["function"]["name"],
+        "content": json.dumps(tool_result, ensure_ascii=False, default=str),
+    })
+    direct = direct_tool_answer(tool_call_records, tools, tool_result, 1)
+    if direct is None:
+        return None
+    metrics.add_step("politics_auto_answer", time.perf_counter(), source_tools=[item["tool"] for item in tool_outputs])
+    metrics.add_step("direct_tool_return", time.perf_counter(), tool=direct[1])
+    return direct
+
+
+def append_politics_answer_tool_reminder(messages: list[dict[str, Any]], user_input: str, output_format: str) -> None:
+    messages.append({
+        "role": "user",
+        "content": (
+            "你已经调用政治 evidence 工具获取材料。不要直接用自然语言总结这些 evidence；"
+            "现在必须显式调用 answer_politics_knowledge，并填写 mode："
+            "纯时政事实整理用 news_only，纯政治知识点/辨析/答法用 knowledge_only，"
+            "时政事实与政治理论映射或分析题结合用 combo。"
+            "question 使用用户原问题；tool_outputs 可先留空或简要占位，runtime 会注入真实工具输出。"
+            f"用户原问题：{user_input}\n输出格式：{output_format}"
+        ),
+    })
 
 
 def log_runtime(result: RuntimeResult) -> None:
@@ -2363,8 +2472,20 @@ def tool_selection_policy_for_subject(subject: str | None) -> str:
     if subject == "math":
         return MATH_TOOL_SELECTION_POLICY
     if subject == "politics":
-        return POLITICS_TOOL_SELECTION_POLICY
+        return f"{POLITICS_TOOL_SELECTION_POLICY}\n\n{current_affairs_second_layer_time_policy()}"
     return GENERIC_TOOL_SELECTION_POLICY
+
+
+def beijing_date_iso() -> str:
+    return datetime.now(timezone(timedelta(hours=8))).date().isoformat()
+
+
+def current_affairs_second_layer_time_policy() -> str:
+    return (
+        f"当前北京时间日期：{beijing_date_iso()}。\n\n"
+        "时间判断提醒：涉及“最近、近期、本月、上个月、今年、去年、下个月、4/5月份”等相对时间或省略年份表达时，"
+        "以当前北京时间日期作为判断基准，避免误补旧年份。"
+    )
 
 
 def append_tool_selection_policy(messages: list[dict[str, Any]], subject: str | None, context_mode: str) -> list[dict[str, Any]]:
@@ -2507,9 +2628,11 @@ def run_tool_selection_loop(
     persist: bool,
     extra_memory: dict[str, Any] | None = None,
     max_tokens: int | None = None,
+    output_format: str = "ui",
 ) -> RuntimeResult:
     openai_tools = [tool.openai_schema() for tool in tools.values()]
     tool_call_records: list[dict[str, Any]] = []
+    politics_answer_reminder_sent = False
 
     for round_index in range(MAX_TOOL_ROUNDS):
         llm_started = time.perf_counter()
@@ -2547,6 +2670,17 @@ def run_tool_selection_loop(
         )
         metrics.add_step("llm_tool_selection" if tool_calls else "llm_final", llm_started, round=round_index + 1, tool_calls=len(tool_calls))
         if not tool_calls:
+            if (
+                subject == "politics"
+                and not politics_answer_reminder_sent
+                and should_auto_answer_politics(tool_call_records)
+                and "answer_politics_knowledge" in tools
+                and round_index < MAX_TOOL_ROUNDS - 1
+            ):
+                append_politics_answer_tool_reminder(messages, user_input, output_format)
+                politics_answer_reminder_sent = True
+                metrics.add_step("politics_answer_tool_reminder", time.perf_counter())
+                continue
             answer = str(assistant_message.get("content") or "").strip()
             result = RuntimeResult(answer, subject, messages, tool_call_records, metrics.as_dict(), extra_memory=extra_memory)
             log_runtime(result)
@@ -2555,7 +2689,14 @@ def run_tool_selection_loop(
             return result
         latest_tool_result: dict[str, Any] | None = None
         for tool_call in tool_calls:
-            tool_result, record = execute_tool_call(tool_call, tools, metrics)
+            tool_result, record = execute_tool_call(
+                tool_call,
+                tools,
+                metrics,
+                user_input=user_input,
+                messages=messages,
+                output_format=output_format,
+            )
             latest_tool_result = tool_result
             tool_call_records.append(record)
             messages.append({
@@ -2828,6 +2969,7 @@ def run_standard_message_loop(
             if dag_context_for_tool_selection is not None
             else None
         ),
+        output_format=output_format,
     )
 
 

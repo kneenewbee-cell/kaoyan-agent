@@ -249,7 +249,7 @@ def create_kaoyan_toolkit(agent_module: Any) -> KaoyanToolkit:
         return agent_module.judge_answer(problem, solution)
 
     def get_current_affairs(query: str) -> str:
-        return agent_module.call_coze_current_affairs(query)
+        return agent_module.call_current_affairs_search(query)
 
     return KaoyanToolkit(
         search_math_exam=_make_tool(
@@ -320,7 +320,7 @@ def create_kaoyan_toolkit(agent_module: Any) -> KaoyanToolkit:
         ),
         get_current_affairs=_make_tool(
             name="get_current_affairs",
-            description="调用 Coze 时政小智能体，整理考研政治时政信息。",
+            description="调用自研新闻搜索链路，按权威来源检索并整理考研政治时政信息。",
             func=get_current_affairs,
             args_schema=CurrentAffairsInput,
             return_direct=True,

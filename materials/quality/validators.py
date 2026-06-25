@@ -59,8 +59,11 @@ def asset_metrics(markdown: str, material_dir: Path | None = None) -> dict[str, 
             if ref.startswith(("http://", "https://", "data:")):
                 continue
             ref_path = Path(ref)
-            candidate = ref_path if ref_path.is_absolute() else (material_dir / ref_path).resolve()
-            if not candidate.exists():
+            candidates = [ref_path] if ref_path.is_absolute() else [
+                (material_dir / ref_path).resolve(),
+                (material_dir / "parsed" / ref_path).resolve(),
+            ]
+            if not any(candidate.exists() for candidate in candidates):
                 missing.append(ref)
     return {
         "image_ref_count": len(refs),
@@ -79,8 +82,10 @@ def chunk_metrics(chunks: list[Chunk] | None = None) -> dict[str, Any]:
             "long_chunk_count": 0,
             "duplicate_chunk_count": 0,
             "missing_heading_path_count": 0,
+            "unique_heading_path_count": 0,
         }
     texts = [chunk.text.strip() for chunk in chunks]
+    unique_heading_paths = {tuple(chunk.heading_path) for chunk in chunks if chunk.heading_path}
     return {
         "chunk_count": len(chunks),
         "empty_chunk_count": sum(1 for text in texts if not text),
@@ -88,4 +93,5 @@ def chunk_metrics(chunks: list[Chunk] | None = None) -> dict[str, Any]:
         "long_chunk_count": sum(1 for chunk in chunks if chunk.token_count > 1200),
         "duplicate_chunk_count": len(texts) - len(set(texts)),
         "missing_heading_path_count": sum(1 for chunk in chunks if not chunk.heading_path),
+        "unique_heading_path_count": len(unique_heading_paths),
     }

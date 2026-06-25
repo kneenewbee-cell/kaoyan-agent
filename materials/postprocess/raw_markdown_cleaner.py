@@ -14,11 +14,15 @@ from .format_probe import (
 )
 from .qwen_strategy_client import (
     QWEN_STRATEGY_MODEL,
+    generate_document_zones_with_qwen,
+    generate_strategy_bundle_with_qwen,
     generate_strategy_with_qwen,
     write_qwen_strategy_log,
+    write_qwen_zone_log,
 )
 from .strategy_cleaner import DEFAULT_SUBSECTION_ALIASES, clean_with_strategy
-from .strategy_schema import CleaningStrategy
+from .document_zones import default_document_zones, validate_document_zones_payload
+from .strategy_schema import CleaningStrategy, DocumentZones
 from .strategy_validator import default_conservative_strategy, validate_cleaning_strategy
 
 
@@ -27,8 +31,14 @@ class CleanResult:
     cleaned_markdown: str
     format_probe: dict[str, Any]
     strategy: dict[str, Any]
+    document_zones: dict[str, Any]
+    zone_report: dict[str, Any]
     parse_report: dict[str, Any]
     warnings: list[str]
+
+
+def _legacy_qwen_functions_are_mocked() -> bool:
+    return hasattr(generate_strategy_with_qwen, "mock_calls") or hasattr(generate_document_zones_with_qwen, "mock_calls")
 
 
 def _base_strategy_dict(
@@ -113,10 +123,23 @@ def _label_aliases(lines: list[str]) -> list[str]:
     return aliases
 
 
+def _strip_markdown_heading_marker(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("#"):
+        return stripped.lstrip("#").strip()
+    return stripped
+
+
 def detect_local_strategy(format_probe: dict[str, Any] | FormatProbe, user_hints: dict | None = None) -> CleaningStrategy:
     probe = format_probe if isinstance(format_probe, FormatProbe) else FormatProbe(**format_probe)
     existing_h2_count = sum(1 for heading in probe.existing_headings if heading.lstrip().startswith("## "))
-    if existing_h2_count >= 2:
+    existing_heading_titles = [_strip_markdown_heading_marker(heading) for heading in probe.existing_headings]
+    existing_structural_count = sum(
+        1
+        for title in existing_heading_titles
+        if CHAPTER_RE.match(title) or CHINESE_OUTLINE_RE.match(title) or ARABIC_OUTLINE_RE.match(title)
+    )
+    if existing_h2_count >= 2 or (len(existing_heading_titles) >= 5 and existing_structural_count >= 3):
         strategy = _base_strategy_dict(marker_type="existing_markdown", source="local", confidence=0.85)
         _add_subsection_rules(strategy, probe)
         validated, _, _ = validate_cleaning_strategy(strategy, fallback_source="local")
@@ -162,42 +185,123 @@ def clean_raw_markdown(
     source_name: str | None = None,
     use_llm_profile: bool = False,
     user_hints: dict | None = None,
+    layout_summary: dict[str, Any] | None = None,
 ) -> CleanResult:
-    probe = build_format_probe(raw_markdown, filename=source_name)
+    probe = build_format_probe(raw_markdown, filename=source_name, layout_summary=layout_summary)
     probe_dict = probe.to_dict()
     warnings: list[str] = []
     strategy: CleaningStrategy | None = None
+    document_zones: DocumentZones = default_document_zones()
     qwen_usage: dict[str, Any] = {}
+    zone_usage: dict[str, Any] = {}
+    strategy_validation: dict[str, Any] = {}
+    zone_validation: dict[str, Any] = {}
 
     if use_llm_profile:
-        try:
-            qwen_payload = generate_strategy_with_qwen(
-                probe_dict,
-                model=QWEN_STRATEGY_MODEL,
-                usage_metrics=qwen_usage,
-            )
-            strategy, validation_warnings, used_fallback = validate_cleaning_strategy(qwen_payload, fallback_source="qwen")
-            warnings.extend(validation_warnings)
-            qwen_usage["schema_valid"] = not used_fallback
-            if used_fallback:
-                warnings.append("qwen_strategy_invalid_fallback_to_local")
-                strategy = None
-        except Exception as exc:
-            warnings.append("qwen_strategy_unavailable_fallback_to_local")
-            warnings.append(f"qwen_strategy_error:{exc.__class__.__name__}")
-            qwen_usage.setdefault("schema_valid", False)
+        use_legacy_profile = _legacy_qwen_functions_are_mocked()
+        if not use_legacy_profile:
+            try:
+                bundle_payload = generate_strategy_bundle_with_qwen(
+                    probe_dict,
+                    model=QWEN_STRATEGY_MODEL,
+                    usage_metrics=qwen_usage,
+                )
+                qwen_payload = bundle_payload.get("cleaning_strategy")
+                zone_payload = bundle_payload.get("document_zones")
+                strategy, validation_warnings, used_fallback = validate_cleaning_strategy(
+                    qwen_payload,
+                    fallback_source="qwen",
+                    diagnostics=strategy_validation,
+                )
+                warnings.extend(validation_warnings)
+                document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
+                    zone_payload,
+                    diagnostics=zone_validation,
+                )
+                warnings.extend(zone_warnings)
+                qwen_usage["schema_valid"] = not used_fallback
+                qwen_usage["strategy_schema_valid"] = not used_fallback
+                qwen_usage["zone_schema_valid"] = not zone_used_fallback
+                if strategy_validation:
+                    qwen_usage["strategy_validation"] = strategy_validation
+                if zone_validation:
+                    qwen_usage["zone_validation"] = zone_validation
+                if used_fallback:
+                    warnings.append("qwen_strategy_invalid_fallback_to_local")
+                    strategy = None
+                if zone_used_fallback:
+                    warnings.append("qwen_document_zones_invalid_fallback_to_empty")
+            except Exception as exc:
+                warnings.append("qwen_strategy_bundle_unavailable_fallback_to_legacy")
+                warnings.append(f"qwen_strategy_bundle_error:{exc.__class__.__name__}")
+                qwen_usage.setdefault("schema_valid", False)
+                use_legacy_profile = True
+
+        if use_legacy_profile:
+            try:
+                qwen_payload = generate_strategy_with_qwen(
+                    probe_dict,
+                    model=QWEN_STRATEGY_MODEL,
+                    usage_metrics=qwen_usage,
+                )
+                strategy, validation_warnings, used_fallback = validate_cleaning_strategy(
+                    qwen_payload,
+                    fallback_source="qwen",
+                    diagnostics=strategy_validation,
+                )
+                warnings.extend(validation_warnings)
+                qwen_usage["schema_valid"] = not used_fallback
+                if strategy_validation:
+                    qwen_usage["strategy_validation"] = strategy_validation
+                if used_fallback:
+                    warnings.append("qwen_strategy_invalid_fallback_to_local")
+                    strategy = None
+            except Exception as legacy_exc:
+                warnings.append("qwen_strategy_unavailable_fallback_to_local")
+                warnings.append(f"qwen_strategy_error:{legacy_exc.__class__.__name__}")
+
+            try:
+                zone_payload = generate_document_zones_with_qwen(
+                    probe_dict,
+                    model=QWEN_STRATEGY_MODEL,
+                    usage_metrics=zone_usage,
+                )
+                document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
+                    zone_payload,
+                    diagnostics=zone_validation,
+                )
+                warnings.extend(zone_warnings)
+                zone_usage["schema_valid"] = not zone_used_fallback
+                if zone_validation:
+                    zone_usage["zone_validation"] = zone_validation
+                if zone_used_fallback:
+                    warnings.append("qwen_document_zones_invalid_fallback_to_empty")
+            except Exception as legacy_exc:
+                warnings.append("qwen_document_zones_unavailable_fallback_to_empty")
+                warnings.append(f"qwen_document_zones_error:{legacy_exc.__class__.__name__}")
+                zone_usage.setdefault("schema_valid", False)
 
     if strategy is None:
         strategy = detect_local_strategy(probe, user_hints=user_hints)
         if strategy.strategy_source == "default":
             warnings.append("local_strategy_fallback_to_default")
 
-    clean_result = clean_with_strategy(raw_markdown, strategy, source_name=source_name)
+    clean_result = clean_with_strategy(
+        raw_markdown,
+        strategy,
+        source_name=source_name,
+        document_zones=document_zones,
+    )
     if strategy.strategy_source == "qwen" and clean_result.parse_report.get("fallback_used"):
         warnings.append("qwen_strategy_not_supported_by_probe_fallback_to_local")
         qwen_usage["strategy_matches_document"] = False
         strategy = detect_local_strategy(probe, user_hints=user_hints)
-        clean_result = clean_with_strategy(raw_markdown, strategy, source_name=source_name)
+        clean_result = clean_with_strategy(
+            raw_markdown,
+            strategy,
+            source_name=source_name,
+            document_zones=document_zones,
+        )
         if strategy.strategy_source == "default":
             warnings.append("local_strategy_fallback_to_default")
     elif qwen_usage:
@@ -208,6 +312,8 @@ def clean_raw_markdown(
     parse_report["warnings"] = list(parse_report.get("warnings", [])) + [{"message": warning} for warning in warnings]
     parse_report["stats"]["warnings_count"] = len(parse_report["warnings"])
     parse_report["strategy_source"] = strategy.strategy_source
+    if strategy_validation:
+        parse_report["strategy_validation"] = strategy_validation
     if qwen_usage:
         qwen_usage["final_strategy_source"] = strategy.strategy_source
         qwen_usage["fallback_used"] = strategy.strategy_source != "qwen"
@@ -219,11 +325,30 @@ def clean_raw_markdown(
                 all_warnings.append("qwen_usage_log_write_failed")
                 parse_report["warnings"].append({"message": "qwen_usage_log_write_failed"})
                 parse_report["stats"]["warnings_count"] = len(parse_report["warnings"])
+    zone_qwen_usage = dict(zone_usage) if zone_usage else (
+        dict(qwen_usage) if qwen_usage.get("call_mode") == "bundle" else {}
+    )
+    zone_report = {
+        "document_zones": document_zones.model_dump(mode="json"),
+        "warnings": [warning for warning in all_warnings if warning.startswith("qwen_document_zones") or warning.startswith("document_zones") or warning.startswith("front_matter_zone")],
+        "validation": zone_validation,
+        "qwen_usage": zone_qwen_usage,
+    }
+    if zone_usage:
+        parse_report["qwen_zone_usage"] = dict(zone_usage)
+        try:
+            write_qwen_zone_log(zone_usage)
+        except OSError:
+            all_warnings.append("qwen_zone_usage_log_write_failed")
+            parse_report["warnings"].append({"message": "qwen_zone_usage_log_write_failed"})
+            parse_report["stats"]["warnings_count"] = len(parse_report["warnings"])
 
     return CleanResult(
         cleaned_markdown=clean_result.cleaned_markdown,
         format_probe=probe_dict,
         strategy=strategy.to_dict(),
+        document_zones=document_zones.model_dump(mode="json"),
+        zone_report=zone_report,
         parse_report=parse_report,
         warnings=all_warnings,
     )

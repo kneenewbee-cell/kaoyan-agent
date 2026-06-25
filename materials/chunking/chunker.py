@@ -23,6 +23,7 @@ class _MainSection:
     content: str
     start_line: int
     end_line: int
+    level: int = 0
 
 
 def _extract_asset_paths_from_text(text: str) -> list[str]:
@@ -34,10 +35,10 @@ def _make_chunk_id(material_id: str, chunk_index: int) -> str:
 
 
 def _split_main_sections(markdown: str, main_level: int) -> list[_MainSection]:
-    """只在 H1 和策略指定的主层级处分段；H3 等显式子标题留在主块内。"""
+    """按目标层级切块，同时保留更高层级标题下未被子标题覆盖的正文。"""
     lines = markdown.splitlines()
-    doc_title: str | None = None
-    starts: list[tuple[int, str | None, list[str]]] = []
+    heading_stack: dict[int, str] = {}
+    starts: list[tuple[int, int, str | None, list[str]]] = []
     in_code = False
     fence_marker: str | None = None
     in_formula = False
@@ -65,27 +66,44 @@ def _split_main_sections(markdown: str, main_level: int) -> list[_MainSection]:
         if not match:
             continue
         level, title = len(match.group(1)), match.group(2).strip()
-        if level == 1:
-            doc_title = title
-            if not starts:
-                starts.append((index, title, [title]))
-        elif level == main_level:
-            starts.append((index, title, ([doc_title] if doc_title else []) + [title]))
+        for existing_level in list(heading_stack):
+            if existing_level >= level:
+                del heading_stack[existing_level]
+        heading_stack[level] = title
+        if level <= main_level:
+            path = [heading_stack[item_level] for item_level in sorted(heading_stack) if item_level <= level]
+            starts.append((index, level, title, path))
 
     if not starts:
-        return [_MainSection(None, [], markdown, 0, max(len(lines) - 1, 0))]
+        return [_MainSection(None, [], markdown, 0, max(len(lines) - 1, 0), 0)]
 
     sections: list[_MainSection] = []
-    for pos, (start, title, path) in enumerate(starts):
+    for pos, (start, level, title, path) in enumerate(starts):
         end = starts[pos + 1][0] - 1 if pos + 1 < len(starts) else len(lines) - 1
         content = "\n".join(lines[start : end + 1]).strip()
-        if content:
-            sections.append(_MainSection(title, path, content, start, end))
-    if len(sections) > 1 and sections[0].heading_path and len(sections[0].heading_path) == 1:
-        first_lines = sections[0].content.splitlines()
-        if len(first_lines) == 1 and HEADING_RE.match(first_lines[0].strip()):
-            sections.pop(0)
+        if not content:
+            continue
+        content_lines = content.splitlines()
+        if content_lines and HEADING_RE.match(content_lines[0].strip()):
+            body_lines = [line for line in content_lines[1:] if line.strip()]
+            if not body_lines:
+                continue
+        sections.append(_MainSection(title, path, content, start, end, level))
     return sections
+
+
+def _section_path_diversity(sections: list[_MainSection]) -> int:
+    return len({tuple(section.heading_path) for section in sections if section.heading_path})
+
+
+def _max_section_chars(sections: list[_MainSection]) -> int:
+    return max((len(section.content) for section in sections), default=0)
+
+
+def _sections_need_finer_split(sections: list[_MainSection], max_chars: int) -> bool:
+    if len(sections) <= 1:
+        return True
+    return any(len(section.content) > int(max_chars * 1.5) for section in sections)
 
 
 def _hard_split(text: str, max_chars: int, overlap_chars: int) -> list[str]:
@@ -126,7 +144,28 @@ def chunk_markdown(
     chunk_rule = validated["chunk_rule"]
     max_chars = int(chunk_rule["max_chars"])
     overlap_chars = min(int(chunk_rule.get("overlap_chars", 0)), max_chars // 2)
+    effective_main_level = main_level
     sections = _split_main_sections(markdown, main_level)
+    current_diversity = _section_path_diversity(sections)
+    current_max_chars = _max_section_chars(sections)
+    if main_level < 5:
+        for candidate_level in range(main_level + 1, 6):
+            if not _sections_need_finer_split(sections, max_chars):
+                break
+            finer_sections = _split_main_sections(markdown, candidate_level)
+            finer_diversity = _section_path_diversity(finer_sections)
+            finer_max_chars = _max_section_chars(finer_sections)
+            improves_count = len(finer_sections) > len(sections)
+            improves_size = bool(finer_sections) and (not sections or finer_max_chars < current_max_chars)
+            if (
+                (improves_count or improves_size)
+                and len(finer_sections) <= 200
+                and (finer_diversity > current_diversity or improves_size)
+            ):
+                sections = finer_sections
+                effective_main_level = candidate_level
+                current_diversity = finer_diversity
+                current_max_chars = finer_max_chars
     chunks: list[Chunk] = []
 
     for section in sections:
@@ -156,7 +195,8 @@ def chunk_markdown(
                     metadata={
                         "start_line": section.start_line,
                         "end_line": section.end_line,
-                        "level": main_level if len(section.heading_path) > 1 else 1,
+                        "level": section.level or 1,
+                        "effective_main_level": effective_main_level,
                         "part_index": part_index,
                         "split_reason": split_reason,
                     },

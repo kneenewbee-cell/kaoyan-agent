@@ -1,0 +1,1 @@
+{"id":"followup_step_001","history":[{"turn_id":1,"user_query":"求 e^x 的泰勒展开","assistant_answer":"e^x = 1 + x + x^2/2! + x^3/3! + ...","route":{"subject":"math"}}],"user_input":"第三项怎么来的？","expected":{"subject":"math","is_followup":true,"followup_category":"step_followup","parent_turn_ids":[1]}}

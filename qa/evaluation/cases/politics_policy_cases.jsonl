@@ -1,0 +1,5 @@
+{"id":"politics_policy_requires_knowledge_tool","prompt":"politics_tool_selection_policy","required_contains":["search_politics_knowledge","教材知识点","考研政治概念"]}
+{"id":"politics_policy_requires_current_affairs_tool","prompt":"politics_tool_selection_policy","required_contains":["get_current_affairs","近期会议","政策热点"]}
+{"id":"politics_policy_requires_combined_mapping","prompt":"politics_tool_selection_policy","required_contains":["组合题","材料 -> 原理 -> 考研答题表述"]}
+{"id":"route_prompt_maps_current_affairs_to_politics","prompt":"route_classifier_prompt","required_contains":["时政","politics","不要输出 current_affairs"]}
+{"id":"route_prompt_requires_clarification_when_no_subject_evidence","prompt":"route_classifier_prompt","required_contains":["unsupported","clarification","学科证据不足"]}

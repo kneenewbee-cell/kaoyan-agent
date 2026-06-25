@@ -16,6 +16,8 @@ from urllib.parse import unquote
 
 from dotenv import load_dotenv
 from .kaoyan_tools import create_kaoyan_toolkit
+from .prompts import load_prompt
+from .tools.current_affairs_search import call_current_affairs_search
 from .usage_tracking import notify_usage
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,68 +34,28 @@ SESSION_MAX_TURNS = 20
 _TOOLKIT = None
 
 
-QWEN_VL_OCR_PROMPT = """你是考研数学图片 OCR 节点。
-只识别图片中的题干、公式、选项、图形条件和表格；不要解题。
-图形题必须按图中可见元素描述：坐标轴、刻度、点、直线/曲线、阴影、箭头、区域标号、选项小图。
-有区域标号或阴影时，逐一写出每个区域的实际边界、相对位置、可读出的不等式或参数范围；不要只凭标签位置、题号顺序或常见图形模板推断。
-看不清的符号用 [不确定: ...] 标出。输出 Markdown。"""
+QWEN_VL_OCR_PROMPT = load_prompt("qwen_vl_ocr_prompt")
 
 
-IMAGE_ROUTING_OCR_PROMPT = """你是考研助手的通用图片预识别节点。
-只做 OCR、图像内容概述和学科线索判断；不要解题，不要回答用户问题。
-图片可能是数学题、政治材料、英语文本、时政截图、表格、图形或其他内容。
-不要根据文件名判断学科；只依据图片可见内容和用户文字补充。
-
-只输出 JSON：
-{"ocr_text":"图片中可识别的文字、公式、题干、选项或材料原文","visual_summary":"非文字视觉信息概述，如图像/表格/坐标轴/材料版式","subject_hint":"math|politics|english|current_affairs|unknown","confidence":0.0,"reason":"一句话说明"}
-
-规则：
-- subject_hint 只是线索；证据不足时用 unknown。
-- 数学题常见证据：函数、极限、积分、矩阵、概率、几何图形、坐标轴、公式推导、选择/填空/解答题数学表达。
-- 政治常见证据：马克思主义、中国特色社会主义、毛中特、史纲、思修、政策理论材料。
-- current_affairs 常见证据：近期会议、政策、领导人活动、国际国内新闻热点。
-- english 常见证据：英文阅读、完形、翻译、写作题、英语选项或长段英文。
-- 看不清的内容在 ocr_text 中用 [不确定: ...] 标出。
-"""
+IMAGE_ROUTING_OCR_PROMPT = load_prompt("image_routing_ocr_prompt")
 
 
-QWEN_MATH_SOLVER_PROMPT = """你是严谨的考研数学解题节点。
-要求：
-1. 严格基于输入题目和工具上下文，不要编造题目条件。
-2. 先给关键思路，再给必要步骤，最后单独写“最终答案”。
-3. 若提供标准答案速查，只用于最终核对，不要跳步抄答案。
-4. 对选择题给出选项字母和理由；填空题给出填空结果；解答题按小问组织。
-5. 图形题必须先根据题干和 OCR 写出区域、曲线、坐标轴或标号的准确含义；不要用区域名称、标签方位、常见模板或选项答案反推图形条件。
-6. 二重积分图形题必须使用完整区域边界；若某区域关于 x 轴对称且被积函数关于 y 是奇函数，应先判定该区域积分为 0，不要只取上半区或下半区。
-7. 如果收到核对反馈，优先定位错误并重新计算。"""
+QWEN_MATH_SOLVER_PROMPT = load_prompt("qwen_math_solver_prompt")
 
 
-QWEN_GENERAL_MATH_SOLVER_PROMPT = """你是通用数学解题节点。
-要求：
-1. 只基于用户题目、历史上下文和 OCR 文本作答。
-2. 条件不完整时先说明缺少什么；能在合理继承历史参数时，明确写出继承了哪些参数。
-3. 先给关键思路，再给必要步骤，最后单独写“最终答案”。
-4. 不要声称查阅本地真题库。"""
+QWEN_GENERAL_MATH_SOLVER_PROMPT = load_prompt("qwen_general_math_solver_prompt")
 
 
-TERMINAL_FORMAT_PROMPT = """输出格式：terminal
-面向 PowerShell 终端阅读；少用复杂表格；公式尽量简洁。"""
+TERMINAL_FORMAT_PROMPT = load_prompt("terminal_format_prompt")
 
 
-UI_FORMAT_PROMPT = """输出格式：ui
-可以使用 Markdown 和 LaTeX，适合网页 KaTeX/MathJax 渲染。"""
+UI_FORMAT_PROMPT = load_prompt("ui_format_prompt")
 
 
-ANSWER_JUDGE_PROMPT = """你是答案核对节点。判断“模型解答”的最终答案是否与“标准答案速查”核心一致。
-只比较最终结论，不要求步骤完全一致。输出 JSON：
-{"match": true/false, "reason": "原因", "expected": "标准答案核心", "actual": "模型答案核心"}
-不要输出 JSON 以外的文字。"""
+ANSWER_JUDGE_PROMPT = load_prompt("answer_judge_prompt")
 
 
-SOLUTION_QUALITY_PROMPT = """你是数学解题过程审核节点。检查“模型解答”的推导是否有明显数学错误。
-输出 JSON：
-{"valid": true/false, "reason": "原因", "fix_hint": "若 invalid，指出关键修正点"}
-不要输出 JSON 以外的文字。"""
+SOLUTION_QUALITY_PROMPT = load_prompt("solution_quality_prompt")
 
 
 @dataclass
@@ -106,11 +68,6 @@ class AgentSettings:
     embedding_model: str
     embedding_dimensions: int
     temperature: float
-    coze_api_base: str
-    coze_api_token: str | None
-    coze_bot_id: str | None
-    coze_timeout_seconds: int
-    coze_debug: bool
 
 
 @dataclass
@@ -161,11 +118,6 @@ def load_settings() -> AgentSettings:
         embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
         embedding_dimensions=int(os.getenv("EMBEDDING_DIMENSIONS", "1024")),
         temperature=float(os.getenv("QWEN_TEMPERATURE", "0.2")),
-        coze_api_base=os.getenv("COZE_API_BASE", "https://api.coze.cn").rstrip("/"),
-        coze_api_token=os.getenv("COZE_API_TOKEN"),
-        coze_bot_id=os.getenv("COZE_BOT_ID"),
-        coze_timeout_seconds=int(os.getenv("COZE_TIMEOUT_SECONDS", "180")),
-        coze_debug=os.getenv("COZE_DEBUG", "").lower() in {"1", "true", "yes", "on"},
     )
 
 
@@ -712,165 +664,6 @@ def recognize_images_for_routing(image_paths: list[Path], user_query: str, clien
         "confidence": max(0.0, min(1.0, confidence)),
         "reason": str(data.get("reason") or "").strip(),
     }
-
-
-def build_coze_current_affairs_prompt(user_query: str) -> str:
-    current_date = datetime.now().date().isoformat()
-    return (
-        "请按考研政治时政复习口径回答用户问题。优先整理具体事件、时间、来源、关键词、"
-        "对应模块和可能考查角度；不要编造未提供或无法确认的信息。\n"
-        f"当前日期：{current_date}\n\n用户问题：{user_query}"
-    )
-
-
-def call_coze_current_affairs(user_query: str, timeout_seconds: int | None = None) -> str:
-    started = time.perf_counter()
-    settings = load_settings()
-    if not settings.coze_api_token or not settings.coze_bot_id:
-        raise RuntimeError("请先在 .env 中设置 COZE_API_TOKEN 和 COZE_BOT_ID。")
-    timeout_seconds = timeout_seconds or settings.coze_timeout_seconds
-
-    import requests
-
-    headers = {
-        "Authorization": f"Bearer {settings.coze_api_token}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "bot_id": settings.coze_bot_id,
-        "user_id": "kaoyan_assistant_cli",
-        "stream": False,
-        "additional_messages": [
-            {
-                "role": "user",
-                "content": build_coze_current_affairs_prompt(user_query),
-                "content_type": "text",
-            }
-        ],
-    }
-    response = requests.post(f"{settings.coze_api_base}/v3/chat", headers=headers, json=payload, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-    chat_data = data.get("data") or data
-    chat_id = chat_data.get("id") or chat_data.get("chat_id")
-    conversation_id = chat_data.get("conversation_id")
-    if not chat_id or not conversation_id:
-        direct_answer = extract_coze_answer(data)
-        if direct_answer:
-            notify_usage(
-                kind="external_tool_api",
-                name="tool_api:get_current_affairs:coze",
-                model=f"coze:{settings.coze_bot_id}",
-                started_at=started,
-                tool_name="get_current_affairs",
-                status=chat_data.get("status") or "direct_answer",
-                provider="coze",
-            )
-            return direct_answer
-        raise RuntimeError(f"Coze response missing chat id or conversation id: {data}")
-
-    deadline = time.time() + timeout_seconds
-    status = chat_data.get("status")
-    while status not in {"completed", "failed", "requires_action", "canceled"} and time.time() < deadline:
-        time.sleep(2)
-        retrieve = requests.get(
-            f"{settings.coze_api_base}/v3/chat/retrieve",
-            headers=headers,
-            params={"conversation_id": conversation_id, "chat_id": chat_id},
-            timeout=30,
-        )
-        retrieve.raise_for_status()
-        status = (retrieve.json().get("data") or retrieve.json()).get("status")
-
-    answer = fetch_coze_answer_messages(settings, headers, conversation_id, chat_id)
-    if answer:
-        notify_usage(
-            kind="external_tool_api",
-            name="tool_api:get_current_affairs:coze",
-            model=f"coze:{settings.coze_bot_id}",
-            started_at=started,
-            tool_name="get_current_affairs",
-            status=status,
-            provider="coze",
-        )
-        return answer
-    if status != "completed":
-        raise TimeoutError(f"Coze 时政智能体仍在处理，当前状态为 {status}，已等待 {timeout_seconds} 秒。")
-    raise RuntimeError("Coze message list did not contain an answer.")
-
-
-def fetch_coze_answer_messages(
-    settings: AgentSettings,
-    headers: dict[str, str],
-    conversation_id: str,
-    chat_id: str,
-) -> str:
-    import requests
-
-    messages = requests.get(
-        f"{settings.coze_api_base}/v3/chat/message/list",
-        headers=headers,
-        params={"conversation_id": conversation_id, "chat_id": chat_id},
-        timeout=30,
-    )
-    messages.raise_for_status()
-    payload = messages.json()
-    if settings.coze_debug:
-        debug_coze_payload(payload)
-    return extract_coze_answer(payload)
-
-
-def extract_coze_answer(payload: dict[str, Any]) -> str:
-    data = payload.get("data", payload)
-    messages: list[dict[str, Any]] = []
-    if isinstance(data, list):
-        messages = [item for item in data if isinstance(item, dict)]
-    elif isinstance(data, dict):
-        for key in ("messages", "message_list", "items"):
-            value = data.get(key)
-            if isinstance(value, list):
-                messages = [item for item in value if isinstance(item, dict)]
-                break
-
-    answer_candidates: list[str] = []
-    assistant_candidates: list[str] = []
-    other_candidates: list[str] = []
-    for item in messages:
-        role = item.get("role")
-        message_type = item.get("type")
-        content_type = item.get("content_type")
-        content = item.get("content")
-        if not content:
-            continue
-        if message_type == "answer":
-            answer_candidates.append(str(content))
-        elif role == "assistant" and content_type == "text":
-            assistant_candidates.append(str(content))
-        elif role == "assistant" or message_type in {"verbose"}:
-            other_candidates.append(str(content))
-    for candidates in (answer_candidates, assistant_candidates, other_candidates):
-        if candidates:
-            return candidates[-1].strip()
-
-    if isinstance(data, dict):
-        for key in ("content", "answer", "output"):
-            value = data.get(key)
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-    return ""
-
-
-def debug_coze_payload(payload: dict[str, Any]) -> None:
-    data = payload.get("data", payload)
-    messages = data if isinstance(data, list) else data.get("messages", []) if isinstance(data, dict) else []
-    print("\n[COZE DEBUG] message count:", len(messages))
-    for index, item in enumerate(messages, start=1):
-        content = str(item.get("content") or "")
-        print(
-            f"[COZE DEBUG] #{index} role={item.get('role')} "
-            f"type={item.get('type')} content_type={item.get('content_type')} "
-            f"len={len(content)} preview={content[:120].replace(chr(10), ' ')}"
-        )
 
 
 def solve_with_qwenmath(

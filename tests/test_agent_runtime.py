@@ -698,6 +698,24 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("不确定、依赖实时信息或上下文不足", tool_selection_prompt)
         self.assertIn("回答或调用工具都只能沿这条链继承对象", tool_selection_prompt)
 
+    def test_politics_dag_tool_selection_prompt_includes_current_date_policy(self) -> None:
+        messages = agent_runtime.build_dag_tool_selection_messages(
+            "再联系今年国家层面的两个大事举例说明",
+            {
+                "followup_context": "[turn 1]\nUser: 中央经济工作会议体现了马克思主义哪些原理\nAssistant: 原回答",
+                "root_context": "[root turn 1]\nUser: 中央经济工作会议体现了马克思主义哪些原理\nAssistant: 原回答",
+            },
+            "ui",
+            "politics",
+        )
+        system_prompt = str(messages[0]["content"])
+
+        self.assertIn("政治 tool_selection 策略", system_prompt)
+        self.assertIn("当前北京时间日期", system_prompt)
+        self.assertIn("涉及“最近、近期、本月、上个月、今年", system_prompt)
+        self.assertIn("避免误补旧年份", system_prompt)
+        self.assertIn("当前第二层上下文模式：dag", system_prompt)
+
     def test_image_context_flows_into_runtime_messages(self) -> None:
         image_context = {
             "ocr_text": "设函数 f(x)=x^2，求 f'(x)。",
@@ -1068,13 +1086,224 @@ class AgentRuntimeTest(unittest.TestCase):
         joined = "\n".join(str(item.get("content", "")) for item in messages)
 
         self.assertIn("政治 tool_selection 策略", joined)
-        self.assertIn("时政会议/政策/新闻材料", joined)
-        self.assertIn("体现什么原理/马原/哲学/政治理论/考研知识点", joined)
+        self.assertIn("近期会议、政策热点、时政新闻", joined)
+        self.assertIn("最终回答目标", joined)
+        self.assertIn("事实材料", joined)
+        self.assertIn("可选原理池", joined)
+        self.assertIn("如果有再分析", joined)
+        self.assertIn("工具 query 分工", joined)
         self.assertIn("先调用 get_current_affairs", joined)
         self.assertIn("再调用 search_politics_knowledge", joined)
-        self.assertIn("材料 -> 原理 -> 考研答题表述", joined)
+        self.assertIn("answer_politics_knowledge 综合回答", joined)
+        self.assertIn("材料事实 -> 对应原理 -> 考研答题表述", joined)
+        self.assertIn("当前北京时间日期", joined)
+        self.assertIn("避免误补旧年份", joined)
         self.assertIn("默认回答形态", joined)
         self.assertIn("最小充分回答", joined)
+
+    def test_politics_tool_registry_includes_final_answer_tool_without_polluting_math(self) -> None:
+        politics_tools = agent_runtime.select_tools("politics")
+        math_tools = agent_runtime.select_tools("math")
+
+        self.assertIn("search_politics_knowledge", politics_tools)
+        self.assertIn("get_current_affairs", politics_tools)
+        self.assertIn("answer_politics_knowledge", politics_tools)
+        self.assertEqual(politics_tools["search_politics_knowledge"].return_mode, "evidence")
+        self.assertEqual(politics_tools["answer_politics_knowledge"].return_mode, "direct")
+        self.assertNotIn("answer_politics_knowledge", math_tools)
+        self.assertNotIn("search_politics_knowledge", math_tools)
+
+    def test_answer_politics_knowledge_uses_actual_prior_tool_outputs_and_forces_combo_with_both_evidence_tools(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def final_tool(args: dict[str, Any]) -> str:
+            captured.update(args)
+            return "final answer"
+
+        metrics = agent_runtime.RuntimeMetrics("r", "s")
+        tool_call = {
+            "id": "call_answer",
+            "function": {
+                "name": "answer_politics_knowledge",
+                "arguments": json.dumps({
+                    "question": "fabricated question",
+                    "tool_outputs": "[{\"tool\":\"fake\",\"content\":\"fake evidence\"}]",
+                    "mode": "knowledge_only",
+                }),
+            },
+        }
+        messages = [
+            {
+                "role": "tool",
+                "tool_call_id": "call_news",
+                "name": "get_current_affairs",
+                "content": json.dumps({"ok": True, "result": {"items": [{"title": "news evidence"}]}}),
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_knowledge",
+                "name": "search_politics_knowledge",
+                "content": json.dumps({"ok": True, "result": [{"content": "theory evidence"}]}),
+            },
+        ]
+        result, record = agent_runtime.execute_tool_call(
+            tool_call,
+            {
+                "answer_politics_knowledge": agent_runtime.ToolSpec(
+                    name="answer_politics_knowledge",
+                    description="politics final answer",
+                    parameters=agent_runtime.json_schema({}),
+                    func=final_tool,
+                    return_mode="direct",
+                )
+            },
+            metrics,
+            user_input="original user question",
+            messages=messages,
+            output_format="ui",
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["result"], "final answer")
+        self.assertEqual(captured["question"], "original user question")
+        self.assertEqual(captured["mode"], "combo")
+        actual_outputs = json.loads(captured["tool_outputs"])
+        self.assertEqual([item["tool"] for item in actual_outputs], ["get_current_affairs", "search_politics_knowledge"])
+        self.assertNotIn("fake evidence", captured["tool_outputs"])
+        self.assertEqual(record["arguments"]["mode"], "combo")
+
+    def test_current_affairs_outputs_are_deduplicated_before_final_answer(self) -> None:
+        messages = [
+            {
+                "role": "tool",
+                "name": "get_current_affairs",
+                "content": json.dumps({
+                    "ok": True,
+                    "result": {
+                        "type": "current_affairs_evidence",
+                        "query": "query one",
+                        "items": [
+                            {
+                                "title": "Same News",
+                                "url": "https://www.news.cn/politics/20260618/c_1.htm?utm_source=a",
+                                "source_domain": "news.cn",
+                                "query": "query one",
+                            }
+                        ],
+                    },
+                }),
+            },
+            {
+                "role": "tool",
+                "name": "get_current_affairs",
+                "content": json.dumps({
+                    "ok": True,
+                    "result": {
+                        "type": "current_affairs_evidence",
+                        "query": "query two",
+                        "items": [
+                            {
+                                "title": "Same News",
+                                "url": "https://news.cn/politics/20260618/c_1.htm",
+                                "source_domain": "news.cn",
+                                "query": "query two",
+                            }
+                        ],
+                    },
+                }),
+            },
+        ]
+
+        outputs = agent_runtime.politics_tool_outputs_from_messages(messages)
+
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0]["tool"], "get_current_affairs")
+        merged = json.loads(outputs[0]["content"])
+        self.assertEqual(merged["queries"], ["query one", "query two"])
+        self.assertEqual(len(merged["items"]), 1)
+        self.assertEqual(merged["items"][0]["matched_queries"], ["query one", "query two"])
+
+    def test_answer_politics_knowledge_can_direct_return_after_evidence_tool(self) -> None:
+        evidence_tool = agent_runtime.ToolSpec(
+            name="search_politics_knowledge",
+            description="politics evidence",
+            parameters=agent_runtime.json_schema({}),
+            func=lambda args: '[{"content":"主要矛盾是人民日益增长的美好生活需要和不平衡不充分的发展之间的矛盾。"}]',
+            return_mode="evidence",
+        )
+        final_tool = agent_runtime.ToolSpec(
+            name="answer_politics_knowledge",
+            description="politics final answer",
+            parameters=agent_runtime.json_schema({}),
+            func=lambda args: "最终政治答案",
+            return_mode="direct",
+        )
+        client = FakeClient([
+            fake_response(tool_calls=[{"name": "search_politics_knowledge", "arguments": {"query": "新时代主要矛盾"}}]),
+            fake_response(tool_calls=[{"name": "answer_politics_knowledge", "arguments": {"question": "新时代主要矛盾是什么"}}]),
+        ])
+        with patch("qa.agent_runtime.classify_subject", return_value="politics"), patch(
+            "qa.agent_runtime.select_tools",
+            return_value={
+                "search_politics_knowledge": evidence_tool,
+                "answer_politics_knowledge": final_tool,
+            },
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "新时代主要矛盾是什么？",
+                session_id="unit2_politics_final_tool",
+                client=client,
+                persist=False,
+            )
+
+        self.assertEqual(result.answer, "最终政治答案")
+        self.assertEqual([item["name"] for item in result.tool_calls], ["search_politics_knowledge", "answer_politics_knowledge"])
+        self.assertEqual(len(client.chat.completions.calls), 2)
+        self.assertTrue(any(step["name"] == "direct_tool_return" and step["tool"] == "answer_politics_knowledge" for step in result.metrics["steps"]))
+
+    def test_politics_evidence_reminds_controller_to_call_answer_tool(self) -> None:
+        evidence_tool = agent_runtime.ToolSpec(
+            name="search_politics_knowledge",
+            description="politics evidence",
+            parameters=agent_runtime.json_schema({}),
+            func=lambda args: '[{"content":"公正是法治的价值追求，法治是公正的重要保障。"}]',
+            return_mode="evidence",
+        )
+        final_tool = agent_runtime.ToolSpec(
+            name="answer_politics_knowledge",
+            description="politics final answer",
+            parameters=agent_runtime.json_schema({}),
+            func=lambda args: f"成文工具答案：{args['question']} mode={args.get('mode')}",
+            return_mode="direct",
+        )
+        client = FakeClient([
+            fake_response(tool_calls=[{"name": "search_politics_knowledge", "arguments": {"query": "公正 法治 关系"}}]),
+            fake_response(content="第二层直接总结 evidence 的答案，不应作为最终答案。"),
+            fake_response(tool_calls=[{"name": "answer_politics_knowledge", "arguments": {
+                "question": "社会主义核心价值观中公正与法治的关系是什么？",
+                "tool_outputs": "[]",
+                "mode": "knowledge_only",
+            }}]),
+        ])
+        with patch("qa.agent_runtime.classify_subject", return_value="politics"), patch(
+            "qa.agent_runtime.select_tools",
+            return_value={
+                "search_politics_knowledge": evidence_tool,
+                "answer_politics_knowledge": final_tool,
+            },
+        ):
+            result = agent_runtime.run_standard_message_loop(
+                "社会主义核心价值观中公正与法治的关系是什么？",
+                session_id="unit2_politics_auto_final",
+                client=client,
+                persist=False,
+            )
+
+        self.assertEqual(result.answer, "成文工具答案：社会主义核心价值观中公正与法治的关系是什么？ mode=knowledge_only")
+        self.assertEqual([item["name"] for item in result.tool_calls], ["search_politics_knowledge", "answer_politics_knowledge"])
+        self.assertEqual(len(client.chat.completions.calls), 3)
+        step_names = [step["name"] for step in result.metrics["steps"]]
+        self.assertIn("politics_answer_tool_reminder", step_names)
 
     def test_context_followup_uses_single_unified_route_before_answer(self) -> None:
         session_id = "unit2_unified_route"

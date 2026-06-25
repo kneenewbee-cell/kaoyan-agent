@@ -1,0 +1,4 @@
+{"id":"politics_tools_has_knowledge_current_affairs_and_final_answer","subject":"politics","expected_tools":["search_politics_knowledge","get_current_affairs","answer_politics_knowledge"],"forbidden_tools":["solve_general_math","solve_exam_question"]}
+{"id":"math_tools_do_not_include_politics_rag","subject":"math","expected_tools":["solve_general_math"],"forbidden_tools":["search_politics_knowledge","get_current_affairs","answer_politics_knowledge"]}
+{"id":"english_tools_currently_empty","subject":"english","expected_tools":[],"forbidden_tools":["search_politics_knowledge","solve_general_math"]}
+{"id":"unsupported_tools_currently_empty","subject":"unsupported","expected_tools":[],"forbidden_tools":["search_politics_knowledge","solve_general_math"]}

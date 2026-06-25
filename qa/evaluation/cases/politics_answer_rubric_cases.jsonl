@@ -1,0 +1,5 @@
+{"id":"answer_rubric_concept_compare_001","answer":"主要矛盾强调在复杂矛盾体系中居于支配地位、对事物发展起决定作用的矛盾；矛盾主要方面强调同一矛盾内部居于支配地位、决定事物性质的方面。做题时先看材料问的是多个矛盾之间的主次，还是一个矛盾内部双方力量对比。","required_contains":["主要矛盾","矛盾主要方面","支配地位","事物性质","材料"],"forbidden_contains":["资料中明确说2026年"]}
+{"id":"answer_rubric_analysis_structure_001","answer":"分析题可以按“点明原理 -> 结合材料 -> 得出结论”的结构写。先写原理的标准表述，再抓材料关键词对应到原理，最后回扣题目要求。","required_contains":["原理","材料","结论","标准表述"],"forbidden_contains":["我查到了官方最新文件"]}
+{"id":"answer_rubric_current_affairs_mapping_001","answer":"新质生产力可以从生产力发展、创新驱动和辩证法角度组织答案：先说明材料中的新技术新产业，再联系生产力决定生产关系、创新推动发展，最后落到高质量发展。","required_contains":["新质生产力","材料","生产力","创新","高质量发展"],"forbidden_contains":["无需结合材料"]}
+{"id":"answer_rubric_memory_version_001","answer":"背诵版：实践决定认识，是认识的来源、动力、目的和检验标准；认识反作用于实践，正确认识促进实践发展。","required_contains":["背诵版","实践决定认识","反作用于实践"],"forbidden_contains":["展开十个历史案例"]}
+{"id":"answer_rubric_insufficient_context_001","answer":"如果题目只说“这个怎么答”，但前文有多个可能对象，需要先请用户确认指的是哪一个知识点，不能直接编造材料。","required_contains":["确认","哪一个知识点","不能直接编造"],"forbidden_contains":["我假设你问的是最新会议"]}

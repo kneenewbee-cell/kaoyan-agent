@@ -7,9 +7,10 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from dotenv import load_dotenv
+from .prompts import load_prompt
 from .usage_tracking import notify_usage
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,24 @@ def load_settings() -> dict[str, str | int | None]:
         "model": os.getenv("EMBEDDING_MODEL", "text-embedding-v4"),
         "dimensions": int(os.getenv("EMBEDDING_DIMENSIONS", "1024")),
         "chat_model": os.getenv("QWEN_CHAT_MODEL", "qwen3.6-flash-2026-04-16"),
+    }
+
+
+def load_answer_settings() -> dict[str, str | None]:
+    load_dotenv(ROOT / ".env", encoding="utf-8-sig")
+    deepseek_api_key = os.getenv("POLITICS_ANSWER_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+    if deepseek_api_key:
+        return {
+            "api_key": deepseek_api_key,
+            "base_url": os.getenv("POLITICS_ANSWER_BASE_URL") or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            "chat_model": os.getenv("POLITICS_ANSWER_MODEL", "deepseek-v4-flash"),
+            "provider": os.getenv("POLITICS_ANSWER_PROVIDER", "deepseek"),
+        }
+    return {
+        "api_key": os.getenv("DASHSCOPE_API_KEY"),
+        "base_url": os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        "chat_model": os.getenv("QWEN_CHAT_MODEL", "qwen3.6-flash-2026-04-16"),
+        "provider": "dashscope",
     }
 
 
@@ -255,6 +274,123 @@ def retrieve_politics(question: str, top_k: int = 3) -> list[dict]:
             "score": score,
         })
     return results
+
+
+def normalize_tool_outputs(tool_outputs: Any) -> str:
+    if tool_outputs is None:
+        return ""
+    if isinstance(tool_outputs, str):
+        return tool_outputs.strip()
+    return json.dumps(tool_outputs, ensure_ascii=False, default=str)
+
+
+def parse_possible_json(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return ""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def collect_evidence_text(value: Any, limit: int = 6) -> list[str]:
+    value = parse_possible_json(value)
+    items: list[str] = []
+
+    def walk(node: Any) -> None:
+        if len(items) >= limit:
+            return
+        current = parse_possible_json(node)
+        if isinstance(current, dict):
+            if "result" in current:
+                walk(current["result"])
+                return
+            content = str(current.get("content") or "").strip()
+            if content:
+                heading_path = current.get("heading_path") or []
+                heading = " > ".join(str(item) for item in heading_path if item) or str(current.get("heading") or "").strip()
+                source = str(current.get("source") or "").strip()
+                prefix = " / ".join(part for part in (heading, source) if part)
+                items.append(f"{prefix}\n{content}".strip() if prefix else content)
+                return
+            for child in current.values():
+                walk(child)
+            return
+        if isinstance(current, list):
+            for child in current:
+                walk(child)
+            return
+        text = str(current or "").strip()
+        if text:
+            items.append(text)
+
+    walk(value)
+    return items[:limit]
+
+
+def local_answer_politics_knowledge(question: str, history_brief: str, tool_outputs: Any, mode: str = "auto") -> str:
+    evidence_items = collect_evidence_text(tool_outputs)
+    if not evidence_items:
+        return "当前工具输出不足以形成可靠的政治答案，请补充更明确的问题或重新检索相关资料。"
+
+    evidence = "\n\n".join(f"{index}. {item}" for index, item in enumerate(evidence_items[:3], start=1))
+    history_line = f"\n\n必要历史摘要：{history_brief.strip()}" if history_brief.strip() else ""
+    return (
+        f"根据当前资料（mode={mode or 'auto'}），问题“{question.strip()}”可以这样整理：{history_line}\n\n"
+        f"**核心依据**\n{evidence}\n\n"
+        "**答题提醒**\n以上回答只依据本轮工具返回的资料整理；如果需要分析题口径，可以继续补充材料背景或指定要对应的政治板块。"
+    )
+
+
+def answer_politics_knowledge(
+    question: str,
+    tool_outputs: Any,
+    history_brief: str = "",
+    mode: str = "auto",
+    output_format: str = "ui",
+) -> str:
+    settings = load_answer_settings()
+    api_key = settings["api_key"]
+    prompt = load_prompt("politics_answer_knowledge_prompt")
+    tool_outputs_text = normalize_tool_outputs(tool_outputs)
+    if not api_key:
+        return local_answer_politics_knowledge(question, history_brief, tool_outputs_text, mode=mode)
+
+    from openai import OpenAI
+
+    client = OpenAI(api_key=str(api_key), base_url=str(settings["base_url"]))
+    started = time.perf_counter()
+    response = client.chat.completions.create(
+        model=str(settings["chat_model"]),
+        messages=[
+            {"role": "system", "content": prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"当前用户输入：\n{question}\n\n"
+                    f"回答模式：\n{mode or 'auto'}\n\n"
+                    f"必要历史摘要：\n{history_brief or '无'}\n\n"
+                    f"前面工具输出：\n{tool_outputs_text or '无'}\n\n"
+                    f"输出格式：{output_format}\n"
+                    "请输出最终面向用户的考研政治答案。"
+                ),
+            },
+        ],
+        temperature=0.2,
+    )
+    notify_usage(
+        kind="chat",
+        name=f"tool_llm:answer_politics_knowledge:{settings.get('provider') or 'unknown'}",
+        model=str(settings["chat_model"]),
+        response=response,
+        started_at=started,
+        tool_name="answer_politics_knowledge",
+        provider=str(settings.get("provider") or "unknown"),
+    )
+    return response.choices[0].message.content or ""
 
 
 def answer_with_qwen(question: str, contexts: list[dict]) -> str:

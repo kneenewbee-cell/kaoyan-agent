@@ -1,0 +1,2 @@
+{"id":"route_math_limit_001","user_input":"极限的无穷比无穷型能用洛必达吗","history":[],"expected":{"subject":"math","followup_category":"independent"}}
+{"id":"route_politics_switch_001","history":[{"turn_id":1,"user_query":"罗尔定理是什么","assistant_answer":"这是数学一元函数微分学内容。","route":{"subject":"math"}}],"user_input":"量变和质变的辩证关系是什么？","expected":{"subject":"politics","followup_category":"independent"}}

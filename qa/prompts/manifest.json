@@ -1,0 +1,87 @@
+{
+  "math_tool_selection_policy": {
+    "version": "v1",
+    "path": "runtime/math_tool_selection_policy.v1.md",
+    "description": "Math tool selection policy"
+  },
+  "politics_tool_selection_policy": {
+    "version": "v1",
+    "path": "runtime/politics_tool_selection_policy.v1.md",
+    "description": "Politics tool selection policy"
+  },
+  "politics_answer_knowledge_prompt": {
+    "version": "v1",
+    "path": "politics/answer_knowledge.v1.md",
+    "description": "Politics final answer composer prompt"
+  },
+  "generic_tool_selection_policy": {
+    "version": "v1",
+    "path": "runtime/generic_tool_selection_policy.v1.md",
+    "description": "Generic tool selection policy"
+  },
+  "default_answer_shape_policy": {
+    "version": "v1",
+    "path": "runtime/default_answer_shape.v1.md",
+    "description": "Default answer shape"
+  },
+  "main_system_prompt": {
+    "version": "v1",
+    "path": "runtime/main_system.v1.md",
+    "description": "Main system prompt"
+  },
+  "subject_classifier_prompt": {
+    "version": "v1",
+    "path": "routing/subject_classifier.v1.md",
+    "description": "Subject classifier prompt"
+  },
+  "qwen_vl_ocr_prompt": {
+    "version": "v1",
+    "path": "math/vl_ocr.v1.md",
+    "description": "Math image OCR prompt"
+  },
+  "image_routing_ocr_prompt": {
+    "version": "v1",
+    "path": "math/image_routing_ocr.v1.md",
+    "description": "Image routing OCR prompt"
+  },
+  "qwen_math_solver_prompt": {
+    "version": "v1",
+    "path": "math/math_solver.v1.md",
+    "description": "Math exam solver prompt"
+  },
+  "qwen_general_math_solver_prompt": {
+    "version": "v1",
+    "path": "math/general_math_solver.v1.md",
+    "description": "General math solver prompt"
+  },
+  "terminal_format_prompt": {
+    "version": "v1",
+    "path": "runtime/terminal_format.v1.md",
+    "description": "Terminal format prompt"
+  },
+  "ui_format_prompt": {
+    "version": "v1",
+    "path": "runtime/ui_format.v1.md",
+    "description": "UI format prompt"
+  },
+  "answer_judge_prompt": {
+    "version": "v1",
+    "path": "math/answer_judge.v1.md",
+    "description": "Answer judge prompt"
+  },
+  "solution_quality_prompt": {
+    "version": "v1",
+    "path": "math/solution_quality.v1.md",
+    "description": "Solution quality prompt"
+  },
+  "context_followup_prompt": {
+    "version": "v1",
+    "path": "runtime/context_followup.v1.md",
+    "description": "Context follow-up rules prompt"
+  },
+  "route_classifier_prompt": {
+    "version": "v1",
+    "path": "routing/route_classifier.v1.md",
+    "description": "Route classifier prompt"
+  }
+}
