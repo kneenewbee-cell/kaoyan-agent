@@ -1,9 +1,12 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import qa.agent_runtime as agent_runtime
 from qa.tools import current_affairs_search as cas
+from qa.tools.current_affairs_store import CurrentAffairsStore
 from qa.tools.current_affairs_search import service
 
 
@@ -99,21 +102,34 @@ class CurrentAffairsSearchTests(unittest.TestCase):
             "source_groups": {"all_authoritative": ["news.cn"]},
             "query_groups": [{"name": "meetings", "queries": ["中央 重要会议"]}],
         }
-        evidence = [{"title": "中共中央政治局召开会议", "source_domain": "news.cn"}]
-        with (
-            patch.object(service, "beijing_time_info", return_value={"date": "2026-06-23", "timezone": "Asia/Shanghai"}),
-            patch.object(service, "plan_current_affairs_search", return_value=plan) as planner,
-            patch.object(service, "execute_news_searches", return_value=["raw-hit"]) as searcher,
-            patch.object(service, "clean_and_verify_hits", return_value=evidence) as verifier,
-            patch.object(service, "fallback_enabled", return_value=False),
-            patch.object(service, "write_search_trace"),
-        ):
-            result = service.call_current_affairs_search("最近两月重要会议")
+        evidence = [
+            {
+                "title": "中共中央政治局召开会议",
+                "source_domain": "news.cn",
+                "url": "https://www.news.cn/politics/20260623/meeting.html",
+                "published_at": "2026-06-23",
+                "extracted_dates": ["2026-06-23"],
+                "text_preview": "中共中央政治局召开会议，研究重要工作。",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            with (
+                patch.object(service, "beijing_time_info", return_value={"date": "2026-06-23", "timezone": "Asia/Shanghai"}),
+                patch.object(service, "plan_current_affairs_search", return_value=plan) as planner,
+                patch.object(service, "execute_news_searches", return_value=["raw-hit"]) as searcher,
+                patch.object(service, "clean_and_verify_hits", return_value=evidence) as verifier,
+                patch.object(service, "fallback_enabled", return_value=False),
+                patch.object(service, "write_search_trace"),
+                patch.object(service, "CurrentAffairsStore", return_value=CurrentAffairsStore(Path(tmp))),
+            ):
+                result = service.call_current_affairs_search("最近两月重要会议")
 
         self.assertEqual(result["type"], "current_affairs_evidence")
         self.assertEqual(result["query"], "最近两月重要会议")
         self.assertEqual(result["items"][0]["title"], "中共中央政治局召开会议")
         self.assertEqual(result["items"][0]["source_domain"], "news.cn")
+        self.assertRegex(result["items"][0]["event_id"], r"^cae_20260623_\d{4}$")
+        self.assertTrue(result["items"][0]["source_doc_id"].startswith("cas_20260623_news_cn_"))
         planner.assert_called_once()
         searcher.assert_called_once_with(plan)
         verifier.assert_called_once_with(plan, ["raw-hit"])
@@ -127,6 +143,34 @@ class CurrentAffairsSearchTests(unittest.TestCase):
 
         self.assertEqual(result, expected)
         mocked.assert_called_once_with("最近两月重要会议")
+
+    def test_current_affairs_store_tool_can_lookup_detail_by_event_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = CurrentAffairsStore(Path(tmp))
+            enriched = service.ingest_verified_evidence(
+                [
+                    {
+                        "title": "律师法修正草案提请审议",
+                        "source_domain": "news.cn",
+                        "url": "https://www.news.cn/politics/20260623/lawyer.html",
+                        "published_at": "2026-06-23",
+                        "extracted_dates": ["2026-06-23"],
+                        "text_preview": "律师法修正草案提请十四届全国人大常委会第二十三次会议审议。",
+                    }
+                ],
+                store=store,
+            )
+            with patch.object(service, "CurrentAffairsStore", return_value=store):
+                tools = agent_runtime.build_current_affairs_tools()
+                result = tools["search_current_affairs_store"].func({
+                    "mode": "detail",
+                    "event_id": enriched[0]["event_id"],
+                })
+
+        self.assertEqual(result["type"], "current_affairs_store")
+        self.assertEqual(result["mode"], "detail")
+        self.assertEqual(result["items"][0]["event_id"], enriched[0]["event_id"])
+        self.assertEqual(result["items"][0]["primary_source"]["source_doc_id"], enriched[0]["source_doc_id"])
 
 
 if __name__ == "__main__":

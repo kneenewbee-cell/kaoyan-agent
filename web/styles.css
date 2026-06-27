@@ -351,6 +351,11 @@ button {
   white-space: pre-wrap;
 }
 
+.search-preview {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
 .bubble h1,
 .bubble h2,
 .bubble h3,
@@ -508,6 +513,45 @@ button {
 .error-banner {
   background: rgba(180, 54, 54, 0.12);
   color: #8e2323;
+}
+
+.upload-progress {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(23, 32, 51, 0.08);
+}
+
+.upload-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.upload-progress-track {
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(23, 32, 51, 0.09);
+}
+
+.upload-progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #c6a45f);
+  transition: width 240ms ease;
+}
+
+.upload-progress-message {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .material-card,

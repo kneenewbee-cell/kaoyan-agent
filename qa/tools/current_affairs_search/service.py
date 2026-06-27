@@ -15,6 +15,8 @@ from .time_utils import beijing_time_info
 from .trace import write_search_trace
 from .utils import unique_strings
 from .verify import clean_and_verify_hits, deduplicate_evidence_items
+from ..current_affairs_store import CurrentAffairsStore, ingest_verified_evidence
+from ..current_affairs_store.search import search_current_affairs_store as search_current_affairs_store_impl
 
 
 def call_current_affairs_search(user_query: str) -> dict[str, Any]:
@@ -47,6 +49,9 @@ def call_current_affairs_search(user_query: str) -> dict[str, Any]:
             "evidence_count": len(fallback_evidence),
         }
 
+    if evidence:
+        evidence = ingest_verified_evidence(evidence, store=CurrentAffairsStore())
+
     trace_record["evidence"] = summarize_evidence_for_trace(evidence)
     write_search_trace(trace_record)
 
@@ -75,6 +80,10 @@ def preview_current_affairs_search(
     }
     write_search_trace(record)
     return record
+
+
+def search_current_affairs_store(args: dict[str, Any]) -> dict[str, Any]:
+    return search_current_affairs_store_impl(args, store=CurrentAffairsStore())
 
 
 def build_fallback_plan(plan: dict[str, Any]) -> dict[str, Any]:
@@ -174,6 +183,9 @@ def summarize_evidence_for_trace(evidence: list[dict[str, Any]]) -> list[dict[st
             "group": item.get("group"),
             "published_at": item.get("published_at"),
             "extracted_dates": item.get("extracted_dates"),
+            "event_id": item.get("event_id"),
+            "source_doc_id": item.get("source_doc_id"),
+            "primary_source_doc_id": item.get("primary_source_doc_id"),
         }
         for item in evidence
     ]

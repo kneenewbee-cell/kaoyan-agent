@@ -5,7 +5,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -96,12 +96,14 @@ class MaterialPipelineLogger:
         source_name: str | None = None,
         material_log_path: Path | None = None,
         run_id: str | None = None,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.run_id = run_id or f"run_{uuid.uuid4().hex[:12]}"
         self.material_id = material_id
         self.user_id = user_id
         self.source_name = source_name
         self.material_log_path = material_log_path
+        self.progress_callback = progress_callback
 
     def bind_material_log(self, material_log_path: Path) -> None:
         self.material_log_path = material_log_path
@@ -120,4 +122,9 @@ class MaterialPipelineLogger:
             write_material_pipeline_log(record, material_log_path=self.material_log_path)
         except OSError:
             # Logging must never break ingestion.
-            return
+            pass
+        if self.progress_callback is not None:
+            try:
+                self.progress_callback(sanitize_for_log(record))
+            except Exception:
+                return

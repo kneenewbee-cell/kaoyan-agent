@@ -13,10 +13,10 @@ from .format_probe import (
     build_format_probe,
 )
 from .qwen_strategy_client import (
-    QWEN_STRATEGY_MODEL,
     generate_document_zones_with_qwen,
     generate_strategy_bundle_with_qwen,
     generate_strategy_with_qwen,
+    get_qwen_strategy_model,
     write_qwen_strategy_log,
     write_qwen_zone_log,
 )
@@ -196,6 +196,7 @@ def clean_raw_markdown(
     zone_usage: dict[str, Any] = {}
     strategy_validation: dict[str, Any] = {}
     zone_validation: dict[str, Any] = {}
+    qwen_model = get_qwen_strategy_model()
 
     if use_llm_profile:
         use_legacy_profile = _legacy_qwen_functions_are_mocked()
@@ -203,7 +204,7 @@ def clean_raw_markdown(
             try:
                 bundle_payload = generate_strategy_bundle_with_qwen(
                     probe_dict,
-                    model=QWEN_STRATEGY_MODEL,
+                    model=qwen_model,
                     usage_metrics=qwen_usage,
                 )
                 qwen_payload = bundle_payload.get("cleaning_strategy")
@@ -241,7 +242,7 @@ def clean_raw_markdown(
             try:
                 qwen_payload = generate_strategy_with_qwen(
                     probe_dict,
-                    model=QWEN_STRATEGY_MODEL,
+                    model=qwen_model,
                     usage_metrics=qwen_usage,
                 )
                 strategy, validation_warnings, used_fallback = validate_cleaning_strategy(
@@ -263,7 +264,7 @@ def clean_raw_markdown(
             try:
                 zone_payload = generate_document_zones_with_qwen(
                     probe_dict,
-                    model=QWEN_STRATEGY_MODEL,
+                    model=qwen_model,
                     usage_metrics=zone_usage,
                 )
                 document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
@@ -309,6 +310,7 @@ def clean_raw_markdown(
 
     all_warnings = sorted(set(warnings + clean_result.warnings))
     parse_report = dict(clean_result.parse_report)
+    parse_report["qwen_model"] = qwen_model if use_llm_profile else None
     parse_report["warnings"] = list(parse_report.get("warnings", [])) + [{"message": warning} for warning in warnings]
     parse_report["stats"]["warnings_count"] = len(parse_report["warnings"])
     parse_report["strategy_source"] = strategy.strategy_source

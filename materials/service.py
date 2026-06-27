@@ -4,11 +4,12 @@ import json
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .chunking.chunker import chunk_markdown_file
 from .detector import detect_file
 from .indexing.material_indexer import build_search_index
+from .indexing.vector_indexer import build_material_vector_index, delete_material_vector_index
 from .postprocess.asset_rewriter import save_and_rewrite_images
 from .postprocess.formula_cleaner import clean_formulas
 from .postprocess.layout_sidecar import (
@@ -102,6 +103,8 @@ class MaterialIngestionService:
         material_type: str = "unknown",
         metadata: dict[str, Any] | None = None,
         use_llm_cleanup: bool = True,
+        enable_vector_index: bool | None = None,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> MaterialIngestionResult:
         """入库一个资料文件。
 
@@ -118,6 +121,7 @@ class MaterialIngestionService:
             material_id=material_id,
             user_id=safe_user_id,
             source_name=file_path.name,
+            progress_callback=progress_callback,
         )
         ingest_started = time.perf_counter()
         pipeline_logger.log(
@@ -224,6 +228,7 @@ class MaterialIngestionService:
             )
 
             stage_started = time.perf_counter()
+            pipeline_logger.log("parse", "started", parser_name=parser.parser_name)
             parse_result = parser.parse(
                 input_path=file_path,
                 output_dir=material_dir / "parsed",
@@ -331,6 +336,7 @@ class MaterialIngestionService:
             )
 
             stage_started = time.perf_counter()
+            pipeline_logger.log("raw_markdown_cleaning", "started")
             clean_result = clean_raw_markdown(
                 markdown_text,
                 source_name=detected.original_filename,
@@ -434,10 +440,12 @@ class MaterialIngestionService:
             )
 
             stage_started = time.perf_counter()
+            pipeline_logger.log("chunk", "started")
             chunks = chunk_markdown_file(
                 markdown_path,
                 material_id,
                 safe_user_id,
+                document_zones=clean_result.document_zones,
             )
             text_chunk_count = len(chunks)
             if layout_context:
@@ -479,6 +487,7 @@ class MaterialIngestionService:
                 chunk_count=len(chunks),
             )
             stage_started = time.perf_counter()
+            pipeline_logger.log("index", "started")
             index_path = self.storage.save_search_index(
                 safe_user_id,
                 material_id,
@@ -490,6 +499,29 @@ class MaterialIngestionService:
                 duration_ms=monotonic_ms(stage_started),
                 index_path=_safe_relative(index_path, material_dir),
                 chunk_count=len(chunks),
+            )
+
+            stage_started = time.perf_counter()
+            pipeline_logger.log("vector_index", "started")
+            vector_index_result = build_material_vector_index(
+                chunks,
+                manifest,
+                enabled=enable_vector_index,
+            )
+            extra_metadata["vector_index"] = vector_index_result.to_dict()
+            pipeline_logger.log(
+                "vector_index",
+                vector_index_result.status,
+                duration_ms=monotonic_ms(stage_started),
+                enabled=vector_index_result.enabled,
+                provider=vector_index_result.provider,
+                collection=vector_index_result.collection,
+                model=vector_index_result.model,
+                dimension=vector_index_result.dimension,
+                chunk_count=vector_index_result.chunk_count,
+                warnings=vector_index_result.warnings,
+                error=vector_index_result.error,
+                usage=vector_index_result.usage,
             )
 
             stage_started = time.perf_counter()
@@ -642,9 +674,11 @@ class MaterialIngestionService:
         safe_user_id = resolve_user_id(user_id)
         safe_material_id = resolve_material_id(material_id)
         self.storage.delete_material(safe_user_id, safe_material_id)
+        vector_delete = delete_material_vector_index(safe_user_id, safe_material_id, enabled=True)
         return {
             "ok": True,
             "deleted": True,
             "user_id": safe_user_id,
             "material_id": safe_material_id,
+            "vector_index": vector_delete.to_dict(),
         }

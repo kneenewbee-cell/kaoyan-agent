@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from ..pipeline_logger import sanitize_for_log
-from .strategy_schema import CleaningStrategy, HeadingFamily
+from .strategy_schema import CleaningStrategy, HeadingFamily, RelationHint
 
 
 DANGEROUS_TOKENS = ("eval", "exec", "import", "subprocess", "os.system", "open(", "__")
@@ -27,6 +27,16 @@ HEADING_FAMILY_KEYS = {
     "parent_hints",
     "min_repeats",
     "examples",
+}
+RELATION_HINT_KEYS = {
+    "relation_type",
+    "parent",
+    "child",
+    "score",
+    "certainty",
+    "score_breakdown",
+    "evidence",
+    "scope",
 }
 
 
@@ -181,6 +191,88 @@ def _normalize_outline_family_shape(family: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def _has_relation_path(
+    graph: dict[str, list[str]],
+    start: str,
+    target: str,
+    *,
+    skip_edge: tuple[str, str] | None = None,
+) -> bool:
+    stack = [start]
+    seen: set[str] = set()
+    while stack:
+        node = stack.pop()
+        if node in seen:
+            continue
+        seen.add(node)
+        for next_node in graph.get(node, []):
+            if skip_edge == (node, next_node):
+                continue
+            if next_node == target:
+                return True
+            stack.append(next_node)
+    return False
+
+
+def _repair_relation_hints(
+    relation_hints: object,
+    *,
+    family_ids: set[str],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    warnings: list[str] = []
+    if relation_hints in (None, ""):
+        return [], warnings
+    if not isinstance(relation_hints, list):
+        return [], ["strategy_relation_hints_invalid_dropped"]
+
+    candidate_hints: list[RelationHint] = []
+    seen_edges: set[tuple[str, str]] = set()
+    for raw_hint in relation_hints:
+        if not isinstance(raw_hint, dict):
+            warnings.append("strategy_relation_hint_invalid_entry_dropped")
+            continue
+        hint = {key: value for key, value in raw_hint.items() if key in RELATION_HINT_KEYS}
+        if hint != raw_hint:
+            warnings.append("strategy_relation_hint_extra_key_dropped")
+        if hint.get("relation_type") in (None, ""):
+            hint["relation_type"] = "direct_parent"
+        if hint.get("certainty") in (None, ""):
+            hint["certainty"] = "strong"
+        if hint.get("scope") in (None, ""):
+            hint["scope"] = "body"
+        try:
+            validated_hint = RelationHint.model_validate(hint)
+        except ValidationError:
+            warnings.append("strategy_relation_hint_invalid_dropped")
+            continue
+        if validated_hint.parent not in family_ids or validated_hint.child not in family_ids:
+            warnings.append("strategy_relation_hint_unknown_family_dropped")
+            continue
+        edge = (validated_hint.parent, validated_hint.child)
+        if edge in seen_edges:
+            warnings.append("strategy_relation_hint_duplicate_dropped")
+            continue
+        seen_edges.add(edge)
+        candidate_hints.append(validated_hint)
+
+    graph: dict[str, list[str]] = {}
+    for hint in candidate_hints:
+        graph.setdefault(hint.parent, []).append(hint.child)
+
+    repaired_hints: list[RelationHint] = []
+    for hint in candidate_hints:
+        edge = (hint.parent, hint.child)
+        if _has_relation_path(graph, hint.child, hint.parent):
+            warnings.append("strategy_relation_hint_cycle_dropped")
+            continue
+        if _has_relation_path(graph, hint.parent, hint.child, skip_edge=edge):
+            warnings.append("strategy_relation_hint_transitive_dropped")
+            continue
+        repaired_hints.append(hint)
+
+    return [hint.model_dump(mode="json") for hint in repaired_hints], warnings
+
+
 def default_conservative_strategy(*, reason: str = "No reliable structure strategy") -> CleaningStrategy:
     return CleaningStrategy(
         document_profile={"subject": "unknown", "document_type": "unknown", "language": "zh", "confidence": 0.3},
@@ -234,8 +326,8 @@ def parse_strategy_payload(payload: str | dict[str, Any] | CleaningStrategy) -> 
 
 
 def summarize_strategy_payload(data: dict[str, Any]) -> dict[str, Any]:
-    heading_rules = data.get("heading_rules", []) or []
     heading_families = data.get("heading_families", []) or []
+    relation_hints = data.get("relation_hints", []) or []
     document_zones = data.get("document_zones") or {}
     front_matter_zones = []
     if isinstance(document_zones, dict):
@@ -281,23 +373,17 @@ def summarize_strategy_payload(data: dict[str, Any]) -> dict[str, Any]:
                 for family in heading_families
                 if isinstance(family, dict)
             ],
-            "heading_rule_count": len(heading_rules),
-            "heading_rules": [
+            "relation_hint_count": len(relation_hints),
+            "relation_hints": [
                 {
-                    "id": rule.get("id"),
-                    "role": rule.get("role"),
-                    "target_level": rule.get("target_level"),
-                    "parent_rule": rule.get("parent_rule"),
-                    "priority": rule.get("priority"),
-                    "min_repeats": rule.get("min_repeats"),
-                    "pattern_types": [
-                        token.get("type")
-                        for token in (rule.get("pattern", []) or [])
-                        if isinstance(token, dict)
-                    ],
+                    "parent": hint.get("parent"),
+                    "child": hint.get("child"),
+                    "score": hint.get("score"),
+                    "certainty": hint.get("certainty"),
+                    "scope": hint.get("scope"),
                 }
-                for rule in heading_rules
-                if isinstance(rule, dict)
+                for hint in relation_hints
+                if isinstance(hint, dict)
             ],
         }
     )
@@ -323,6 +409,9 @@ def _repair_strategy_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list
     if "document_zones" in repaired:
         repaired.pop("document_zones", None)
         warnings.append("strategy_document_zones_ignored")
+    if "heading_rules" in repaired:
+        repaired.pop("heading_rules", None)
+        warnings.append("strategy_legacy_heading_rules_dropped")
     families = repaired.get("heading_families")
     if isinstance(families, list):
         candidate_families: list[dict[str, Any]] = []
@@ -382,50 +471,20 @@ def _repair_strategy_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list
                     family["parent_hints"] = cleaned_parent_hints
                     warnings.append("strategy_family_parent_hints_repaired")
         repaired["heading_families"] = repaired_families
-    rules = repaired.get("heading_rules")
-    if isinstance(rules, list):
-        for rule in rules:
-            if not isinstance(rule, dict):
-                continue
-            examples = rule.get("examples")
-            if isinstance(examples, list) and len(examples) > 8:
-                rule["examples"] = examples[:8]
-                warnings.append("strategy_examples_truncated")
-            if isinstance(examples, list):
-                cleaned_examples = [_strip_markdown_heading_marker(str(example)) for example in rule.get("examples", [])]
-                cleaned_examples = [example for example in cleaned_examples if example]
-                if cleaned_examples != rule.get("examples"):
-                    rule["examples"] = cleaned_examples
-                    warnings.append("strategy_examples_heading_markers_stripped")
-
-        for _ in range(len(rules) + 1):
-            changed = False
-            rules_by_id = {
-                rule.get("id"): rule
-                for rule in rules
-                if isinstance(rule, dict) and isinstance(rule.get("id"), str)
-            }
-            for rule in rules:
-                if not isinstance(rule, dict):
-                    continue
-                parent_id = rule.get("parent_rule")
-                parent = rules_by_id.get(parent_id)
-                if not isinstance(parent, dict):
-                    continue
-                parent_level = parent.get("target_level")
-                child_level = rule.get("target_level")
-                if not isinstance(parent_level, int) or not isinstance(child_level, int):
-                    continue
-                if parent_level >= child_level and parent_level < 6:
-                    rule["target_level"] = parent_level + 1
-                    warnings.append("strategy_parent_level_repaired")
-                    changed = True
-                elif parent_level >= child_level and parent_level >= 6:
-                    rule["parent_rule"] = None
-                    warnings.append("strategy_parent_rule_dropped_at_max_depth")
-                    changed = True
-            if not changed:
-                break
+        family_ids = {
+            family.get("id")
+            for family in repaired_families
+            if isinstance(family.get("id"), str)
+        }
+        repaired_relation_hints, relation_warnings = _repair_relation_hints(
+            repaired.get("relation_hints"),
+            family_ids={str(family_id) for family_id in family_ids if family_id},
+        )
+        warnings.extend(relation_warnings)
+        repaired["relation_hints"] = repaired_relation_hints
+    elif "relation_hints" in repaired:
+        repaired.pop("relation_hints", None)
+        warnings.append("strategy_relation_hints_without_families_dropped")
     return repaired, sorted(set(warnings))
 
 

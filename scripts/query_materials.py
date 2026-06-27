@@ -45,6 +45,13 @@ def main() -> None:
         help="Number of results to return, default: 5",
     )
     parser.add_argument(
+        "--mode",
+        type=str,
+        default="hybrid",
+        choices=["keyword", "vector", "hybrid"],
+        help="Search mode, default: hybrid",
+    )
+    parser.add_argument(
         "--material-id",
         type=str,
         default=None,
@@ -69,6 +76,7 @@ def main() -> None:
 
     print(f"query : {args.query}")
     print(f"user  : {args.user_id}")
+    print(f"mode  : {args.mode}")
     print("-" * 50)
 
     filters: dict[str, str] = {}
@@ -84,6 +92,7 @@ def main() -> None:
         query=args.query,
         top_k=args.top_k,
         filters=filters if filters else None,
+        mode=args.mode,
     )
 
     if not results:
@@ -99,6 +108,7 @@ def main() -> None:
         print(f"  asset_paths  : {result.asset_paths}")
         print(f"  source_file  : {result.metadata.get('original_filename', '?')}")
         print(f"  subject      : {result.metadata.get('subject', '?')}")
+        print(f"  matched_by   : {result.metadata.get('matched_by') or result.metadata.get('search_mode', args.mode)}")
         print(f"  text_preview : {result.text[:200]}...")
         print()
 

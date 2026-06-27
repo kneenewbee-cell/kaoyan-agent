@@ -37,6 +37,11 @@ const materialsSubject = document.querySelector("#materialsSubject");
 const materialsType = document.querySelector("#materialsType");
 const materialsStatus = document.querySelector("#materialsStatus");
 const materialsError = document.querySelector("#materialsError");
+const materialsUploadProgress = document.querySelector("#materialsUploadProgress");
+const materialsUploadStage = document.querySelector("#materialsUploadStage");
+const materialsUploadPercent = document.querySelector("#materialsUploadPercent");
+const materialsUploadBar = document.querySelector("#materialsUploadBar");
+const materialsUploadMessage = document.querySelector("#materialsUploadMessage");
 const materialsRefreshButton = document.querySelector("#materialsRefreshButton");
 const materialsList = document.querySelector("#materialsList");
 const materialsSearchForm = document.querySelector("#materialsSearchForm");
@@ -339,9 +344,46 @@ function setBanner(element, message) {
   element.textContent = message || "";
 }
 
+function setUploadProgress(jobOrState) {
+  if (!jobOrState) {
+    materialsUploadProgress.hidden = true;
+    materialsUploadStage.textContent = "等待上传";
+    materialsUploadPercent.textContent = "0%";
+    materialsUploadBar.style.width = "0%";
+    materialsUploadMessage.textContent = "等待上传文件。";
+    return;
+  }
+  const progress = Math.max(0, Math.min(100, Number(jobOrState.progress ?? 0)));
+  materialsUploadProgress.hidden = false;
+  materialsUploadStage.textContent = jobOrState.stage_label || jobOrState.stage || "处理中";
+  materialsUploadPercent.textContent = `${Math.round(progress)}%`;
+  materialsUploadBar.style.width = `${progress}%`;
+  materialsUploadMessage.textContent = jobOrState.message || "正在处理资料。";
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForUploadJob(jobId) {
+  while (true) {
+    const payload = await fetchJson(`/api/materials/upload-jobs/${encodeURIComponent(jobId)}`);
+    const job = payload.job;
+    setUploadProgress(job);
+    if (job.status === "completed") {
+      return job.result;
+    }
+    if (job.status === "failed") {
+      throw new Error(job.error || job.message || "资料处理失败");
+    }
+    await sleep(1500);
+  }
+}
+
 function clearMaterialsFeedback() {
   setBanner(materialsStatus, "");
   setBanner(materialsError, "");
+  setUploadProgress(null);
 }
 
 const MATERIAL_SUBJECT_LABELS = {
@@ -393,12 +435,23 @@ function materialMetaLine(item) {
   ].join(" · ");
 }
 
+function formatSearchScore(result) {
+  const score = Number(result.score || 0);
+  if (result.score_kind === "vector_similarity" || result.search_mode === "vector") {
+    return `相似度 ${(score * 100).toFixed(1)}%`;
+  }
+  if (result.score_kind === "rank_fusion" || result.search_mode === "hybrid") {
+    return `融合排序分 ${(score * 100).toFixed(2)}`;
+  }
+  return `关键词分 ${score.toFixed(4)}`;
+}
+
 function renderMaterialsList(items) {
   currentMaterials = items;
   materialsList.innerHTML = "";
   if (!items || items.length === 0) {
     materialsList.className = "materials-list empty-state";
-    materialsList.textContent = "还没有资料，先上传一份 `.md` 或 `.txt` 吧。";
+    materialsList.textContent = "还没有资料，先上传一份 `.md`、`.txt` 或 `.pdf` 吧。";
     return;
   }
 
@@ -455,13 +508,17 @@ function renderSearchResults(results) {
     card.className = "search-card";
 
     const title = document.createElement("h4");
-    title.textContent = `${result.original_filename || "未命名资料"} · 相关度 ${Number(result.score).toFixed(4)}`;
+    title.textContent = `${result.original_filename || "未命名资料"} · ${formatSearchScore(result)}`;
     const meta = document.createElement("p");
     meta.className = "material-meta";
-    meta.textContent = `分块：${result.chunk_id}`;
+    const matchedBy = Array.isArray(result.matched_by) && result.matched_by.length
+      ? ` · 命中：${result.matched_by.join("+")}`
+      : "";
+    const tableMeta = result.table_id ? ` · 表格：${result.table_id}` : "";
+    meta.textContent = `分块：${result.chunk_id}${matchedBy}${tableMeta}`;
     const preview = document.createElement("pre");
     preview.className = "search-preview";
-    preview.textContent = result.text_preview || result.text || "";
+    preview.textContent = result.text || result.text_preview || "";
     const assets = document.createElement("p");
     assets.className = "material-path";
     assets.textContent = `asset_paths: ${Array.isArray(result.asset_paths) && result.asset_paths.length ? result.asset_paths.join(", ") : "(none)"}`;
@@ -617,9 +674,11 @@ materialsUploadForm.addEventListener("submit", async (event) => {
 
   const file = materialsFileInput.files[0];
   if (!file) {
-    setBanner(materialsError, "请选择要上传的 .md 或 .txt 文件");
+    setBanner(materialsError, "请选择要上传的 .md、.txt 或 .pdf 文件");
     return;
   }
+  const fileExt = (file.name.split(".").pop() || "").toLowerCase();
+  const isPdf = fileExt === "pdf";
 
   const formData = new FormData();
   formData.append("file", file);
@@ -627,15 +686,33 @@ materialsUploadForm.addEventListener("submit", async (event) => {
   formData.append("subject", materialsSubject.value);
   formData.append("material_type", materialsType.value);
   formData.append("use_llm_cleanup", "true");
+  formData.append("async_upload", "true");
 
   try {
     materialsUploadButton.disabled = true;
-    materialsUploadButton.textContent = "AI 整理中...";
-    setBanner(materialsStatus, "正在上传并调用 Qwen 生成清洗策略，请稍等。");
-    const data = await fetchJson("/api/materials/upload", {
+    materialsUploadButton.textContent = isPdf ? "PDF 解析中..." : "AI 整理中...";
+    setBanner(
+      materialsStatus,
+      isPdf
+        ? "正在上传 PDF，并调用本地 MinerU 解析为 Markdown；随后会生成清洗策略、切块并建立索引。PDF 处理可能需要一两分钟。"
+        : "正在上传资料，并按文件后缀选择解析器；随后调用 Qwen 生成清洗策略，请稍等。"
+    );
+    setUploadProgress({
+      stage_label: "上传文件",
+      progress: 2,
+      message: "正在上传文件，上传完成后会继续显示解析、清洗、分块和索引进度。",
+    });
+    let data = await fetchJson("/api/materials/upload", {
       method: "POST",
       body: formData,
     });
+    if (data.async && data.job_id) {
+      setUploadProgress(data);
+      data = await waitForUploadJob(data.job_id);
+    }
+    if (!data || data.error) {
+      throw new Error(data?.error || "资料处理失败");
+    }
     const cleaning = data.metadata?.raw_markdown_cleaning;
     const source = cleaning?.strategy_source ? `，策略来源：${cleaning.strategy_source}` : "";
     setBanner(materialsStatus, `资料已入库，生成 ${data.chunk_count} 个 chunks${source}`);

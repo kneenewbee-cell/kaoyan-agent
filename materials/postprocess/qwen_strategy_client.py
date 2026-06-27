@@ -12,10 +12,42 @@ from .strategy_validator import summarize_strategy_payload
 from .document_zones import summarize_document_zones_payload
 
 
-QWEN_STRATEGY_MODEL = os.getenv("QWEN_CLEANING_STRATEGY_MODEL", "qwen3.5-plus-2026-04-20")
+DEFAULT_QWEN_STRATEGY_MODEL = "qwen3.5-plus-2026-04-20"
+QWEN_STRATEGY_MODEL = DEFAULT_QWEN_STRATEGY_MODEL
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 ROOT = Path(__file__).resolve().parents[2]
 QWEN_LOG_DIR = ROOT / "data" / "runtime" / "logs"
+
+
+def _read_dotenv_value(env_path: Path, key: str) -> str:
+    if not env_path.exists():
+        return ""
+    try:
+        from dotenv import dotenv_values
+
+        value = dotenv_values(env_path, encoding="utf-8-sig").get(key)
+        return str(value or "").strip()
+    except Exception:
+        pass
+
+    for raw_line in env_path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, value = line.split("=", 1)
+        if name.strip() != key:
+            continue
+        return value.strip().strip('"').strip("'")
+    return ""
+
+
+def get_qwen_strategy_model(env_path: Path | str | None = None) -> str:
+    target_env_path = Path(env_path) if env_path else ROOT / ".env"
+    return (
+        _read_dotenv_value(target_env_path, "QWEN_CLEANING_STRATEGY_MODEL")
+        or os.getenv("QWEN_CLEANING_STRATEGY_MODEL", "").strip()
+        or DEFAULT_QWEN_STRATEGY_MODEL
+    )
 
 
 SYSTEM_PROMPT = """你是 raw_markdown 格式分析器，只输出 JSON。
@@ -28,7 +60,7 @@ SYSTEM_PROMPT = """你是 raw_markdown 格式分析器，只输出 JSON。
 4. 只判断结构策略：可标题结构族、元数据字段、清理规则、保护规则、降级策略。
 5. 不确定时使用保守策略；没有可信重复结构时 heading_families 置空。
 
-heading_families 是本任务的核心输出，用它声明“哪些结构族可以成为标题”。heading_rules、main_section_rule 和 subsection_rules 仅用于兼容旧策略，优先置空或保持保守。
+heading_families 是本任务的核心输出，用它声明“哪些结构族可以成为标题”。main_section_rule 和 subsection_rules 仅保留保守兼容信息。
 - heading_family 必须有稳定锚点 anchors、编号样式 ordinal_styles 或章节单位 units；禁止输出只有 title_text/任意短行都能命中的泛规则。
 - anchors 是结构族行首稳定信号，如“知识组”“题组”“典型”“考点”“重难点”“出题角度”。
 - ordinal_styles 描述编号样式，如 arabic、chinese、circled、paren_arabic、paren_chinese、decimal。
@@ -38,17 +70,7 @@ heading_families 是本任务的核心输出，用它声明“哪些结构族可
 - parent_hints 可以写父结构族 id，如 example 的 parent_hints 可包含 question_group；不确定可留空。
 - “答案 / 分析 / 解析 / 点拨 / 点评 / 注 / 解 / 说明 / 提示 / 证明 / 方法”是局部正文标签，禁止作为 anchors。
 
-heading_rules 是旧兼容字段；如果输出 heading_rules，也必须有 literal/ordinal/separator 等锚点，禁止 pattern 只有 title_text。
-- target_level 由文档层级决定，不存在固定的“章=H2、节=H3”。
-- role=main 表示编号/章节结构；role=subsection 表示定义、核心概念、例题、提醒、小结等栏目。
-- 如果能判断父子关系，优先填写 parent_rule，例如 section 的 parent_rule 可以是 chapter；不确定时可以留空。
-- pattern 由 token 顺序组成：literal、ordinal、separator、whitespace、title_text。
-- literal/样例：values=["第"]、values=["模块"]、values=["章"]。
-- ordinal 的 styles 可选 chinese、arabic、decimal。
-- separator 的 values 是普通文本，例如 ["、"] 或 [".", "、"]。
-- whitespace optional=true 表示可有可无，否则至少一个空白。
-- title_text 必须是最后一个 token。
-- values 只能写普通字面量，禁止写正则表达式。
+本地清洗器会根据 heading_families、relation_hints 和动态栈确定 Markdown 层级。
 
 章节层级建议：
 1. “第一章 函数与极限”这类章标题，优先让“章”后面的空白成为规则的一部分；如果样本显示章标题确实无空白，也可以使用 optional whitespace。
@@ -91,7 +113,7 @@ Alpha outline guidance:
 SYSTEM_PROMPT += """
 format_probe.json 里如果包含 heading_outline / heading_pattern_counts / heading_level_counts：
 - heading_outline 是全文标题轮廓摘要，不是全文正文；请用它判断全局层级，不要只根据 head_excerpt 局部样本下结论。
-- metadata_badge（如“难度：中”“题型：选择题”“4个知识点”）通常不是知识结构标题，不要写成 heading_rules。
+- metadata_badge（如“难度：中”“题型：选择题”“4个知识点”）通常不是知识结构标题，不要写成 heading_families。
 - circled_outline（如“①平移变换”）通常是最近知识点下面的小点，不要与“第2篇/第2章/知识组/考点”同级。
 - compact_chinese_outline（如“一函数”“三函数的表示”）常见于 PDF/OCR 丢了“、”的编号标题，若它反复出现在某个知识组/考点之下，应作为更深子层级，而不是 H2。
 - chapter_unit 可能包含“篇/章/部分”，且 PDF/OCR 样本可能没有空格，例如“第2篇函数”“第1章函数”。规则应允许 arabic/chinese 编号和可选空白。
@@ -100,11 +122,10 @@ format_probe.json 里如果包含 heading_outline / heading_pattern_counts / hea
 
 SYSTEM_PROMPT += """
 局部解题标签约束：
-- “注 / 解 / 分析 / 证明 / 答 / 答案 / 解析 / 点拨 / 点评 / 提示 / 评注 / 说明”如果只是局部步骤标签，不要写入 heading_families、heading_rules 或 subsection_rules。
-- “方法 / 方法一 / 方法二 / 方法如下”如果只是解题步骤标签，也不要写入 heading_rules 或 subsection_rules。
+- “注 / 解 / 分析 / 证明 / 答 / 答案 / 解析 / 点拨 / 点评 / 提示 / 评注 / 说明”如果只是局部步骤标签，不要写入 heading_families 或 subsection_rules。
+- “方法 / 方法一 / 方法二 / 方法如下”如果只是解题步骤标签，也不要写入 heading_families 或 subsection_rules。
 - 只有“常用方法 / 解题方法 / 方法总结 / 证明方法 / 证明技巧 / 证明专题 / 证明思路总结”等明确结构栏目，才可以作为标题规则。
 - 本地清洗器会把局部步骤标签转成正文标签；你只需要描述稳定、可重复的文档结构。
-- parent_rule 只能指向更高层级标题规则，例如 H2 可以作为 H3 的 parent；同级标题候选不要写 parent_rule。
 - 资料库清洗中 H1 通常保留给整份资料标题；“第一章/第二章/第一节/一、/（一）”这类重复结构不要设为 H1，通常从 H2 或更深层级开始。
 """
 SYSTEM_PROMPT += """
@@ -135,6 +156,18 @@ SYSTEM_PROMPT += """
   "confidence": 0.86
 }
 不确定存在前置区/目录区时，front_matter_zones 输出 []，不要硬猜。
+"""
+
+
+SYSTEM_PROMPT += """
+Direct relation_hints rules:
+- relation_hints may declare only direct parent-child family relations, never transitive/grandparent relations and never Markdown levels.
+- Output relation_hints only for strong relations with score >= 85 using the schema score fields:
+  interval_structure 0-25, coverage_density 0-25, numbering_anchor 0-20, sample_evidence 0-20, counter_evidence 0 to -50.
+- Use body evidence only. If relation evidence comes only from catalog/front matter, do not output it.
+- If A contains B and B contains C, output A>B and B>C only; do not output A>C.
+- If uncertain, set relation_hints=[] and let local rules handle hierarchy.
+- Example: output lesson_unit > exam_point only when body evidence shows repeated "第N课" regions covering multiple "考点N" headings.
 """
 
 
@@ -258,7 +291,7 @@ Return one JSON object with exactly two top-level objects:
 
 Hard boundaries:
 - cleaning_strategy must match the CleaningStrategy schema and must NOT contain document_zones.
-- document_zones must match the DocumentZones schema and must NOT contain heading_families, heading_rules,
+- document_zones must match the DocumentZones schema and must NOT contain heading_families,
   cleanup_rules, metadata_rules, or any other cleaning_strategy fields.
 - Never output cleaned_markdown. Never output code, regex to execute, explanations, or text outside JSON.
 - Do not summarize, rewrite, translate, add, or delete source content.
@@ -293,6 +326,12 @@ cleaning_strategy guidance:
 - Do not create broad title_text-only rules.
 - Local solution labels such as 注/解/分析/证明/答案/解析/点拨/提示/说明 usually should not be families.
 - If a label like 方法1/方法2 is truly a repeated body structure in this document, it may be a family; otherwise leave it to local label handling.
+- relation_hints may declare only direct parent-child family relations, never transitive/grandparent relations and never Markdown levels.
+- Output relation_hints only for strong relations with score >= 85 using the schema score fields:
+  interval_structure 0-25, coverage_density 0-25, numbering_anchor 0-20, sample_evidence 0-20, counter_evidence 0 to -50.
+- Use body evidence only. If relation evidence comes only from catalog/front matter, do not output it.
+- If A contains B and B contains C, output A>B and B>C only; do not output A>C.
+- If uncertain, set relation_hints=[] and let local rules handle hierarchy.
 - Keep the original CleaningStrategy field format exactly; no document_zones inside it.
 
 document_zones guidance:
@@ -314,7 +353,7 @@ document_zones guidance:
 def generate_strategy_bundle_with_qwen(
     format_probe: dict,
     *,
-    model: str = QWEN_STRATEGY_MODEL,
+    model: str | None = None,
     api_key: str | None = None,
     timeout_seconds: int = 120,
     usage_metrics: dict[str, Any] | None = None,
@@ -325,6 +364,7 @@ def generate_strategy_bundle_with_qwen(
         load_dotenv(ROOT / ".env", encoding="utf-8-sig", override=False)
     except Exception:
         pass
+    model = model or get_qwen_strategy_model()
     key = api_key or os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
     if not key:
         raise RuntimeError("Qwen API key is not configured")
@@ -412,7 +452,7 @@ def generate_strategy_bundle_with_qwen(
 def generate_strategy_with_qwen(
     format_probe: dict,
     *,
-    model: str = QWEN_STRATEGY_MODEL,
+    model: str | None = None,
     api_key: str | None = None,
     timeout_seconds: int = 120,
     usage_metrics: dict[str, Any] | None = None,
@@ -423,6 +463,7 @@ def generate_strategy_with_qwen(
         load_dotenv(ROOT / ".env", encoding="utf-8-sig", override=False)
     except Exception:
         pass
+    model = model or get_qwen_strategy_model()
     key = api_key or os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
     if not key:
         raise RuntimeError("Qwen API key is not configured")
@@ -505,7 +546,7 @@ Task:
 - Read format_probe.json samples only; never ask for or output cleaned_markdown.
 - Detect non-body zones near the beginning of a parsed document: cover/metadata, preface/overview,
   catalog/navigation, and the first likely body line.
-- Do not describe body heading rules. Do not output heading_families, heading_rules, cleanup_rules,
+- Do not describe body heading rules. Do not output heading_families, cleanup_rules,
   or any cleaning_strategy fields.
 
 Rules:
@@ -532,7 +573,7 @@ Output shape:
 def generate_document_zones_with_qwen(
     format_probe: dict,
     *,
-    model: str = QWEN_STRATEGY_MODEL,
+    model: str | None = None,
     api_key: str | None = None,
     timeout_seconds: int = 120,
     usage_metrics: dict[str, Any] | None = None,
@@ -543,6 +584,7 @@ def generate_document_zones_with_qwen(
         load_dotenv(ROOT / ".env", encoding="utf-8-sig", override=False)
     except Exception:
         pass
+    model = model or get_qwen_strategy_model()
     key = api_key or os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
     if not key:
         raise RuntimeError("Qwen API key is not configured")

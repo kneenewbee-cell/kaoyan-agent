@@ -57,6 +57,20 @@ def main() -> None:
         action="store_true",
         help="Disable Qwen strategy generation and use local/default cleaning strategy only.",
     )
+    vector_group = parser.add_mutually_exclusive_group()
+    vector_group.add_argument(
+        "--enable-vector-index",
+        dest="enable_vector_index",
+        action="store_true",
+        default=True,
+        help="Build a Chroma vector index with text-embedding-v4 after chunking, default: enabled.",
+    )
+    vector_group.add_argument(
+        "--no-vector-index",
+        dest="enable_vector_index",
+        action="store_false",
+        help="Disable Chroma vector indexing for this ingest run.",
+    )
 
     args = parser.parse_args()
     file_path = Path(args.file)
@@ -76,6 +90,7 @@ def main() -> None:
         subject=args.subject,
         material_type=args.material_type,
         use_llm_cleanup=not args.no_llm_cleanup,
+        enable_vector_index=args.enable_vector_index,
     )
 
     print(f"material_id   : {result.material_id}")

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>考研 Agent 助手</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
-  <link rel="stylesheet" href="/static/styles.css?v=20260621-scroll-lock" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260626-materials-search-score" />
 </head>
 <body>
   <main class="app-shell">
@@ -39,7 +39,7 @@
       </label>
 
       <div class="hint">
-        聊天页保留原问答能力。资料库页支持上传 `.md/.txt`、查看列表、搜索和删除。
+        聊天页保留原问答能力。资料库页支持上传 `.md/.txt/.pdf`、查看列表、搜索和删除。
       </div>
     </aside>
 
@@ -69,7 +69,7 @@
           <div>
             <p class="eyebrow">Materials MVP</p>
             <h2>我的资料库</h2>
-            <p class="section-copy">默认用户为 <code>tester</code>，支持上传、查看、搜索、删除自己的 `.md/.txt` 资料。</p>
+            <p class="section-copy">默认用户为 <code>tester</code>，支持上传、查看、搜索、删除自己的 `.md/.txt/.pdf` 资料。</p>
           </div>
         </header>
 
@@ -88,7 +88,7 @@
             <form id="materialsUploadForm" class="stack-form">
               <label class="field">
                 <span>文件</span>
-                <input id="materialsFileInput" type="file" accept=".md,.txt" required />
+                <input id="materialsFileInput" type="file" accept=".md,.txt,.pdf" required />
               </label>
               <label class="field">
                 <span>学科</span>
@@ -118,6 +118,16 @@
 
         <div id="materialsStatus" class="status-banner" hidden></div>
         <div id="materialsError" class="error-banner" hidden></div>
+        <div id="materialsUploadProgress" class="upload-progress" hidden>
+          <div class="upload-progress-header">
+            <span id="materialsUploadStage">等待上传</span>
+            <span id="materialsUploadPercent">0%</span>
+          </div>
+          <div class="upload-progress-track">
+            <div id="materialsUploadBar" class="upload-progress-bar"></div>
+          </div>
+          <p id="materialsUploadMessage" class="upload-progress-message">等待上传文件。</p>
+        </div>
 
         <section class="panel">
           <div class="panel-header">
@@ -127,7 +137,7 @@
             </div>
             <button id="materialsRefreshButton" type="button" class="small-button dark-button">刷新</button>
           </div>
-          <div id="materialsList" class="materials-list empty-state">还没有资料，先上传一份 `.md` 或 `.txt` 吧。</div>
+          <div id="materialsList" class="materials-list empty-state">还没有资料，先上传一份 `.md`、`.txt` 或 `.pdf` 吧。</div>
         </section>
 
         <section class="panel">
@@ -166,6 +176,6 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
-  <script src="/static/app.js?v=20260622-materials-cn"></script>
+  <script src="/static/app.js?v=20260626-materials-search-score"></script>
 </body>
 </html>

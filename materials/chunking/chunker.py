@@ -4,6 +4,7 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from ..postprocess.structure_strategy import validate_structure_strategy
 from ..schemas import Chunk
@@ -14,6 +15,14 @@ IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 FORMULA_BOUNDARY_RE = re.compile(r"^\s*(\$\$|\\\[|\\\])\s*$")
+STRUCTURAL_TOPIC_TITLE_RE = re.compile(
+    r"^(?:[\u2764\u2665\u2605\u2606\u25c6\u25cf\u25cb\u25b2\u25a0\s]*)"
+    r"(?:\u8003\u70b9|\u77e5\u8bc6\u70b9|\u77e5\u8bc6\u7ec4|\u9898\u578b|"
+    r"\u5178\u578b|\u91cd\u96be\u70b9|\u6613\u9519\u70b9|\u51fa\u9898\u89d2\u5ea6)"
+    r"\s*(?:\d+|[一二三四五六七八九十百]+)"
+    r"(?:\s*(?:[、,，.．\-—~～至到]\s*)(?:\d+|[一二三四五六七八九十百]+))*"
+    r"(?:\s*[：:、.．)\uff09]\s*|\s+).{0,120}$"
+)
 
 
 @dataclass
@@ -24,6 +33,10 @@ class _MainSection:
     start_line: int
     end_line: int
     level: int = 0
+    split_reason: str = "section"
+
+
+CATALOG_ZONE_MIN_CONFIDENCE = 0.65
 
 
 def _extract_asset_paths_from_text(text: str) -> list[str]:
@@ -34,15 +47,111 @@ def _make_chunk_id(material_id: str, chunk_index: int) -> str:
     return hashlib.sha256(f"{material_id}:{chunk_index}".encode("utf-8")).hexdigest()[:16]
 
 
-def _split_main_sections(markdown: str, main_level: int) -> list[_MainSection]:
+def _document_zone_payload(document_zones: Any | None) -> dict[str, Any]:
+    if document_zones is None:
+        return {}
+    if isinstance(document_zones, dict):
+        return document_zones
+    if hasattr(document_zones, "model_dump"):
+        dumped = document_zones.model_dump(mode="json")
+        return dumped if isinstance(dumped, dict) else {}
+    return {}
+
+
+def _single_catalog_zones(document_zones: Any | None, line_count: int) -> list[dict[str, Any]]:
+    payload = _document_zone_payload(document_zones)
+    zones = payload.get("front_matter_zones") or []
+    if not isinstance(zones, list):
+        return []
+
+    catalog_zones: list[dict[str, Any]] = []
+    max_index = max(line_count - 1, 0)
+    for raw_zone in zones:
+        if not isinstance(raw_zone, dict):
+            continue
+        if raw_zone.get("type") != "catalog_or_navigation":
+            continue
+        if raw_zone.get("chunk_policy") != "single_catalog_chunk":
+            continue
+        try:
+            confidence = float(raw_zone.get("confidence", 0.0))
+            start = int(raw_zone.get("start_line", 0)) - 1
+            end = int(raw_zone.get("end_line", 0)) - 1
+        except (TypeError, ValueError):
+            continue
+        if confidence < CATALOG_ZONE_MIN_CONFIDENCE or start < 0 or end < start:
+            continue
+        title = str(raw_zone.get("title") or "").strip() or "\u76ee\u5f55"
+        if title.lower().startswith("front matter"):
+            title = "\u76ee\u5f55"
+        catalog_zones.append(
+            {
+                "start": max(0, min(start, max_index)),
+                "end": max(0, min(end, max_index)),
+                "title": title,
+            }
+        )
+
+    catalog_zones.sort(key=lambda zone: (zone["start"], zone["end"]))
+    merged: list[dict[str, Any]] = []
+    for zone in catalog_zones:
+        if not merged or zone["start"] > merged[-1]["end"] + 1:
+            merged.append(zone)
+            continue
+        merged[-1]["end"] = max(merged[-1]["end"], zone["end"])
+    return merged
+
+
+def _zone_for_line(index: int, zones: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for zone in zones:
+        if zone["start"] <= index <= zone["end"]:
+            return zone
+    return None
+
+
+def _is_structural_topic_title(title: str) -> bool:
+    stripped = title.strip()
+    if not stripped or len(stripped) > 160:
+        return False
+    return bool(STRUCTURAL_TOPIC_TITLE_RE.match(stripped))
+
+
+def _effective_heading_level(
+    raw_level: int,
+    title: str,
+    main_level: int,
+    heading_stack: dict[int, str] | None = None,
+) -> int:
+    if not _is_structural_topic_title(title):
+        return raw_level
+    if heading_stack:
+        parent_levels = [
+            level
+            for level, existing_title in heading_stack.items()
+            if level < raw_level and not _is_structural_topic_title(existing_title)
+        ]
+        if parent_levels:
+            return max(parent_levels) + 1
+    if raw_level > main_level:
+        return main_level + 1
+    return raw_level
+
+
+def _split_main_sections(markdown: str, main_level: int, *, document_zones: Any | None = None) -> list[_MainSection]:
     """按目标层级切块，同时保留更高层级标题下未被子标题覆盖的正文。"""
     lines = markdown.splitlines()
     heading_stack: dict[int, str] = {}
-    starts: list[tuple[int, int, str | None, list[str]]] = []
+    catalog_zones = _single_catalog_zones(document_zones, len(lines))
+    starts: list[tuple[int, int | None, int, str | None, list[str], str]] = [
+        (zone["start"], zone["end"], 1, zone["title"], [zone["title"]], "catalog_zone")
+        for zone in catalog_zones
+    ]
     in_code = False
     fence_marker: str | None = None
     in_formula = False
     for index, line in enumerate(lines):
+        if _zone_for_line(index, catalog_zones) is not None:
+            continue
         stripped = line.strip()
         fence_match = FENCE_RE.match(stripped)
         if fence_match:
@@ -63,32 +172,43 @@ def _split_main_sections(markdown: str, main_level: int) -> list[_MainSection]:
             continue
 
         match = HEADING_RE.match(stripped)
-        if not match:
+        if match:
+            raw_level, title = len(match.group(1)), match.group(2).strip()
+        elif _is_structural_topic_title(stripped):
+            raw_level, title = main_level + 1, stripped
+        else:
             continue
-        level, title = len(match.group(1)), match.group(2).strip()
+        is_structural_topic = _is_structural_topic_title(title)
+        level = _effective_heading_level(raw_level, title, main_level, heading_stack)
         for existing_level in list(heading_stack):
             if existing_level >= level:
                 del heading_stack[existing_level]
         heading_stack[level] = title
-        if level <= main_level:
+        if level <= main_level or is_structural_topic:
             path = [heading_stack[item_level] for item_level in sorted(heading_stack) if item_level <= level]
-            starts.append((index, level, title, path))
+            starts.append((index, None, level, title, path, "section"))
 
     if not starts:
         return [_MainSection(None, [], markdown, 0, max(len(lines) - 1, 0), 0)]
 
+    starts.sort(key=lambda item: (item[0], item[1] if item[1] is not None else len(lines)))
     sections: list[_MainSection] = []
-    for pos, (start, level, title, path) in enumerate(starts):
-        end = starts[pos + 1][0] - 1 if pos + 1 < len(starts) else len(lines) - 1
+    for pos, (start, fixed_end, level, title, path, split_reason) in enumerate(starts):
+        next_end = starts[pos + 1][0] - 1 if pos + 1 < len(starts) else len(lines) - 1
+        end = min(fixed_end, next_end) if fixed_end is not None else next_end
         content = "\n".join(lines[start : end + 1]).strip()
         if not content:
             continue
         content_lines = content.splitlines()
-        if content_lines and HEADING_RE.match(content_lines[0].strip()):
+        if split_reason != "catalog_zone" and content_lines and HEADING_RE.match(content_lines[0].strip()):
             body_lines = [line for line in content_lines[1:] if line.strip()]
             if not body_lines:
                 continue
-        sections.append(_MainSection(title, path, content, start, end, level))
+        if split_reason != "catalog_zone" and content_lines and _is_structural_topic_title(content_lines[0].strip()):
+            body_lines = [line for line in content_lines[1:] if line.strip()]
+            if not body_lines:
+                continue
+        sections.append(_MainSection(title, path, content, start, end, level, split_reason))
     return sections
 
 
@@ -138,6 +258,7 @@ def chunk_markdown(
     max_tokens: int = MAX_CHUNK_TOKENS,
     *,
     strategy: dict | None = None,
+    document_zones: Any | None = None,
 ) -> list[Chunk]:
     validated = validate_structure_strategy(strategy)
     main_level = int(validated["main_section_rule"].get("target_level", 2))
@@ -145,14 +266,14 @@ def chunk_markdown(
     max_chars = int(chunk_rule["max_chars"])
     overlap_chars = min(int(chunk_rule.get("overlap_chars", 0)), max_chars // 2)
     effective_main_level = main_level
-    sections = _split_main_sections(markdown, main_level)
+    sections = _split_main_sections(markdown, main_level, document_zones=document_zones)
     current_diversity = _section_path_diversity(sections)
     current_max_chars = _max_section_chars(sections)
     if main_level < 5:
         for candidate_level in range(main_level + 1, 6):
             if not _sections_need_finer_split(sections, max_chars):
                 break
-            finer_sections = _split_main_sections(markdown, candidate_level)
+            finer_sections = _split_main_sections(markdown, candidate_level, document_zones=document_zones)
             finer_diversity = _section_path_diversity(finer_sections)
             finer_max_chars = _max_section_chars(finer_sections)
             improves_count = len(finer_sections) > len(sections)
@@ -169,18 +290,21 @@ def chunk_markdown(
     chunks: list[Chunk] = []
 
     for section in sections:
-        parts = _hard_split(section.content, max_chars, overlap_chars)
+        parts = [section.content] if section.split_reason == "catalog_zone" else _hard_split(section.content, max_chars, overlap_chars)
         # 保留旧 token 上限：极端长英文/数字段落仍可继续拆分。
         token_safe_parts: list[str] = []
-        for part in parts:
-            if estimate_tokens(part) <= max_tokens:
-                token_safe_parts.append(part)
-            else:
-                token_safe_parts.extend(_hard_split(part, max(500, max_chars // 2), overlap_chars))
+        if section.split_reason == "catalog_zone":
+            token_safe_parts = parts
+        else:
+            for part in parts:
+                if estimate_tokens(part) <= max_tokens:
+                    token_safe_parts.append(part)
+                else:
+                    token_safe_parts.extend(_hard_split(part, max(500, max_chars // 2), overlap_chars))
 
         for part_index, text in enumerate(token_safe_parts, start=1):
             chunk_index = len(chunks)
-            split_reason = "length" if len(token_safe_parts) > 1 else "section"
+            split_reason = section.split_reason if section.split_reason != "section" else ("length" if len(token_safe_parts) > 1 else "section")
             chunks.append(
                 Chunk(
                     chunk_id=_make_chunk_id(material_id, chunk_index),
@@ -212,6 +336,7 @@ def chunk_markdown_file(
     max_tokens: int = MAX_CHUNK_TOKENS,
     *,
     strategy: dict | None = None,
+    document_zones: Any | None = None,
 ) -> list[Chunk]:
     return chunk_markdown(
         markdown_path.read_text(encoding="utf-8"),
@@ -219,4 +344,5 @@ def chunk_markdown_file(
         user_id,
         max_tokens,
         strategy=strategy,
+        document_zones=document_zones,
     )

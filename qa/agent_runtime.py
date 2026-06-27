@@ -319,6 +319,7 @@ def append_runtime_turn(session_id: str, user_message: str, result: RuntimeResul
     turns = session.setdefault("turns", [])
     turn_id = (turns[-1].get("turn_id", 0) + 1) if turns else 1
     followup_dag = (result.extra_memory or {}).get("followup_dag")
+    evidence_refs = extract_current_affairs_evidence_refs(result.messages)
     for record in result.tool_calls:
         if record.get("name") != "answer_math_followup":
             continue
@@ -350,6 +351,9 @@ def append_runtime_turn(session_id: str, user_message: str, result: RuntimeResul
         "metrics": result.metrics,
         "tool_calls": result.tool_calls,
     }
+    if evidence_refs:
+        turn["evidence_refs"] = evidence_refs
+        turn["memory"]["evidence_refs"] = evidence_refs
     if followup_dag is not None:
         memory = turn["memory"]
         memory["followup_parent_turn_id"] = followup_dag.get("parent_turn_id")
@@ -385,7 +389,29 @@ def compact_text(value: Any, limit: int = 1200) -> str:
 
 
 def turn_context_block(turn: dict[str, Any], limit: int = 1600) -> str:
-    return compact_text(legacy_agent.turn_full_text(turn), limit)
+    base = compact_text(legacy_agent.turn_full_text(turn), limit)
+    refs = format_current_affairs_evidence_refs(turn.get("evidence_refs") or turn.get("memory", {}).get("evidence_refs"))
+    if not refs:
+        return base
+    return f"{base}\n\n{refs}"
+
+
+def format_current_affairs_evidence_refs(value: Any) -> str:
+    if not isinstance(value, list):
+        return ""
+    lines = ["时政证据引用:"]
+    for ref in value:
+        if not isinstance(ref, dict):
+            continue
+        event_id = str(ref.get("event_id") or "").strip()
+        if not event_id:
+            continue
+        slot = ref.get("slot") or len(lines)
+        label = str(ref.get("label") or "").strip()
+        source_ids = [str(item) for item in ref.get("source_doc_ids") or [] if str(item).strip()]
+        source_text = ", ".join(source_ids) if source_ids else str(ref.get("source_doc_id") or "").strip()
+        lines.append(f"- slot {slot}: {label} event_id={event_id} source_doc_ids={source_text}")
+    return "\n".join(lines) if len(lines) > 1 else ""
 
 
 def is_weak_context_followup(user_input: str) -> bool:
@@ -977,7 +1003,37 @@ def build_math_tools(
 
 def build_current_affairs_tools() -> dict[str, ToolSpec]:
     toolkit = legacy_agent.get_toolkit()
+
+    def call_current_affairs_store(args: dict[str, Any]) -> dict[str, Any]:
+        from .tools.current_affairs_search import service as current_affairs_service
+
+        return current_affairs_service.search_current_affairs_store(args)
+
     return {
+        "search_current_affairs_store": ToolSpec(
+            "search_current_affairs_store",
+            (
+                "查询系统时政资料库。普通时政问题应先查库；若是追问且历史上下文含 event_id，"
+                "用 mode=detail 和 event_id 回查完整事件、来源与摘要；资料不足时再调用 get_current_affairs 补搜。"
+            ),
+            json_schema(
+                {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["search", "detail"],
+                        "description": "search 按 query 检索事件；detail 按 event_id 回查完整事件。",
+                    },
+                    "query": {"type": "string", "description": "检索关键词；mode=search 时使用。"},
+                    "event_id": {"type": "string", "description": "事件 ID；mode=detail 时使用。"},
+                    "year": {"type": "string", "description": "可选年份过滤，例如 2026。"},
+                    "category": {"type": "string", "description": "可选分类过滤，例如 meeting、law_or_draft。"},
+                    "top_k": {"type": "integer", "description": "返回事件数量，默认 5。"},
+                },
+                [],
+            ),
+            call_current_affairs_store,
+            return_mode="evidence",
+        ),
         "get_current_affairs": ToolSpec(
             "get_current_affairs",
             (
@@ -2149,15 +2205,17 @@ def should_auto_answer_politics(tool_call_records: list[dict[str, Any]]) -> bool
     names = [str(record.get("name") or "") for record in tool_call_records if record.get("ok")]
     if "answer_politics_knowledge" in names:
         return False
-    politics_tools = {"search_politics_knowledge", "get_current_affairs"}
+    politics_tools = {"search_politics_knowledge", "search_current_affairs_store", "get_current_affairs"}
     return any(name in politics_tools for name in names)
 
 
 def infer_politics_answer_mode(tool_outputs: list[dict[str, Any]]) -> str:
     names = {str(item.get("tool") or "") for item in tool_outputs}
-    if "get_current_affairs" in names and "search_politics_knowledge" in names:
+    current_affairs_names = {"get_current_affairs", "search_current_affairs_store"}
+    has_current_affairs = bool(names & current_affairs_names)
+    if has_current_affairs and "search_politics_knowledge" in names:
         return "combo"
-    if "get_current_affairs" in names:
+    if has_current_affairs:
         return "news_only"
     if "search_politics_knowledge" in names:
         return "knowledge_only"
@@ -2171,9 +2229,9 @@ def politics_tool_outputs_from_messages(messages: list[dict[str, Any]]) -> list[
         if message.get("role") != "tool":
             continue
         name = str(message.get("name") or "")
-        if name not in {"search_politics_knowledge", "get_current_affairs"}:
+        if name not in {"search_politics_knowledge", "search_current_affairs_store", "get_current_affairs"}:
             continue
-        if name == "get_current_affairs":
+        if name in {"get_current_affairs", "search_current_affairs_store"}:
             current_affairs_contents.append(str(message.get("content") or ""))
             continue
         outputs.append({
@@ -2198,6 +2256,80 @@ def parse_json_or_raw(value: Any) -> Any:
         return json.loads(text)
     except json.JSONDecodeError:
         return text
+
+
+def extract_current_affairs_evidence_refs(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    refs: list[dict[str, Any]] = []
+    refs_by_event_id: dict[str, dict[str, Any]] = {}
+    for message in messages:
+        if message.get("role") != "tool":
+            continue
+        name = str(message.get("name") or "")
+        if name not in {"get_current_affairs", "search_current_affairs_store"}:
+            continue
+        parsed = parse_json_or_raw(message.get("content"))
+        result = parsed.get("result") if isinstance(parsed, dict) and "result" in parsed else parsed
+        result = parse_json_or_raw(result)
+        if not isinstance(result, dict):
+            continue
+        for item in result.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            event_id = str(item.get("event_id") or "").strip()
+            if not event_id:
+                continue
+            source_doc_ids = list_current_affairs_source_ids(item)
+            existing = refs_by_event_id.get(event_id)
+            if existing is not None:
+                existing["source_doc_ids"] = merge_string_lists(existing.get("source_doc_ids") or [], source_doc_ids)
+                primary = str(item.get("primary_source_doc_id") or item.get("source_doc_id") or "").strip()
+                if primary:
+                    existing["primary_source_doc_id"] = primary
+                if not existing.get("label"):
+                    existing["label"] = str(item.get("label") or item.get("title") or "").strip()
+                continue
+            ref = {
+                "slot": len(refs) + 1,
+                "event_id": event_id,
+                "label": str(item.get("label") or item.get("title") or "").strip(),
+                "source_doc_ids": source_doc_ids,
+                "primary_source_doc_id": str(item.get("primary_source_doc_id") or item.get("source_doc_id") or "").strip(),
+            }
+            refs_by_event_id[event_id] = ref
+            refs.append(ref)
+    return refs
+
+
+def merge_string_lists(left: list[Any], right: list[Any]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in [*left, *right]:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
+
+
+def list_current_affairs_source_ids(item: dict[str, Any]) -> list[str]:
+    values: list[Any] = []
+    if isinstance(item.get("source_doc_ids"), list):
+        values.extend(item.get("source_doc_ids") or [])
+    if item.get("source_doc_id"):
+        values.append(item.get("source_doc_id"))
+    primary_source = item.get("primary_source")
+    if isinstance(primary_source, dict) and primary_source.get("source_doc_id"):
+        values.append(primary_source.get("source_doc_id"))
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
 
 
 def merge_current_affairs_tool_contents(contents: list[str]) -> str:
@@ -2232,6 +2364,7 @@ def merge_current_affairs_tool_contents(contents: list[str]) -> str:
         items.extend(item for item in result.get("items") or [] if isinstance(item, dict))
     if deduplicate_evidence_items is not None:
         items = deduplicate_evidence_items(items)
+    items = deduplicate_current_affairs_items(items)
     base["type"] = "current_affairs_evidence"
     base["query"] = "；".join(queries) if queries else str(base.get("query") or "")
     base["queries"] = queries
@@ -2241,6 +2374,36 @@ def merge_current_affairs_tool_contents(contents: list[str]) -> str:
     if raw_results:
         base["raw_unmerged_outputs"] = raw_results
     return json.dumps(base, ensure_ascii=False, default=str)
+
+
+def deduplicate_current_affairs_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in items:
+        key = current_affairs_item_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def current_affairs_item_key(item: dict[str, Any]) -> str:
+    event_id = str(item.get("event_id") or "").strip()
+    if event_id:
+        return f"event:{event_id}"
+    source_doc_id = str(item.get("source_doc_id") or item.get("primary_source_doc_id") or "").strip()
+    if source_doc_id:
+        return f"source:{source_doc_id}"
+    primary_source = item.get("primary_source")
+    if isinstance(primary_source, dict) and primary_source.get("source_doc_id"):
+        return f"source:{str(primary_source.get('source_doc_id')).strip()}"
+    url = str(item.get("url") or "").strip().lower()
+    if url:
+        return f"url:{url}"
+    title = re.sub(r"\s+", "", str(item.get("title") or "").strip().lower())
+    source_domain = str(item.get("source_domain") or "").strip().lower()
+    return f"title:{source_domain}:{title}"
 
 
 def prepare_tool_arguments_for_execution(
@@ -2265,7 +2428,8 @@ def prepare_tool_arguments_for_execution(
         prepared["tool_outputs"] = json.dumps(tool_outputs, ensure_ascii=False, default=str)
         prepared["mode"] = str(prepared.get("mode") or "auto")
         evidence_tools = {str(item.get("tool") or "") for item in tool_outputs}
-        if {"get_current_affairs", "search_politics_knowledge"}.issubset(evidence_tools):
+        has_current_affairs = bool(evidence_tools & {"get_current_affairs", "search_current_affairs_store"})
+        if has_current_affairs and "search_politics_knowledge" in evidence_tools:
             prepared["mode"] = "combo"
     else:
         prepared.setdefault("tool_outputs", "[]")

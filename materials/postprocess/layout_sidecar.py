@@ -390,8 +390,19 @@ def save_layout_artifacts(
     return {"summary_path": summary_path, "tables_dir": tables_dir, "tables": table_records}
 
 
-def _table_chunk_id(material_id: str, table_id: str, row_index: int) -> str:
-    return hashlib.sha256(f"{material_id}:table:{table_id}:{row_index}".encode("utf-8")).hexdigest()[:16]
+def _table_chunk_id(material_id: str, table_id: str) -> str:
+    return hashlib.sha256(f"{material_id}:table:{table_id}".encode("utf-8")).hexdigest()[:16]
+
+
+def _format_table_chunk_text(title: str, columns: list[str], rows: list[dict[str, Any]]) -> str:
+    lines = [f"表格：{title}"]
+    if columns:
+        lines.append("列：" + " / ".join(columns))
+    for row_index, row in enumerate(rows, start=1):
+        values = [f"{column}: {row.get(column, '')}".strip() for column in columns if row.get(column, "") != ""]
+        if values:
+            lines.append(f"第{row_index}行：" + "；".join(values))
+    return "\n".join(lines)
 
 
 def build_table_chunks(
@@ -406,30 +417,30 @@ def build_table_chunks(
         table_id = str(table.get("table_id") or "table")
         title = str(table.get("title") or table_id)
         columns = [str(column) for column in table.get("columns", [])]
-        for row_index, row in enumerate(table.get("rows", []), start=1):
-            values = [f"{column}: {row.get(column, '')}".strip() for column in columns if row.get(column, "") != ""]
-            if not values:
-                continue
-            text = f"表格：{title}\n" + "\n".join(values)
-            chunk_index = start_index + len(chunks)
-            chunks.append(
-                Chunk(
-                    chunk_id=_table_chunk_id(material_id, table_id, row_index),
-                    material_id=material_id,
-                    user_id=user_id,
-                    chunk_index=chunk_index,
-                    text=text,
-                    section_title=title,
-                    heading_path=[title],
-                    token_count=estimate_tokens(text),
-                    metadata={
-                        "source_type": "table",
-                        "table_id": table_id,
-                        "table_row_index": row_index,
-                        "page": table.get("page"),
-                        "bbox": table.get("bbox"),
-                        "kind_guess": table.get("kind_guess"),
-                    },
-                )
+        rows = [row for row in table.get("rows", []) if isinstance(row, dict)]
+        text = _format_table_chunk_text(title, columns, rows)
+        if len(text.strip().splitlines()) <= 1:
+            continue
+        chunk_index = start_index + len(chunks)
+        chunks.append(
+            Chunk(
+                chunk_id=_table_chunk_id(material_id, table_id),
+                material_id=material_id,
+                user_id=user_id,
+                chunk_index=chunk_index,
+                text=text,
+                section_title=title,
+                heading_path=[title],
+                token_count=estimate_tokens(text),
+                metadata={
+                    "source_type": "table",
+                    "table_id": table_id,
+                    "table_row_count": len(rows),
+                    "table_column_count": len(columns),
+                    "page": table.get("page"),
+                    "bbox": table.get("bbox"),
+                    "kind_guess": table.get("kind_guess"),
+                },
             )
+        )
     return chunks

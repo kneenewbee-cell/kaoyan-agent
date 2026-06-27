@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from .strategy_schema import CleaningStrategy, DocumentZones, HeadingFamily, HeadingRule, MainSectionRule, PatternToken
+from .strategy_schema import CleaningStrategy, DocumentZones, HeadingFamily, MainSectionRule
 
 
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
@@ -23,7 +23,7 @@ SENTENCE_PUNCTUATION = ("。", "；", "？", "！", ";", "?", "!")
 
 CHINESE_NUM = "零〇一二三四五六七八九十百千万两"
 CHAPTER_SUMMARY_RE = re.compile(rf"^(?:第\s*[{CHINESE_NUM}\d]+\s*[篇章]\s*)?(?:本章)?(?:小结|总结)$")
-CHAPTER_HEADING_RE = re.compile(rf"^第\s*[{CHINESE_NUM}\d]+\s*(?:篇|章|部分)\s*\S+")
+CHAPTER_HEADING_RE = re.compile(rf"^第\s*[{CHINESE_NUM}\d]+\s*(?:篇|章|部分)(?:\s*\S.*)?$")
 SECTION_HEADING_RE = re.compile(rf"^第\s*[{CHINESE_NUM}\d]+\s*节\s*\S+")
 CHINESE_OUTLINE_HEADING_RE = re.compile(rf"^[{CHINESE_NUM}]+、\s*\S+")
 PAREN_CHINESE_HEADING_RE = re.compile(rf"^[（(]\s*[{CHINESE_NUM}]+\s*[）)]\s*\S+")
@@ -354,11 +354,9 @@ def _outline_candidate_is_body_text(
     if marker is None:
         return False
     if family is not None:
-        if family.kind == "major_section":
-            return False
         if family.anchors:
             return False
-        if document_type == "exercise_notes" and family.kind in {"item", "block"}:
+        if _family_example_prefix_matches(title, family):
             return False
     body = _outline_body(title)
     compact = re.sub(r"\s+", "", body)
@@ -481,12 +479,12 @@ def _remember_heading_in_outline_stack(
     )
 
 
-def _looks_like_semantic_subsection(line: str, rule: HeadingRule | None = None) -> bool:
+def _looks_like_semantic_subsection(line: str, rule: object | None = None) -> bool:
     if line in SEMANTIC_SUBSECTION_ALIASES:
         return True
-    if rule is None or rule.role != "subsection":
+    if rule is None or getattr(rule, "role", None) != "subsection":
         return False
-    rule_id = rule.id.lower()
+    rule_id = str(getattr(rule, "id", "")).lower()
     return any(hint in rule_id for hint in SUBSECTION_RULE_HINTS)
 
 
@@ -494,49 +492,38 @@ def _coerce_heading_level(
     line: str,
     requested_level: int,
     *,
-    rule: HeadingRule | None,
-    latest_rule_levels: dict[str, int],
+    rule: object | None,
     latest_main_level: int | None,
     warnings: list[str],
 ) -> tuple[int, str]:
     """Apply semantic hierarchy guardrails to LLM-declared heading levels."""
     level = requested_level
-    role = rule.role if rule is not None else "main"
+    role = getattr(rule, "role", "main") if rule is not None else "main"
 
-    parent_level = None
-    if rule is not None and rule.parent_rule:
-        parent_level = latest_rule_levels.get(rule.parent_rule)
-        if parent_level is not None and level != parent_level + 1:
-            level = parent_level + 1
-            _append_warning_once(warnings, f"heading_level_coerced:{rule.id}")
+    rule_id = str(getattr(rule, "id", "legacy")) if rule is not None else "legacy"
 
     if rule is not None and role == "main" and level < 2:
         level = 2
-        _append_warning_once(warnings, f"heading_level_coerced:{rule.id}")
+        _append_warning_once(warnings, f"heading_level_coerced:{rule_id}")
 
     if CHAPTER_SUMMARY_RE.match(line):
         role = "subsection"
         floor_level = (latest_main_level + 1) if latest_main_level is not None else 3
         if level <= (latest_main_level or 2) or level < floor_level:
             level = floor_level
-            _append_warning_once(warnings, f"chapter_summary_level_coerced:{rule.id if rule else 'legacy'}")
+            _append_warning_once(warnings, f"chapter_summary_level_coerced:{rule_id}")
         if level > 4:
             level = 4
-            _append_warning_once(warnings, f"chapter_summary_level_coerced:{rule.id if rule else 'legacy'}")
+            _append_warning_once(warnings, f"chapter_summary_level_coerced:{rule_id}")
 
     if _looks_like_semantic_subsection(line, rule):
         role = "subsection"
-        if parent_level is not None:
-            expected = parent_level + 1
-            if level != expected:
-                level = expected
-                _append_warning_once(warnings, f"semantic_subsection_level_coerced:{rule.id if rule else 'legacy'}")
-        elif latest_main_level is not None and level <= latest_main_level:
+        if latest_main_level is not None and level <= latest_main_level:
             level = latest_main_level + 1
-            _append_warning_once(warnings, f"semantic_subsection_level_coerced:{rule.id if rule else 'legacy'}")
+            _append_warning_once(warnings, f"semantic_subsection_level_coerced:{rule_id}")
         if level > 4:
             level = 4
-            _append_warning_once(warnings, f"semantic_subsection_level_coerced:{rule.id if rule else 'legacy'}")
+            _append_warning_once(warnings, f"semantic_subsection_level_coerced:{rule_id}")
 
     return max(1, min(level, 6)), role
 
@@ -582,43 +569,6 @@ def _infer_existing_heading_level(
     return current_level, "main" if current_level <= 2 else "subsection", None
 
 
-def _match_heading_rule(
-    title: str,
-    active_heading_rules: list[HeadingRule],
-    heading_rule_matchers: dict[str, re.Pattern[str]],
-    seen_rule_ids: set[str],
-    active_rule_ids: set[str],
-) -> HeadingRule | None:
-    for rule in active_heading_rules:
-        if rule.parent_rule and rule.parent_rule in active_rule_ids and rule.parent_rule not in seen_rule_ids:
-            continue
-        if _is_broad_title_text_rule(rule) and not _broad_title_text_rule_allows(title, rule):
-            continue
-        if heading_rule_matchers[rule.id].match(title):
-            return rule
-    return None
-
-
-def _is_broad_title_text_rule(rule: HeadingRule) -> bool:
-    return len(rule.pattern) == 1 and rule.pattern[0].type == "title_text"
-
-
-def _broad_title_text_rule_allows(title: str, rule: HeadingRule) -> bool:
-    compact = re.sub(r"\s+", "", title.strip())
-    if not compact:
-        return False
-    example_compacts = {re.sub(r"\s+", "", example.strip()) for example in rule.examples}
-    if compact in example_compacts:
-        return True
-    return bool(
-        MAJOR_SECTION_HEADING_RE.match(title)
-        or CHAPTER_HEADING_RE.match(title)
-        or SECTION_HEADING_RE.match(title)
-        or KNOWLEDGE_BLOCK_HEADING_RE.match(title)
-        or QUESTION_TYPE_HEADING_RE.match(title)
-    )
-
-
 def _local_strong_boundary_level(title: str) -> int | None:
     if SECTION_HEADING_RE.match(title):
         return 3
@@ -655,15 +605,41 @@ def _family_example_matches(title: str, family: HeadingFamily) -> bool:
     return bool(compact) and compact in {re.sub(r"\s+", "", example.strip()) for example in family.examples}
 
 
+def _family_example_prefix_matches(title: str, family: HeadingFamily) -> bool:
+    compact = re.sub(r"\s+", "", title.strip())
+    body_compact = re.sub(r"\s+", "", _outline_body(title))
+    if not compact:
+        return False
+    for example in family.examples:
+        example_compact = re.sub(r"\s+", "", example.strip())
+        example_body_compact = re.sub(r"\s+", "", _outline_body(example))
+        if example_compact and compact.startswith(example_compact):
+            return True
+        if example_body_compact and body_compact.startswith(example_body_compact):
+            return True
+    return False
+
+
+def _family_allows_compact_chinese_outline(family: HeadingFamily) -> bool:
+    if "compact_chinese" in family.id.lower():
+        return True
+    for example in family.examples:
+        marker = _outline_marker(example)
+        if marker is not None and marker[0] == "compact_chinese_outline":
+            return True
+    return False
+
+
 def _family_outline_marker_allowed(title: str, family: HeadingFamily) -> bool:
     marker = _outline_marker(title)
     if marker is None:
         return False
     marker_family, _ = marker
+    if marker_family == "compact_chinese_outline":
+        return "chinese" in set(family.ordinal_styles) and _family_allows_compact_chinese_outline(family)
     style_map = {
         "alpha_outline": "alpha",
         "chinese_outline": "chinese",
-        "compact_chinese_outline": "chinese",
         "paren_chinese": "paren_chinese",
         "arabic_outline": "arabic",
         "paren_arabic": "paren_arabic",
@@ -672,18 +648,32 @@ def _family_outline_marker_allowed(title: str, family: HeadingFamily) -> bool:
     return style_map.get(marker_family) in set(family.ordinal_styles)
 
 
+def _anchor_supplies_ordinal(anchor: str, family: HeadingFamily) -> bool:
+    if not family.ordinal_styles:
+        return False
+    return bool(_match_family_ordinal(anchor, list(family.ordinal_styles)))
+
+
+def _anchor_has_title_text(anchor: str, family: HeadingFamily) -> bool:
+    rest = anchor.strip()
+    ordinal_match = _match_family_ordinal(rest, list(family.ordinal_styles))
+    if ordinal_match:
+        rest = rest[ordinal_match.end():]
+    rest = rest.strip()
+    for separator in sorted(family.separators, key=len, reverse=True):
+        if separator and rest.startswith(separator):
+            rest = rest[len(separator):].strip()
+            break
+    return bool(rest)
+
+
 def _family_matches(title: str, family: HeadingFamily) -> bool:
     stripped = title.strip()
     if not family.enabled or not stripped:
         return False
     if _family_example_matches(stripped, family):
         return True
-    if not family.anchors and family.kind == "major_section" and family.ordinal_styles:
-        marker = _outline_marker(stripped)
-        return marker is not None and marker[0] != "compact_chinese_outline" and _family_outline_marker_allowed(stripped, family)
-    if not family.anchors and family.kind in {"block", "item"} and family.ordinal_styles:
-        return _family_outline_marker_allowed(stripped, family)
-    if not family.anchors and family.kind == "outline":
+    if not family.anchors and family.ordinal_styles:
         return _family_outline_marker_allowed(stripped, family)
 
     for anchor in family.anchors:
@@ -695,20 +685,19 @@ def _family_matches(title: str, family: HeadingFamily) -> bool:
         rest = ""
         if stripped.startswith(anchor):
             rest = stripped[len(anchor):]
-        elif family.kind == "major_section" and re.match(r"^[A-Z]" + re.escape(anchor), stripped):
+            ordinal_supplied_by_anchor = _anchor_supplies_ordinal(anchor, family)
+        elif "alpha" in family.ordinal_styles and re.match(r"^[A-Z]" + re.escape(anchor), stripped):
             rest = stripped[len(anchor) + 1 :]
+            ordinal_supplied_by_anchor = True
         else:
             continue
 
-        if family.kind == "major_section" and not rest.strip():
-            return True
-
-        if family.ordinal_required:
+        if family.ordinal_required and not ordinal_supplied_by_anchor:
             ordinal_match = _match_family_ordinal(rest, list(family.ordinal_styles))
             if not ordinal_match:
                 continue
             rest = rest[ordinal_match.end():]
-        elif family.ordinal_styles:
+        elif family.ordinal_styles and not ordinal_supplied_by_anchor:
             ordinal_match = _match_family_ordinal(rest, list(family.ordinal_styles))
             if ordinal_match:
                 rest = rest[ordinal_match.end():]
@@ -731,13 +720,19 @@ def _family_matches(title: str, family: HeadingFamily) -> bool:
                     break
         rest = rest.strip()
         if family.title_required and not rest:
-            continue
+            return _anchor_has_title_text(anchor, family)
         return True
     return False
 
 
-def _family_parent_level(family: HeadingFamily, outline_stack: list[OutlineFrame]) -> int | None:
+def _family_parent_level(
+    family: HeadingFamily,
+    outline_stack: list[OutlineFrame],
+    relation_parents: dict[str, set[str]] | None = None,
+) -> int | None:
     parent_hints = set(family.parent_hints)
+    if relation_parents is not None:
+        parent_hints.update(relation_parents.get(family.id, set()))
     if not parent_hints:
         return None
     for frame in reversed(outline_stack):
@@ -746,41 +741,102 @@ def _family_parent_level(family: HeadingFamily, outline_stack: list[OutlineFrame
     return None
 
 
+def _family_sibling_level(family: HeadingFamily, outline_stack: list[OutlineFrame]) -> int | None:
+    for frame in reversed(outline_stack):
+        if frame.family == family.id:
+            return frame.level
+    return None
+
+
+def _family_child_level(
+    family: HeadingFamily,
+    outline_stack: list[OutlineFrame],
+    relation_children: dict[str, set[str]] | None = None,
+) -> int | None:
+    if relation_children is None:
+        return None
+    child_ids = relation_children.get(family.id, set())
+    if not child_ids:
+        return None
+    for frame in reversed(outline_stack):
+        if frame.family in child_ids:
+            return frame.level
+    return None
+
+
+def _nearest_strong_boundary_level(outline_stack: list[OutlineFrame]) -> int | None:
+    for frame in reversed(outline_stack):
+        if frame.family == "local_strong_boundary":
+            return frame.level
+        if _local_strong_boundary_level(frame.title) is not None:
+            return frame.level
+    return None
+
+
+def _role_for_family_level(level: int) -> str:
+    return "main" if level <= 3 else "subsection"
+
+
 def _family_suggested_level(
     title: str,
     family: HeadingFamily,
     *,
     latest_main_level: int | None,
     outline_stack: list[OutlineFrame],
+    relation_parents: dict[str, set[str]] | None = None,
+    relation_children: dict[str, set[str]] | None = None,
 ) -> tuple[int, str]:
-    parent_level = _family_parent_level(family, outline_stack)
+    parent_level = _family_parent_level(family, outline_stack, relation_parents)
+    if CHAPTER_SUMMARY_RE.match(title):
+        level = min(max((latest_main_level or 2) + 1, 3), 4)
+        return level, "subsection"
     strong_level = _local_strong_boundary_level(title)
-    if family.kind == "strong_boundary":
-        return strong_level or 2, "main"
-    if family.kind == "major_section":
-        if parent_level is not None:
-            return min(parent_level + 1, 6), "main"
-        return min(max((latest_main_level or 1) + 1, 2), 3), "main"
-    if family.kind == "block":
-        if parent_level is not None:
-            return min(parent_level + 1, 6), "main"
-        return min(max((latest_main_level or 2) + 1, 3), 4), "main"
-    if family.kind == "item":
-        if parent_level is not None:
-            return min(parent_level + 1, 6), "subsection"
-        return min(max((latest_main_level or 3) + 1, 4), 5), "subsection"
-    if family.kind == "outline":
-        if parent_level is not None:
-            return min(parent_level + 1, 6), "subsection"
-        marker = _outline_marker(title)
-        if marker and marker[0] in {"chinese_outline", "compact_chinese_outline"}:
-            return min(max((latest_main_level or 2) + 1, 3), 4), "subsection"
-        return min(max((latest_main_level or 3) + 1, 4), 5), "subsection"
-    return 3, "subsection"
+    if strong_level is not None:
+        return strong_level, "main"
+    if parent_level is not None:
+        level = min(parent_level + 1, 6)
+        return level, _role_for_family_level(level)
+    sibling_level = _family_sibling_level(family, outline_stack)
+    if sibling_level is not None:
+        return sibling_level, _role_for_family_level(sibling_level)
+    child_level = _family_child_level(family, outline_stack, relation_children)
+    if child_level is not None:
+        boundary_level = _nearest_strong_boundary_level(outline_stack)
+        if boundary_level is not None:
+            level = min(max(boundary_level + 1, 2), 5)
+        else:
+            level = min(max(child_level, 2), 6)
+        return level, _role_for_family_level(level)
+
+    marker = _outline_marker(title)
+    if marker is not None:
+        marker_family, _ = marker
+        nearest_strong_level = _nearest_strong_boundary_level(outline_stack)
+        if nearest_strong_level is not None and not family.anchors:
+            level = min(nearest_strong_level + 1, 4)
+        elif not outline_stack and latest_main_level is None:
+            level = 2
+        elif marker_family in {"alpha_outline", "chinese_outline", "compact_chinese_outline"}:
+            level = min(max((latest_main_level or 1) + 1, 2), 4)
+        else:
+            level = min(max((latest_main_level or 2) + 1, 3), 5)
+        return level, _role_for_family_level(level)
+
+    if not outline_stack and latest_main_level is None:
+        level = 2
+    else:
+        level = min(max((latest_main_level or 2) + 1, 3), 4)
+    return level, _role_for_family_level(level)
 
 
 def _outline_sequence_required(family: HeadingFamily) -> bool:
-    return family.kind == "outline" and not family.anchors and "circled" in family.ordinal_styles
+    sequence_styles = {
+        "alpha",
+        "arabic",
+        "paren_arabic",
+        "circled",
+    }
+    return not family.anchors and bool(sequence_styles.intersection(family.ordinal_styles))
 
 
 def _outline_sequence_allowed_lines(lines: list[str], families: list[HeadingFamily]) -> dict[str, set[int]]:
@@ -826,10 +882,6 @@ def _outline_sequence_allowed_lines(lines: list[str], families: list[HeadingFami
             continue
         if _body_like_heading_to_label(candidate) is not None:
             continue
-        if _looks_like_sentence_fragment_heading(candidate):
-            continue
-        if not _eligible_plain_line(candidate):
-            continue
         marker = _outline_marker(candidate)
         if marker is None or marker[1] is None:
             continue
@@ -841,13 +893,18 @@ def _outline_sequence_allowed_lines(lines: list[str], families: list[HeadingFami
 
     allowed: dict[str, set[int]] = {family.id: set() for family in sequence_families}
     for family_id, family_candidates in candidates.items():
-        for index, (line_no, ordinal) in enumerate(family_candidates):
-            previous_ordinal = family_candidates[index - 1][1] if index > 0 else None
-            next_ordinal = family_candidates[index + 1][1] if index + 1 < len(family_candidates) else None
-            if previous_ordinal is not None and ordinal == previous_ordinal + 1:
-                allowed[family_id].add(line_no)
-            if next_ordinal is not None and next_ordinal == ordinal + 1:
-                allowed[family_id].add(line_no)
+        run: list[tuple[int, int]] = []
+        previous_ordinal: int | None = None
+        for line_no, ordinal in family_candidates:
+            if previous_ordinal is None or ordinal == previous_ordinal + 1:
+                run.append((line_no, ordinal))
+            else:
+                if len(run) >= 2 and run[0][1] == 1:
+                    allowed[family_id].update(item_line_no for item_line_no, _ in run)
+                run = [(line_no, ordinal)]
+            previous_ordinal = ordinal
+        if len(run) >= 2 and run[0][1] == 1:
+            allowed[family_id].update(item_line_no for item_line_no, _ in run)
     return allowed
 
 
@@ -922,34 +979,6 @@ def _main_matcher(rule: MainSectionRule):
     return lambda text: False
 
 
-def _token_pattern(token: PatternToken) -> str:
-    if token.type in {"literal", "separator"}:
-        values = sorted(token.values, key=len, reverse=True)
-        pattern = "(?:" + "|".join(re.escape(value) for value in values) + ")"
-    elif token.type == "ordinal":
-        choices: list[str] = []
-        if "chinese" in token.styles:
-            choices.append(rf"[{CHINESE_NUM}]+")
-        if "arabic" in token.styles:
-            choices.append(r"\d+")
-        if "decimal" in token.styles:
-            choices.append(r"\d+(?:\.\d+)+")
-        pattern = "(?:" + "|".join(choices) + ")"
-    elif token.type == "whitespace":
-        return r"\s*" if token.optional else r"\s+"
-    elif token.type == "title_text":
-        remainder_min = max(token.min_chars - 1, 0)
-        remainder_max = max(token.max_chars - 1, 0)
-        pattern = rf"\S.{{{remainder_min},{remainder_max}}}"
-    else:  # guarded by the schema enum
-        raise ValueError(f"unsupported pattern token: {token.type}")
-    return f"(?:{pattern})?" if token.optional else pattern
-
-
-def _heading_rule_matcher(rule: HeadingRule) -> re.Pattern[str]:
-    return re.compile("^" + "".join(_token_pattern(token) for token in rule.pattern) + "$")
-
-
 def _eligible_plain_line(stripped: str) -> bool:
     if not stripped or len(stripped) > 120:
         return False
@@ -1011,62 +1040,6 @@ def _count_main_matches(lines: list[str], strategy: CleaningStrategy) -> int:
         if _eligible_plain_line(candidate) and matcher(candidate):
             matches += 1
     return matches
-
-
-def _count_heading_rule_matches(
-    lines: list[str],
-    rules: list[HeadingRule],
-) -> tuple[dict[str, int], dict[str, re.Pattern[str]]]:
-    matchers = {rule.id: _heading_rule_matcher(rule) for rule in rules if rule.enabled}
-    counts = {rule.id: 0 for rule in rules if rule.enabled}
-    in_code = False
-    fence_marker: str | None = None
-    in_formula = False
-    in_html_table = False
-    for raw_line in lines:
-        stripped = raw_line.strip()
-        if stripped.startswith(("```", "~~~")):
-            marker = stripped[:3]
-            if not in_code:
-                in_code = True
-                fence_marker = marker
-            elif fence_marker == marker:
-                in_code = False
-                fence_marker = None
-            continue
-        if in_code:
-            continue
-        if in_html_table:
-            if HTML_TABLE_END_RE.search(stripped):
-                in_html_table = False
-            continue
-        if HTML_TABLE_START_RE.search(stripped):
-            if not HTML_TABLE_END_RE.search(stripped):
-                in_html_table = True
-            continue
-        if FORMULA_BOUNDARY_RE.match(stripped):
-            in_formula = not in_formula
-            continue
-        if _line_is_protected(stripped, in_formula_block=in_formula):
-            continue
-        existing_heading = _parse_existing_heading(stripped)
-        candidate = existing_heading[1] if existing_heading else stripped
-        if _pseudo_heading_to_local_label(candidate) is not None:
-            continue
-        if _body_like_heading_to_label(candidate) is not None:
-            continue
-        if _looks_like_sentence_fragment_heading(candidate):
-            continue
-        if not _eligible_plain_line(candidate):
-            continue
-        for rule in rules:
-            if not rule.enabled:
-                continue
-            if _is_broad_title_text_rule(rule) and not _broad_title_text_rule_allows(candidate, rule):
-                continue
-            if matchers[rule.id].match(candidate):
-                counts[rule.id] += 1
-    return counts, matchers
 
 
 def _count_heading_family_matches(
@@ -1136,15 +1109,33 @@ def _count_heading_family_matches(
 
 
 def _heading_family_sort_key(family: HeadingFamily) -> tuple[int, int, str]:
-    kind_rank = {
-        "strong_boundary": 0,
-        "major_section": 1,
-        "block": 2,
-        "outline": 3,
-        "item": 4,
-    }
+    parent_rank = 1 if family.parent_hints else 0
+    matcher_rank = 0 if family.anchors or family.units else 1
     longest_anchor = max((len(anchor) for anchor in family.anchors), default=0)
-    return kind_rank.get(family.kind, 9), -longest_anchor, family.id
+    return parent_rank, matcher_rank, -longest_anchor, family.id
+
+
+def _active_relation_maps(
+    strategy: CleaningStrategy,
+    active_family_ids: set[str],
+) -> tuple[dict[str, set[str]], dict[str, set[str]], list[dict[str, Any]]]:
+    child_to_parents: dict[str, set[str]] = {}
+    parent_to_children: dict[str, set[str]] = {}
+    active_relations: list[dict[str, Any]] = []
+    for hint in strategy.relation_hints:
+        if hint.parent not in active_family_ids or hint.child not in active_family_ids:
+            continue
+        child_to_parents.setdefault(hint.child, set()).add(hint.parent)
+        parent_to_children.setdefault(hint.parent, set()).add(hint.child)
+        active_relations.append(
+            {
+                "parent": hint.parent,
+                "child": hint.child,
+                "score": hint.score,
+                "certainty": hint.certainty,
+            }
+        )
+    return child_to_parents, parent_to_children, active_relations
 
 
 def _subsection_aliases(strategy: CleaningStrategy) -> dict[str, int]:
@@ -1315,13 +1306,12 @@ def clean_with_strategy(
     warnings.extend(zone_warnings)
     document_type = strategy.document_profile.document_type
     use_heading_families = bool(strategy.heading_families)
-    use_heading_rules = bool(strategy.heading_rules) and not use_heading_families
     heading_family_counts: dict[str, int] = {}
     heading_family_sequence_allowed: dict[str, set[int]] = {}
     active_heading_families: list[HeadingFamily] = []
-    heading_rule_counts: dict[str, int] = {}
-    heading_rule_matchers: dict[str, re.Pattern[str]] = {}
-    active_heading_rules: list[HeadingRule] = []
+    relation_parent_map: dict[str, set[str]] = {}
+    relation_child_map: dict[str, set[str]] = {}
+    active_relation_hints: list[dict[str, Any]] = []
     if use_heading_families:
         heading_family_sequence_allowed = _outline_sequence_allowed_lines(lines, strategy.heading_families)
         heading_family_counts = _count_heading_family_matches(
@@ -1343,25 +1333,14 @@ def clean_with_strategy(
                 warnings.append(f"strategy_family_not_matched:{family.id}")
         if strategy.heading_families and not active_heading_families:
             warnings.append("heading_family_matches_below_threshold")
-        main_enabled = bool(active_heading_families)
-        main_matcher = lambda text: False
-    elif use_heading_rules:
-        heading_rule_counts, heading_rule_matchers = _count_heading_rule_matches(lines, strategy.heading_rules)
-        active_heading_rules = sorted(
-            [
-                rule
-                for rule in strategy.heading_rules
-                if rule.enabled and heading_rule_counts.get(rule.id, 0) >= rule.min_repeats
-            ],
-            key=lambda rule: (-rule.priority, rule.target_level),
+        active_family_ids = {family.id for family in active_heading_families}
+        relation_parent_map, relation_child_map, active_relation_hints = _active_relation_maps(
+            strategy,
+            active_family_ids,
         )
-        for rule in strategy.heading_rules:
-            if rule.enabled and heading_rule_counts.get(rule.id, 0) == 0:
-                warnings.append(f"strategy_rule_not_matched:{rule.id}")
-        main_rules = [rule for rule in strategy.heading_rules if rule.enabled and rule.role == "main"]
-        main_enabled = any(rule.role == "main" for rule in active_heading_rules)
-        if main_rules and not main_enabled:
-            warnings.append("main_section_matches_below_threshold")
+        if strategy.relation_hints and not active_relation_hints:
+            warnings.append("relation_hints_not_active")
+        main_enabled = bool(active_heading_families)
         main_matcher = lambda text: False
     else:
         main_matches_total = _count_main_matches(lines, strategy)
@@ -1376,7 +1355,6 @@ def clean_with_strategy(
         main_matcher = _main_matcher(strategy.main_section_rule)
 
     subsection_aliases = _subsection_aliases(strategy)
-    active_rule_ids = {rule.id for rule in active_heading_rules}
     existing_heading_title_counts: dict[str, int] = {}
     for raw_line in lines:
         parsed_heading = _parse_existing_heading(raw_line.strip())
@@ -1390,8 +1368,6 @@ def clean_with_strategy(
     fence_marker: str | None = None
     in_formula = False
     in_html_table = False
-    seen_rule_ids: set[str] = set()
-    latest_rule_levels: dict[str, int] = {}
     latest_main_level: int | None = None
     outline_stack: list[OutlineFrame] = []
 
@@ -1494,6 +1470,8 @@ def clean_with_strategy(
                             matched_family,
                             latest_main_level=latest_main_level,
                             outline_stack=outline_stack,
+                            relation_parents=relation_parent_map,
+                            relation_children=relation_child_map,
                         )
                         rule_name = f"existing_markdown:family:{matched_family.id}"
                         frame_family = matched_family.id
@@ -1579,67 +1557,6 @@ def clean_with_strategy(
                     }
                 )
                 _append_warning_once(warnings, "sentence_fragment_heading_demoted_to_plain")
-                continue
-
-            matched_rule: HeadingRule | None = None
-            if use_heading_rules:
-                matched_rule = _match_heading_rule(
-                    title,
-                    active_heading_rules,
-                    heading_rule_matchers,
-                    seen_rule_ids,
-                    active_rule_ids,
-                )
-            if matched_rule is not None:
-                match_title = _split_trailing_heading_metadata(title)[0]
-                coerced_level, coerced_role = _coerce_heading_level(
-                    match_title,
-                    matched_rule.target_level,
-                    rule=matched_rule,
-                    latest_rule_levels=latest_rule_levels,
-                    latest_main_level=latest_main_level,
-                    warnings=warnings,
-                )
-                coerced_level, coerced_role, outline_family = _apply_outline_decision(
-                    match_title,
-                    coerced_level,
-                    coerced_role,
-                    outline_stack=outline_stack,
-                    latest_main_level=latest_main_level,
-                    line_no=index,
-                    warnings=warnings,
-                )
-                emitted_title, converted = _emit_heading(
-                    output=output,
-                    title=title,
-                    level=coerced_level,
-                    raw=stripped,
-                    line_no=index,
-                    local_label_matches=local_label_matches,
-                    warnings=warnings,
-                )
-                _record_heading_match(
-                    line_no=index,
-                    raw=stripped,
-                    converted=converted,
-                    rule_name=f"existing_markdown:{matched_rule.id}",
-                    role=coerced_role,
-                    main_matches=main_matches,
-                    subsection_matches=subsection_matches,
-                )
-                if coerced_role == "main":
-                    latest_main_level = coerced_level
-                seen_rule_ids.add(matched_rule.id)
-                latest_rule_levels[matched_rule.id] = coerced_level
-                _remember_heading_in_outline_stack(
-                    outline_stack,
-                    title=emitted_title,
-                    level=coerced_level,
-                    family=outline_family,
-                    line_no=index,
-                )
-                if coerced_level != current_level:
-                    _append_warning_once(warnings, "existing_heading_level_normalized")
                 continue
 
             inferred_level, inferred_role, inferred_reason = _infer_existing_heading_level(
@@ -1785,6 +1702,8 @@ def clean_with_strategy(
                         matched_family,
                         latest_main_level=latest_main_level,
                         outline_stack=outline_stack,
+                        relation_parents=relation_parent_map,
+                        relation_children=relation_child_map,
                     )
                     rule_name = f"family:{matched_family.id}"
                     frame_family = matched_family.id
@@ -1830,73 +1749,12 @@ def clean_with_strategy(
                 )
                 continue
 
-        if use_heading_rules:
-            matched_rule: HeadingRule | None = None
-            match_title = _split_trailing_heading_metadata(stripped)[0]
-            matched_rule = _match_heading_rule(
-                match_title,
-                active_heading_rules,
-                heading_rule_matchers,
-                seen_rule_ids,
-                active_rule_ids,
-            )
-            if matched_rule is not None:
-                coerced_level, coerced_role = _coerce_heading_level(
-                    match_title,
-                    matched_rule.target_level,
-                    rule=matched_rule,
-                    latest_rule_levels=latest_rule_levels,
-                    latest_main_level=latest_main_level,
-                    warnings=warnings,
-                )
-                coerced_level, coerced_role, outline_family = _apply_outline_decision(
-                    match_title,
-                    coerced_level,
-                    coerced_role,
-                    outline_stack=outline_stack,
-                    latest_main_level=latest_main_level,
-                    line_no=index,
-                    warnings=warnings,
-                )
-                emitted_title, converted = _emit_heading(
-                    output=output,
-                    title=stripped,
-                    level=coerced_level,
-                    raw=stripped,
-                    line_no=index,
-                    local_label_matches=local_label_matches,
-                    warnings=warnings,
-                )
-                match_record = {
-                    "line_no": index,
-                    "raw": stripped,
-                    "converted": converted,
-                    "rule": matched_rule.id,
-                    "confidence": 0.94 if coerced_role == "main" else 0.86,
-                }
-                if coerced_role == "main":
-                    main_matches.append(match_record)
-                    latest_main_level = coerced_level
-                else:
-                    subsection_matches.append(match_record)
-                seen_rule_ids.add(matched_rule.id)
-                latest_rule_levels[matched_rule.id] = coerced_level
-                _remember_heading_in_outline_stack(
-                    outline_stack,
-                    title=emitted_title,
-                    level=coerced_level,
-                    family=outline_family,
-                    line_no=index,
-                )
-                continue
-
         match_title = _split_trailing_heading_metadata(stripped)[0]
-        if not use_heading_rules and main_enabled and main_matcher(match_title):
+        if main_enabled and main_matcher(match_title):
             coerced_level, _ = _coerce_heading_level(
                 match_title,
                 strategy.main_section_rule.target_level,
                 rule=None,
-                latest_rule_levels=latest_rule_levels,
                 latest_main_level=latest_main_level,
                 warnings=warnings,
             )
@@ -1928,13 +1786,12 @@ def clean_with_strategy(
             )
             continue
 
-        subsection_level = None if use_heading_rules else subsection_aliases.get(stripped)
+        subsection_level = subsection_aliases.get(stripped)
         if subsection_level is not None:
             coerced_level, _ = _coerce_heading_level(
                 stripped,
                 subsection_level,
                 rule=None,
-                latest_rule_levels=latest_rule_levels,
                 latest_main_level=latest_main_level,
                 warnings=warnings,
             )
@@ -1970,7 +1827,7 @@ def clean_with_strategy(
     parse_report = {
         "source_name": source_name,
         "strategy_source": strategy.strategy_source,
-        "qwen_model": "qwen3.6-plus-2026-04-02",
+        "qwen_model": None,
         "document_profile": strategy.document_profile.model_dump(mode="json"),
         "stats": {
             "line_count": len(lines),
@@ -1983,10 +1840,10 @@ def clean_with_strategy(
             "untrusted_headings_demoted": untrusted_heading_demotions,
             "setext_headings_converted": setext_converted,
             "warnings_count": len(warnings),
-            "configured_heading_rules": len(strategy.heading_rules),
-            "active_heading_rules": len(active_heading_rules),
             "configured_heading_families": len(strategy.heading_families),
             "active_heading_families": len(active_heading_families),
+            "configured_relation_hints": len(strategy.relation_hints),
+            "active_relation_hints": len(active_relation_hints),
             "front_matter_zone_count": len(front_matter_zones),
             "front_matter_lines_preserved_unprocessed": sum(
                 zone["end_line"] - zone["start_line"] + 1 for zone in front_matter_zones
@@ -2002,10 +1859,9 @@ def clean_with_strategy(
         "local_label_matches": local_label_matches,
         "warnings": [{"message": warning} for warning in warnings],
         "rule_execution": {
-            "candidate_counts": heading_rule_counts,
-            "active_rule_ids": [rule.id for rule in active_heading_rules],
             "family_candidate_counts": heading_family_counts,
             "active_family_ids": [family.id for family in active_heading_families],
+            "active_relation_hints": active_relation_hints,
             "outline_sequence_allowed_counts": {
                 family_id: len(line_numbers)
                 for family_id, line_numbers in heading_family_sequence_allowed.items()
@@ -2016,11 +1872,7 @@ def clean_with_strategy(
             and (
                 bool(strategy.heading_families)
                 if use_heading_families
-                else (
-                    any(rule.enabled and rule.role == "main" for rule in strategy.heading_rules)
-                    if use_heading_rules
-                    else strategy.main_section_rule.marker_type not in {"none", "existing_markdown"}
-                )
+                else strategy.main_section_rule.marker_type not in {"none", "existing_markdown"}
             )
         ),
     }

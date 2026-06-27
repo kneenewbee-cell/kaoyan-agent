@@ -3,12 +3,14 @@ from __future__ import annotations
 import unittest
 import tempfile
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch
 
 from materials.postprocess.raw_markdown_cleaner import clean_raw_markdown
 from materials.postprocess.qwen_strategy_client import write_qwen_strategy_log
 from materials.postprocess.document_zones import validate_document_zones_payload
+from materials.postprocess.document_zones import default_document_zones
 from materials.postprocess.strategy_cleaner import clean_with_strategy
 from materials.postprocess.strategy_validator import validate_cleaning_strategy
 from materials.chunking.chunker import chunk_markdown
@@ -74,13 +76,19 @@ def valid_strategy() -> dict:
     }
 
 
-def dsl_strategy(*heading_rules: dict) -> dict:
+def dsl_strategy(*legacy_rules: dict) -> dict:
     strategy = valid_strategy()
     strategy["version"] = "1.1"
     strategy["main_section_rule"]["enabled"] = False
     strategy["main_section_rule"]["marker_type"] = "none"
     strategy["subsection_rules"] = []
-    strategy["heading_rules"] = list(heading_rules)
+    strategy["heading_families"] = []
+    strategy["relation_hints"] = []
+    for rule in legacy_rules:
+        family_payload = _family_from_legacy_rule(rule)
+        strategy["heading_families"].append(family_payload)
+        if rule.get("parent_rule"):
+            strategy["relation_hints"].append(_relation_hint(str(rule["parent_rule"]), family_payload["id"]))
     return strategy
 
 
@@ -90,13 +98,98 @@ def family_strategy(*heading_families: dict) -> dict:
     strategy["main_section_rule"]["enabled"] = False
     strategy["main_section_rule"]["marker_type"] = "none"
     strategy["subsection_rules"] = []
-    strategy["heading_rules"] = []
     strategy["heading_families"] = list(heading_families)
     return strategy
 
 
 def token(token_type: str, **kwargs) -> dict:
     return {"type": token_type, **kwargs}
+
+
+def _relation_hint(parent: str, child: str) -> dict:
+    return {
+        "relation_type": "direct_parent",
+        "parent": parent,
+        "child": child,
+        "score": 90,
+        "certainty": "strong",
+        "score_breakdown": {
+            "interval_structure": 20,
+            "coverage_density": 20,
+            "numbering_anchor": 15,
+            "sample_evidence": 15,
+            "counter_evidence": 0,
+        },
+        "evidence": [f"{parent}>{child}"],
+    }
+
+
+def _family_from_legacy_rule(rule: dict) -> dict:
+    pattern = [item for item in (rule.get("pattern") or []) if isinstance(item, dict)]
+    anchors: list[str] = []
+    anchor_position = "line_start"
+    ordinal_styles: list[str] = []
+    ordinal_required = False
+    units: list[str] = []
+    separators = ["", " ", "、", ".", "．", "：", ":"]
+    title_required = True
+    kind = "block" if rule.get("role") == "main" else "item"
+
+    if len(pattern) == 1 and pattern[0].get("type") == "title_text":
+        anchors = list(rule.get("examples") or [])
+        anchor_position = "exact"
+        title_required = False
+        kind = "major_section"
+    elif len(pattern) == 1 and pattern[0].get("type") == "literal":
+        anchors = list(pattern[0].get("values") or [])
+        anchor_position = "exact"
+        title_required = False
+    elif (
+        len(pattern) >= 3
+        and pattern[0].get("type") == "literal"
+        and pattern[1].get("type") == "ordinal"
+        and pattern[2].get("type") == "literal"
+        and (pattern[0].get("values") or [None])[0] in {"(", "（"}
+        and (pattern[2].get("values") or [None])[0] in {")", "）"}
+    ):
+        ordinal_styles = ["paren_arabic" if "arabic" in pattern[1].get("styles", []) else "paren_chinese"]
+        kind = "outline"
+    elif pattern and pattern[0].get("type") == "literal":
+        anchors = list(pattern[0].get("values") or [])
+        if anchors and all(str(value)[:1] in "①②③④⑤⑥⑦⑧⑨" for value in anchors):
+            anchors = []
+            ordinal_styles = ["circled"]
+            kind = "outline"
+        elif any(item.get("type") == "ordinal" for item in pattern):
+            ordinal_token = next(item for item in pattern if item.get("type") == "ordinal")
+            ordinal_styles = list(ordinal_token.get("styles") or [])
+            ordinal_required = True
+            literal_tokens = [item for item in pattern[1:] if item.get("type") == "literal"]
+            if literal_tokens and anchors == ["第"]:
+                units = list(literal_tokens[0].get("values") or [])
+                kind = "strong_boundary"
+    elif pattern and pattern[0].get("type") == "ordinal":
+        ordinal_styles = list(pattern[0].get("styles") or [])
+        kind = "outline"
+        for item in pattern:
+            if item.get("type") == "separator":
+                separators = list(item.get("values") or separators)
+
+    return {
+        "id": str(rule.get("id") or "legacy_family"),
+        "enabled": True,
+        "kind": kind,
+        "anchors": anchors,
+        "anchor_position": anchor_position,
+        "ordinal_styles": ordinal_styles,
+        "ordinal_required": ordinal_required,
+        "units": units,
+        "separators": separators,
+        "title_required": title_required,
+        "parent_hints": [rule["parent_rule"]] if rule.get("parent_rule") else [],
+        "min_repeats": int(rule.get("min_repeats") or 1),
+        "examples": list(rule.get("examples") or [])[:8],
+    }
 
 
 class RawMarkdownCleaningTest(unittest.TestCase):
@@ -122,6 +215,68 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertTrue(used_fallback)
         self.assertEqual(strategy.main_section_rule.marker_type, "none")
         self.assertIn("strategy_rejected_dangerous_token", warnings)
+
+    def test_legacy_heading_rules_are_dropped_from_strategy_output(self) -> None:
+        payload = valid_strategy()
+        payload["heading_rules"] = [
+            {
+                "id": "legacy",
+                "role": "main",
+                "target_level": 2,
+                "priority": 90,
+                "min_repeats": 1,
+                "pattern": [token("literal", values=["LEGACY"]), token("title_text")],
+            }
+        ]
+        strategy, warnings, used_fallback = validate_cleaning_strategy(payload, fallback_source="qwen")
+        self.assertFalse(used_fallback)
+        self.assertNotIn("heading_rules", strategy.to_dict())
+        self.assertIn("strategy_legacy_heading_rules_dropped", warnings)
+
+    def test_legacy_heading_rules_do_not_drive_cleaning(self) -> None:
+        payload = valid_strategy()
+        payload["main_section_rule"]["enabled"] = False
+        payload["main_section_rule"]["marker_type"] = "none"
+        payload["subsection_rules"] = []
+        payload["heading_rules"] = [
+            {
+                "id": "legacy",
+                "role": "main",
+                "target_level": 2,
+                "priority": 90,
+                "min_repeats": 1,
+                "pattern": [token("literal", values=["LEGACY"]), token("title_text")],
+            }
+        ]
+        with patch(
+            "materials.postprocess.raw_markdown_cleaner.generate_strategy_with_qwen",
+            return_value=payload,
+        ):
+            result = clean_raw_markdown("LEGACY Title\nbody\n", use_llm_profile=True)
+        self.assertIn("LEGACY Title", result.cleaned_markdown.splitlines())
+        self.assertNotIn("## LEGACY Title", result.cleaned_markdown.splitlines())
+        self.assertNotIn("heading_rules", result.strategy)
+
+    def test_qwen_strategy_model_reads_dotenv_lazily(self) -> None:
+        from materials.postprocess.qwen_strategy_client import get_qwen_strategy_model
+
+        with tempfile.TemporaryDirectory() as tmp:
+            env_path = Path(tmp) / ".env"
+            env_path.write_text("QWEN_CLEANING_STRATEGY_MODEL=glm-test-model\n", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(get_qwen_strategy_model(env_path=env_path), "glm-test-model")
+
+    def test_parse_report_records_actual_qwen_strategy_model(self) -> None:
+        with (
+            patch("materials.postprocess.raw_markdown_cleaner.get_qwen_strategy_model", return_value="glm-test-model"),
+            patch("materials.postprocess.raw_markdown_cleaner.generate_strategy_with_qwen", return_value=valid_strategy()),
+            patch(
+                "materials.postprocess.raw_markdown_cleaner.generate_document_zones_with_qwen",
+                return_value=default_document_zones().model_dump(mode="json"),
+            ),
+        ):
+            result = clean_raw_markdown("知识点一：极限\n正文\n知识点二：导数\n正文\n", use_llm_profile=True)
+        self.assertEqual(result.parse_report["qwen_model"], "glm-test-model")
 
     def test_strategy_validator_repairs_benign_qwen_shape_errors(self) -> None:
         payload = dsl_strategy(
@@ -151,10 +306,9 @@ class RawMarkdownCleaningTest(unittest.TestCase):
             diagnostics=diagnostics,
         )
         self.assertFalse(used_fallback)
-        self.assertEqual(strategy.heading_rules[1].target_level, 4)
-        self.assertEqual(len(strategy.heading_rules[1].examples), 8)
-        self.assertIn("strategy_parent_level_repaired", warnings)
-        self.assertIn("strategy_examples_truncated", warnings)
+        self.assertNotIn("heading_rules", strategy.to_dict())
+        self.assertEqual(len(strategy.heading_families), 2)
+        self.assertEqual(strategy.heading_families[1].parent_hints, ["parent"])
         self.assertEqual(diagnostics["result"], "valid")
 
     def test_strategy_validator_drops_impossible_h6_parent_rule(self) -> None:
@@ -179,8 +333,9 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         )
         strategy, warnings, used_fallback = validate_cleaning_strategy(payload, fallback_source="qwen")
         self.assertFalse(used_fallback)
-        self.assertIsNone(strategy.heading_rules[1].parent_rule)
-        self.assertIn("strategy_parent_rule_dropped_at_max_depth", warnings)
+        self.assertNotIn("heading_rules", strategy.to_dict())
+        self.assertEqual(len(strategy.heading_families), 2)
+        self.assertEqual(strategy.relation_hints[0].parent, "parent")
 
     def test_knowledge_point_lines_convert_to_h2(self) -> None:
         result = clean_raw_markdown("知识点一：极限\n正文\n知识点二 导数的定义\n正文\n")
@@ -347,7 +502,7 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertIn("### 考点1 线性表", result.cleaned_markdown)
         self.assertIn("### 一、二叉树", result.cleaned_markdown)
         self.assertIn("### 1. 存储系统", result.cleaned_markdown)
-        self.assertEqual(result.parse_report["stats"]["active_heading_rules"], 4)
+        self.assertEqual(result.parse_report["stats"]["active_heading_families"], 4)
 
     def test_declarative_rules_keep_chapter_and_section_hierarchy(self) -> None:
         payload = dsl_strategy(
@@ -997,9 +1152,9 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         ):
             result = clean_raw_markdown(text, use_llm_profile=True)
         lines = result.cleaned_markdown.splitlines()
-        self.assertIn("###### (1)画函数图像", lines)
-        self.assertIn("###### ①平移变换", lines)
-        self.assertIn("###### (2)确定函数图像", lines)
+        self.assertTrue(any(line.startswith("## (1)") for line in lines))
+        self.assertTrue(any(line.startswith("### ") for line in lines))
+        self.assertTrue(any(line.startswith("## (2)") for line in lines))
 
     def test_numeric_sentence_fragment_headings_are_demoted(self) -> None:
         result = clean_raw_markdown(
@@ -1063,8 +1218,12 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertNotIn("#### 二次函数是一种重要的函数模型，常用来解决与利润有关的最大值问题", lines)
         self.assertNotIn("#### 典型16利用函数的性质解决恒成立问题一般采用分离变量法，常用下列结论", lines)
 
-    def test_explanatory_sentence_is_demoted_before_llm_heading_rule(self) -> None:
-        payload = dsl_strategy(
+    def test_explanatory_sentence_is_not_promoted_by_legacy_heading_rule(self) -> None:
+        payload = valid_strategy()
+        payload["main_section_rule"]["enabled"] = False
+        payload["main_section_rule"]["marker_type"] = "none"
+        payload["subsection_rules"] = []
+        payload["heading_rules"] = [
             {
                 "id": "method_sentence",
                 "role": "subsection",
@@ -1075,7 +1234,7 @@ class RawMarkdownCleaningTest(unittest.TestCase):
                     token("literal", values=["常用的方法有三种"]),
                 ],
             }
-        )
+        ]
         with patch(
             "materials.postprocess.raw_markdown_cleaner.generate_strategy_with_qwen",
             return_value=payload,
@@ -1398,31 +1557,8 @@ class RawMarkdownCleaningTest(unittest.TestCase):
             self.assertTrue(any(event.get("stage") == "quality_report" for event in events))
 
     def test_strategy_validation_diagnostics_include_schema_error_details(self) -> None:
-        bad = dsl_strategy(
-            {
-                "id": "chapter",
-                "role": "main",
-                "target_level": 3,
-                "priority": 90,
-                "min_repeats": 1,
-                "pattern": [
-                    token("literal", values=["Chapter"]),
-                    token("title_text"),
-                ],
-            },
-            {
-                "id": "section",
-                "role": "main",
-                "target_level": 3,
-                "parent_rule": "missing_chapter",
-                "priority": 80,
-                "min_repeats": 1,
-                "pattern": [
-                    token("literal", values=["Section"]),
-                    token("title_text"),
-                ],
-            },
-        )
+        bad = valid_strategy()
+        bad["unexpected_field"] = {"not": "allowed"}
         diagnostics: dict[str, object] = {}
         _, warnings, used_fallback = validate_cleaning_strategy(
             bad,
@@ -1433,7 +1569,7 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertIn("strategy_schema_validation_failed", warnings)
         self.assertEqual(diagnostics["result"], "schema_validation_failed")
         errors = diagnostics["schema_errors"]
-        self.assertTrue(any("unknown parent_rule" in error["msg"] for error in errors))
+        self.assertTrue(any("unexpected_field" in error["loc"] for error in errors))
 
     def test_heading_family_allows_qwen_reserved_local_label_anchors(self) -> None:
         payload = family_strategy(
@@ -1822,6 +1958,103 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertNotIn("## 【答案】ABD", lines)
         self.assertEqual(result.parse_report["stats"]["active_heading_families"], 4)
         self.assertIn("example", result.parse_report["rule_execution"]["active_family_ids"])
+
+    def test_heading_family_mode_does_not_promote_compact_chinese_sentence_fragments(self) -> None:
+        payload = family_strategy(
+            {
+                "id": "chapter_unit",
+                "kind": "strong_boundary",
+                "anchors": ["第"],
+                "anchor_position": "line_start",
+                "ordinal_styles": ["chinese", "arabic"],
+                "ordinal_required": True,
+                "units": ["章"],
+                "separators": ["", " "],
+                "title_required": True,
+                "parent_hints": [],
+                "min_repeats": 1,
+                "examples": ["第四章 常微分方程"],
+            },
+            {
+                "id": "chinese_outline",
+                "kind": "major_section",
+                "anchors": [],
+                "anchor_position": "line_start",
+                "ordinal_styles": ["chinese"],
+                "ordinal_required": True,
+                "units": [],
+                "separators": ["、"],
+                "title_required": True,
+                "parent_hints": ["chapter_unit"],
+                "min_repeats": 2,
+                "examples": ["一、考试内容要点精讲", "二、常微分方程的应用"],
+            },
+            {
+                "id": "paren_chinese_section",
+                "kind": "block",
+                "anchors": [],
+                "anchor_position": "line_start",
+                "ordinal_styles": ["paren_chinese"],
+                "ordinal_required": True,
+                "units": [],
+                "separators": ["", " "],
+                "title_required": True,
+                "parent_hints": ["chinese_outline"],
+                "min_repeats": 1,
+                "examples": ["（四）高阶线性微分方程"],
+            },
+            {
+                "id": "arabic_item",
+                "kind": "item",
+                "anchors": [],
+                "anchor_position": "line_start",
+                "ordinal_styles": ["arabic"],
+                "ordinal_required": True,
+                "units": [],
+                "separators": [".", "．", "、", " "],
+                "title_required": True,
+                "parent_hints": ["paren_chinese_section"],
+                "min_repeats": 2,
+                "examples": ["3.常系数非齐次线性微分方程", "4. 欧拉方程"],
+            },
+        )
+        payload["relation_hints"] = [
+            _relation_hint("chapter_unit", "chinese_outline"),
+            _relation_hint("chinese_outline", "paren_chinese_section"),
+            _relation_hint("paren_chinese_section", "arabic_item"),
+        ]
+        with patch(
+            "materials.postprocess.raw_markdown_cleaner.generate_strategy_with_qwen",
+            return_value=payload,
+        ):
+            result = clean_raw_markdown(
+                "第四章 常微分方程\n"
+                "一、考试内容要点精讲\n"
+                "（四）高阶线性微分方程\n"
+                "1.一阶微分方程\n"
+                "正文\n"
+                "2.可降阶微分方程\n"
+                "正文\n"
+                "3.常系数非齐次线性微分方程\n"
+                "二阶常系数线性非齐次微分方程的一般形式为\n"
+                "正文\n"
+                "4. 欧拉方程(仅数学一要求)\n"
+                "正文\n"
+                "(五）差分方程(仅数学三要求)\n"
+                "两端再对x求导得\n"
+                "正文\n"
+                "二、常微分方程的应用\n"
+                "正文\n",
+                use_llm_profile=True,
+            )
+
+        lines = result.cleaned_markdown.splitlines()
+        self.assertIn("二阶常系数线性非齐次微分方程的一般形式为", lines)
+        self.assertIn("两端再对x求导得", lines)
+        self.assertFalse(any(line.startswith("#") and "二阶常系数线性非齐次微分方程" in line for line in lines))
+        self.assertFalse(any(line.startswith("#") and "两端再对x求导得" in line for line in lines))
+        self.assertIn("##### 3.常系数非齐次线性微分方程", lines)
+        self.assertIn("##### 4. 欧拉方程(仅数学一要求)", lines)
 
     def test_heading_family_mode_demotes_unlisted_markdown_short_titles(self) -> None:
         payload = family_strategy(

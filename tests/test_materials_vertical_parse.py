@@ -32,6 +32,7 @@ class MaterialsVerticalParseTest(unittest.TestCase):
             subject="unknown",
             material_type="unknown",
             use_llm_cleanup=False,
+            enable_vector_index=False,
         )
         self.assertEqual(result.parse_status.value, "ready")
 
@@ -59,7 +60,7 @@ class MaterialsVerticalParseTest(unittest.TestCase):
             "罗尔定理\n\n若函数在闭区间连续，在开区间可导。\n\n证明思路\n\n利用费马定理。\n",
             encoding="utf-8",
         )
-        result = self.service.ingest_file(source, user_id="tester", use_llm_cleanup=False)
+        result = self.service.ingest_file(source, user_id="tester", use_llm_cleanup=False, enable_vector_index=False)
         self.assertEqual(result.parse_status.value, "ready")
 
         material_dir = self.base_dir / "tester" / result.material_id

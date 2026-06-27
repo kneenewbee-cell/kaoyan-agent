@@ -20,9 +20,6 @@ MarkerType = Literal[
 SubsectionType = Literal["fixed_label"]
 FallbackAction = Literal["keep_original_structure", "basic_cleanup_only", "use_default_strategy"]
 ChunkBy = Literal["heading", "paragraph", "length"]
-PatternTokenType = Literal["literal", "ordinal", "separator", "whitespace", "title_text"]
-OrdinalStyle = Literal["chinese", "arabic", "decimal"]
-HeadingRole = Literal["main", "subsection"]
 HeadingFamilyKind = Literal["strong_boundary", "major_section", "block", "item", "outline"]
 HeadingFamilyOrdinalStyle = Literal[
     "chinese",
@@ -34,6 +31,8 @@ HeadingFamilyOrdinalStyle = Literal[
     "paren_arabic",
 ]
 AnchorPosition = Literal["line_start", "exact"]
+RelationType = Literal["direct_parent"]
+RelationCertainty = Literal["strong"]
 FrontMatterZoneType = Literal[
     "preface_or_overview",
     "catalog_or_navigation",
@@ -113,67 +112,6 @@ class SubsectionRule(StrictModel):
         return _dedupe_strings(values)
 
 
-class PatternToken(StrictModel):
-    type: PatternTokenType
-    values: list[str] = Field(default_factory=list, max_length=20)
-    styles: list[OrdinalStyle] = Field(default_factory=list, max_length=3)
-    optional: bool = False
-    min_chars: int = Field(1, ge=1, le=120)
-    max_chars: int = Field(80, ge=1, le=120)
-
-    @field_validator("values")
-    @classmethod
-    def validate_values(cls, values: list[str]) -> list[str]:
-        result = _dedupe_strings(values)
-        if any(len(value) > 24 for value in result):
-            raise ValueError("pattern token value is too long")
-        return result
-
-    @field_validator("styles")
-    @classmethod
-    def dedupe_styles(cls, values: list[OrdinalStyle]) -> list[OrdinalStyle]:
-        return list(dict.fromkeys(values))
-
-    @model_validator(mode="after")
-    def validate_token_shape(self) -> "PatternToken":
-        if self.type in {"literal", "separator"} and not self.values:
-            raise ValueError(f"{self.type} token requires values")
-        if self.type == "ordinal" and not self.styles:
-            raise ValueError("ordinal token requires styles")
-        if self.min_chars > self.max_chars:
-            raise ValueError("min_chars cannot exceed max_chars")
-        return self
-
-
-class HeadingRule(StrictModel):
-    id: str = Field(min_length=1, max_length=48)
-    enabled: bool = True
-    role: HeadingRole = "main"
-    target_level: int = Field(2, ge=1, le=6)
-    parent_rule: str | None = Field(default=None, max_length=48)
-    priority: int = Field(50, ge=0, le=100)
-    min_repeats: int = Field(2, ge=1, le=20)
-    pattern: list[PatternToken] = Field(min_length=1, max_length=10)
-    examples: list[str] = Field(default_factory=list, max_length=8)
-
-    @field_validator("id", "parent_rule")
-    @classmethod
-    def strip_identifier(cls, value: str | None) -> str | None:
-        return value.strip() if value is not None else None
-
-    @field_validator("examples")
-    @classmethod
-    def dedupe_examples(cls, values: list[str]) -> list[str]:
-        return _dedupe_strings(values)
-
-    @model_validator(mode="after")
-    def validate_pattern(self) -> "HeadingRule":
-        title_indexes = [index for index, token in enumerate(self.pattern) if token.type == "title_text"]
-        if len(title_indexes) > 1 or (title_indexes and title_indexes[0] != len(self.pattern) - 1):
-            raise ValueError("title_text may appear once and must be the final token")
-        return self
-
-
 class HeadingFamily(StrictModel):
     id: str = Field(min_length=1, max_length=48)
     enabled: bool = True
@@ -209,6 +147,41 @@ class HeadingFamily(StrictModel):
             raise ValueError("ordinal_required requires ordinal_styles")
         if not self.anchors and self.kind not in {"outline", "strong_boundary"} and not self.ordinal_styles:
             raise ValueError("non-outline heading family requires anchors or ordinal_styles")
+        return self
+
+
+class RelationScoreBreakdown(StrictModel):
+    interval_structure: int = Field(0, ge=0, le=25)
+    coverage_density: int = Field(0, ge=0, le=25)
+    numbering_anchor: int = Field(0, ge=0, le=20)
+    sample_evidence: int = Field(0, ge=0, le=20)
+    counter_evidence: int = Field(0, ge=-50, le=0)
+
+
+class RelationHint(StrictModel):
+    relation_type: RelationType = "direct_parent"
+    parent: str = Field(min_length=1, max_length=48)
+    child: str = Field(min_length=1, max_length=48)
+    score: int = Field(ge=85, le=100)
+    certainty: RelationCertainty = "strong"
+    score_breakdown: RelationScoreBreakdown = Field(default_factory=RelationScoreBreakdown)
+    evidence: list[str] = Field(default_factory=list, max_length=8)
+    scope: Literal["body", "unknown"] = "body"
+
+    @field_validator("parent", "child")
+    @classmethod
+    def strip_family_id(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("evidence")
+    @classmethod
+    def dedupe_evidence(cls, values: list[str]) -> list[str]:
+        return _dedupe_strings(values)
+
+    @model_validator(mode="after")
+    def validate_direct_relation(self) -> "RelationHint":
+        if self.parent == self.child:
+            raise ValueError("relation parent and child must differ")
         return self
 
 
@@ -298,8 +271,8 @@ class CleaningStrategy(StrictModel):
     document_profile: DocumentProfile = Field(default_factory=DocumentProfile)
     main_section_rule: MainSectionRule = Field(default_factory=MainSectionRule)
     subsection_rules: list[SubsectionRule] = Field(default_factory=list)
-    heading_rules: list[HeadingRule] = Field(default_factory=list, max_length=24)
     heading_families: list[HeadingFamily] = Field(default_factory=list, max_length=32)
+    relation_hints: list[RelationHint] = Field(default_factory=list, max_length=32)
     metadata_rules: MetadataRules = Field(default_factory=MetadataRules)
     cleanup_rules: CleanupRules = Field(default_factory=CleanupRules)
     fallback_policy: FallbackPolicy = Field(default_factory=FallbackPolicy)
@@ -307,22 +280,44 @@ class CleaningStrategy(StrictModel):
     strategy_source: Literal["qwen", "local", "default"] = "default"
 
     @model_validator(mode="after")
-    def validate_heading_rule_graph(self) -> "CleaningStrategy":
-        ids = [rule.id for rule in self.heading_rules]
-        if len(ids) != len(set(ids)):
-            raise ValueError("heading rule ids must be unique")
+    def validate_heading_family_graph(self) -> "CleaningStrategy":
         family_ids = [family.id for family in self.heading_families]
         if len(family_ids) != len(set(family_ids)):
             raise ValueError("heading family ids must be unique")
-        rules_by_id = {rule.id: rule for rule in self.heading_rules}
-        for rule in self.heading_rules:
-            if rule.parent_rule is None:
-                continue
-            parent = rules_by_id.get(rule.parent_rule)
-            if parent is None:
-                raise ValueError(f"unknown parent_rule: {rule.parent_rule}")
-            if parent.target_level >= rule.target_level:
-                raise ValueError("parent rule target level must be above child level")
+        family_id_set = set(family_ids)
+        relation_edges = [(hint.parent, hint.child) for hint in self.relation_hints]
+        for parent, child in relation_edges:
+            if parent not in family_id_set:
+                raise ValueError(f"unknown relation parent family: {parent}")
+            if child not in family_id_set:
+                raise ValueError(f"unknown relation child family: {child}")
+        if len(relation_edges) != len(set(relation_edges)):
+            raise ValueError("relation hints must be unique")
+        graph: dict[str, list[str]] = {}
+        for parent, child in relation_edges:
+            graph.setdefault(parent, []).append(child)
+
+        def has_path(start: str, target: str, *, skip_edge: tuple[str, str] | None = None) -> bool:
+            stack = [start]
+            seen: set[str] = set()
+            while stack:
+                node = stack.pop()
+                if node in seen:
+                    continue
+                seen.add(node)
+                for next_node in graph.get(node, []):
+                    if skip_edge == (node, next_node):
+                        continue
+                    if next_node == target:
+                        return True
+                    stack.append(next_node)
+            return False
+
+        for parent, child in relation_edges:
+            if has_path(child, parent):
+                raise ValueError("relation hints must not contain cycles")
+            if has_path(parent, child, skip_edge=(parent, child)):
+                raise ValueError("relation hints must be direct parent-child edges, not transitive edges")
         return self
 
     def to_dict(self) -> dict:

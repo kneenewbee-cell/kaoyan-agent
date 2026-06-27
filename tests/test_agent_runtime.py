@@ -1092,7 +1092,9 @@ class AgentRuntimeTest(unittest.TestCase):
         self.assertIn("可选原理池", joined)
         self.assertIn("如果有再分析", joined)
         self.assertIn("工具 query 分工", joined)
-        self.assertIn("先调用 get_current_affairs", joined)
+        self.assertIn("优先调用 search_current_affairs_store", joined)
+        self.assertIn("资料库没有命中", joined)
+        self.assertIn("再调用 get_current_affairs", joined)
         self.assertIn("再调用 search_politics_knowledge", joined)
         self.assertIn("answer_politics_knowledge 综合回答", joined)
         self.assertIn("材料事实 -> 对应原理 -> 考研答题表述", joined)
@@ -1106,12 +1108,140 @@ class AgentRuntimeTest(unittest.TestCase):
         math_tools = agent_runtime.select_tools("math")
 
         self.assertIn("search_politics_knowledge", politics_tools)
+        self.assertIn("search_current_affairs_store", politics_tools)
         self.assertIn("get_current_affairs", politics_tools)
         self.assertIn("answer_politics_knowledge", politics_tools)
         self.assertEqual(politics_tools["search_politics_knowledge"].return_mode, "evidence")
+        self.assertEqual(politics_tools["search_current_affairs_store"].return_mode, "evidence")
         self.assertEqual(politics_tools["answer_politics_knowledge"].return_mode, "direct")
         self.assertNotIn("answer_politics_knowledge", math_tools)
         self.assertNotIn("search_politics_knowledge", math_tools)
+        self.assertNotIn("search_current_affairs_store", math_tools)
+
+    def test_append_runtime_turn_records_current_affairs_evidence_refs(self) -> None:
+        result = agent_runtime.RuntimeResult(
+            answer="六月重要会议回答",
+            subject="politics",
+            messages=[
+                {
+                    "role": "tool",
+                    "name": "get_current_affairs",
+                    "content": json.dumps({
+                        "ok": True,
+                        "result": {
+                            "type": "current_affairs_evidence",
+                            "items": [
+                                {
+                                    "event_id": "cae_20260623_0001",
+                                    "source_doc_id": "cas_20260623_news_cn_9a02bd7d",
+                                    "title": "律师法修正草案提请审议",
+                                    "source_doc_ids": ["cas_20260623_news_cn_9a02bd7d"],
+                                }
+                            ],
+                        },
+                    }, ensure_ascii=False),
+                }
+            ],
+            tool_calls=[{"name": "get_current_affairs", "arguments": {"query": "六月重要会议"}, "ok": True}],
+            metrics={"request_id": "r", "session_id": "unit_current_affairs_refs", "steps": []},
+        )
+
+        agent_runtime.append_runtime_turn("unit_current_affairs_refs", "六月重要会议", result)
+
+        turn = kaoyan_agent.load_session("unit_current_affairs_refs")["turns"][0]
+        self.assertEqual(turn["evidence_refs"][0]["slot"], 1)
+        self.assertEqual(turn["evidence_refs"][0]["event_id"], "cae_20260623_0001")
+        self.assertEqual(turn["evidence_refs"][0]["source_doc_ids"], ["cas_20260623_news_cn_9a02bd7d"])
+
+    def test_current_affairs_evidence_refs_merge_same_event_across_tools(self) -> None:
+        messages = [
+            {
+                "role": "tool",
+                "name": "search_current_affairs_store",
+                "content": json.dumps({
+                    "ok": True,
+                    "result": {
+                        "items": [
+                            {
+                                "event_id": "cae_20260623_0001",
+                                "source_doc_id": "cas_20260623_news_cn_9a02bd7d",
+                                "source_doc_ids": ["cas_20260623_news_cn_9a02bd7d"],
+                                "title": "律师法修正草案提请审议",
+                            }
+                        ]
+                    },
+                }, ensure_ascii=False),
+            },
+            {
+                "role": "tool",
+                "name": "get_current_affairs",
+                "content": json.dumps({
+                    "ok": True,
+                    "result": {
+                        "items": [
+                            {
+                                "event_id": "cae_20260623_0001",
+                                "source_doc_id": "cas_20260623_people_com_cn_a91c20f1",
+                                "source_doc_ids": [
+                                    "cas_20260623_news_cn_9a02bd7d",
+                                    "cas_20260623_people_com_cn_a91c20f1",
+                                ],
+                                "primary_source_doc_id": "cas_20260623_news_cn_9a02bd7d",
+                                "title": "律师法修正草案提请审议",
+                            }
+                        ]
+                    },
+                }, ensure_ascii=False),
+            },
+        ]
+
+        refs = agent_runtime.extract_current_affairs_evidence_refs(messages)
+
+        self.assertEqual(len(refs), 1)
+        self.assertEqual(refs[0]["event_id"], "cae_20260623_0001")
+        self.assertEqual(refs[0]["source_doc_ids"], [
+            "cas_20260623_news_cn_9a02bd7d",
+            "cas_20260623_people_com_cn_a91c20f1",
+        ])
+
+    def test_followup_dag_context_includes_parent_current_affairs_evidence_refs(self) -> None:
+        kaoyan_agent.save_session(
+            "unit_current_affairs_followup_refs",
+            {
+                "session_id": "unit_current_affairs_followup_refs",
+                "turns": [
+                    {
+                        "turn_id": 1,
+                        "user_query": "六月重要会议",
+                        "assistant_answer": "1. 律师法修正草案提请审议。",
+                        "evidence_refs": [
+                            {
+                                "slot": 1,
+                                "event_id": "cae_20260623_0001",
+                                "label": "律师法修正草案提请审议",
+                                "source_doc_ids": ["cas_20260623_news_cn_9a02bd7d"],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+
+        context = agent_runtime.format_followup_dag_context(
+            "unit_current_affairs_followup_refs",
+            "第一个会议的具体内容是什么",
+            output_format="ui",
+            client=None,
+            route_decision={
+                "category": "contextual_nonstep_followup",
+                "parent_turn_id": 1,
+                "parent_turn_ids": [1],
+                "reason": "追问第一个会议",
+            },
+        )
+
+        self.assertIn("时政证据引用", context["followup_context"])
+        self.assertIn("cae_20260623_0001", context["followup_context"])
 
     def test_answer_politics_knowledge_uses_actual_prior_tool_outputs_and_forces_combo_with_both_evidence_tools(self) -> None:
         captured: dict[str, Any] = {}
