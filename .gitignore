@@ -55,6 +55,7 @@ data/user_materials/
 # 不上传运行缓存、PDF 切页缓存、会话向量
 # =========================
 data/runtime/session_vectors/
+data/vectorstores/
 data/runtime/pdf_pages/
 data/runtime/code_backups/
 data/runtime/test_reports/
@@ -68,6 +69,7 @@ backups/
 *.tmp
 *.bak
 ~$*
+scripts/run_current_affairs_llm_smoke.py
 
 # =========================
 # Optional local temporary documents
