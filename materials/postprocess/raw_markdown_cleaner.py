@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any
 
@@ -22,6 +21,7 @@ from .qwen_strategy_client import (
 )
 from .strategy_cleaner import DEFAULT_SUBSECTION_ALIASES, clean_with_strategy
 from .document_zones import default_document_zones, validate_document_zones_payload
+from .metadata_profile import MetadataProfile, default_metadata_profile, validate_metadata_profile_payload
 from .strategy_schema import CleaningStrategy, DocumentZones
 from .strategy_validator import default_conservative_strategy, validate_cleaning_strategy
 
@@ -32,6 +32,7 @@ class CleanResult:
     format_probe: dict[str, Any]
     strategy: dict[str, Any]
     document_zones: dict[str, Any]
+    metadata_profile: dict[str, Any]
     zone_report: dict[str, Any]
     parse_report: dict[str, Any]
     warnings: list[str]
@@ -167,7 +168,7 @@ def detect_local_strategy(format_probe: dict[str, Any] | FormatProbe, user_hints
             if user_hints:
                 subject = user_hints.get("subject")
                 material_type = user_hints.get("material_type")
-                if subject in {"math", "politics", "english", "cs408", "408", "unknown"}:
+                if subject in {"math", "politics", "english", "cs408", "408", "other", "unknown"}:
                     strategy["document_profile"]["subject"] = subject
                 if material_type and material_type != "unknown":
                     strategy["document_profile"]["document_type"] = "mixed"
@@ -192,13 +193,60 @@ def clean_raw_markdown(
     warnings: list[str] = []
     strategy: CleaningStrategy | None = None
     document_zones: DocumentZones = default_document_zones()
+    metadata_profile: MetadataProfile = default_metadata_profile()
     qwen_usage: dict[str, Any] = {}
     zone_usage: dict[str, Any] = {}
     strategy_validation: dict[str, Any] = {}
     zone_validation: dict[str, Any] = {}
+    metadata_validation: dict[str, Any] = {}
     qwen_model = get_qwen_strategy_model()
+    hints = dict(user_hints or {})
 
-    if use_llm_profile:
+    strategy_override_payload = hints.get("cleaning_strategy_override")
+    zones_override_payload = hints.get("document_zones_override")
+    metadata_override_payload = hints.get("metadata_profile_override")
+    if strategy_override_payload is not None:
+        strategy, validation_warnings, used_fallback = validate_cleaning_strategy(
+            strategy_override_payload,
+            fallback_source="qwen",
+            diagnostics=strategy_validation,
+        )
+        warnings.extend(validation_warnings)
+        qwen_usage["call_mode"] = "override"
+        qwen_usage["override_used"] = not used_fallback
+        qwen_usage["schema_valid"] = not used_fallback
+        qwen_usage["strategy_schema_valid"] = not used_fallback
+        if used_fallback:
+            warnings.append("cleaning_strategy_override_invalid_fallback_to_local")
+            strategy = None
+        else:
+            warnings.append("cleaning_strategy_override_used")
+
+    if zones_override_payload is not None:
+        document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
+            zones_override_payload,
+            diagnostics=zone_validation,
+        )
+        warnings.extend(zone_warnings)
+        qwen_usage["zone_schema_valid"] = not zone_used_fallback
+        if zone_used_fallback:
+            warnings.append("document_zones_override_invalid_fallback_to_empty")
+        else:
+            warnings.append("document_zones_override_used")
+
+    if metadata_override_payload is not None:
+        metadata_profile, metadata_warnings, metadata_used_fallback = validate_metadata_profile_payload(
+            metadata_override_payload,
+            diagnostics=metadata_validation,
+        )
+        warnings.extend(metadata_warnings)
+        qwen_usage["metadata_schema_valid"] = not metadata_used_fallback
+        if metadata_used_fallback:
+            warnings.append("metadata_profile_override_invalid_fallback_to_unknown")
+        else:
+            warnings.append("metadata_profile_override_used")
+
+    if use_llm_profile and strategy is None and strategy_override_payload is None:
         use_legacy_profile = _legacy_qwen_functions_are_mocked()
         if not use_legacy_profile:
             try:
@@ -209,6 +257,7 @@ def clean_raw_markdown(
                 )
                 qwen_payload = bundle_payload.get("cleaning_strategy")
                 zone_payload = bundle_payload.get("document_zones")
+                metadata_payload = bundle_payload.get("metadata_profile")
                 strategy, validation_warnings, used_fallback = validate_cleaning_strategy(
                     qwen_payload,
                     fallback_source="qwen",
@@ -220,18 +269,28 @@ def clean_raw_markdown(
                     diagnostics=zone_validation,
                 )
                 warnings.extend(zone_warnings)
+                metadata_profile, metadata_warnings, metadata_used_fallback = validate_metadata_profile_payload(
+                    metadata_payload,
+                    diagnostics=metadata_validation,
+                )
+                warnings.extend(metadata_warnings)
                 qwen_usage["schema_valid"] = not used_fallback
                 qwen_usage["strategy_schema_valid"] = not used_fallback
                 qwen_usage["zone_schema_valid"] = not zone_used_fallback
+                qwen_usage["metadata_schema_valid"] = not metadata_used_fallback
                 if strategy_validation:
                     qwen_usage["strategy_validation"] = strategy_validation
                 if zone_validation:
                     qwen_usage["zone_validation"] = zone_validation
+                if metadata_validation:
+                    qwen_usage["metadata_validation"] = metadata_validation
                 if used_fallback:
                     warnings.append("qwen_strategy_invalid_fallback_to_local")
                     strategy = None
                 if zone_used_fallback:
                     warnings.append("qwen_document_zones_invalid_fallback_to_empty")
+                if metadata_used_fallback:
+                    warnings.append("qwen_metadata_profile_invalid_fallback_to_unknown")
             except Exception as exc:
                 warnings.append("qwen_strategy_bundle_unavailable_fallback_to_legacy")
                 warnings.append(f"qwen_strategy_bundle_error:{exc.__class__.__name__}")
@@ -239,6 +298,8 @@ def clean_raw_markdown(
                 use_legacy_profile = True
 
         if use_legacy_profile:
+            legacy_strategy_mocked = hasattr(generate_strategy_with_qwen, "mock_calls")
+            legacy_zone_mocked = hasattr(generate_document_zones_with_qwen, "mock_calls")
             try:
                 qwen_payload = generate_strategy_with_qwen(
                     probe_dict,
@@ -261,26 +322,30 @@ def clean_raw_markdown(
                 warnings.append("qwen_strategy_unavailable_fallback_to_local")
                 warnings.append(f"qwen_strategy_error:{legacy_exc.__class__.__name__}")
 
-            try:
-                zone_payload = generate_document_zones_with_qwen(
-                    probe_dict,
-                    model=qwen_model,
-                    usage_metrics=zone_usage,
-                )
-                document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
-                    zone_payload,
-                    diagnostics=zone_validation,
-                )
-                warnings.extend(zone_warnings)
-                zone_usage["schema_valid"] = not zone_used_fallback
-                if zone_validation:
-                    zone_usage["zone_validation"] = zone_validation
-                if zone_used_fallback:
-                    warnings.append("qwen_document_zones_invalid_fallback_to_empty")
-            except Exception as legacy_exc:
-                warnings.append("qwen_document_zones_unavailable_fallback_to_empty")
-                warnings.append(f"qwen_document_zones_error:{legacy_exc.__class__.__name__}")
+            if legacy_strategy_mocked and not legacy_zone_mocked:
+                warnings.append("qwen_document_zones_skipped_under_mock")
                 zone_usage.setdefault("schema_valid", False)
+            else:
+                try:
+                    zone_payload = generate_document_zones_with_qwen(
+                        probe_dict,
+                        model=qwen_model,
+                        usage_metrics=zone_usage,
+                    )
+                    document_zones, zone_warnings, zone_used_fallback = validate_document_zones_payload(
+                        zone_payload,
+                        diagnostics=zone_validation,
+                    )
+                    warnings.extend(zone_warnings)
+                    zone_usage["schema_valid"] = not zone_used_fallback
+                    if zone_validation:
+                        zone_usage["zone_validation"] = zone_validation
+                    if zone_used_fallback:
+                        warnings.append("qwen_document_zones_invalid_fallback_to_empty")
+                except Exception as legacy_exc:
+                    warnings.append("qwen_document_zones_unavailable_fallback_to_empty")
+                    warnings.append(f"qwen_document_zones_error:{legacy_exc.__class__.__name__}")
+                    zone_usage.setdefault("schema_valid", False)
 
     if strategy is None:
         strategy = detect_local_strategy(probe, user_hints=user_hints)
@@ -336,6 +401,18 @@ def clean_raw_markdown(
         "validation": zone_validation,
         "qwen_usage": zone_qwen_usage,
     }
+    metadata_profile_dict = metadata_profile.model_dump(mode="json")
+    metadata_report = {
+        "metadata_profile": metadata_profile_dict,
+        "warnings": [
+            warning
+            for warning in all_warnings
+            if warning.startswith("qwen_metadata_profile") or warning.startswith("metadata_profile")
+        ],
+        "validation": metadata_validation,
+    }
+    parse_report["metadata_profile"] = metadata_profile_dict
+    parse_report["metadata_profile_report"] = metadata_report
     if zone_usage:
         parse_report["qwen_zone_usage"] = dict(zone_usage)
         try:
@@ -350,6 +427,7 @@ def clean_raw_markdown(
         format_probe=probe_dict,
         strategy=strategy.to_dict(),
         document_zones=document_zones.model_dump(mode="json"),
+        metadata_profile=metadata_profile_dict,
         zone_report=zone_report,
         parse_report=parse_report,
         warnings=all_warnings,

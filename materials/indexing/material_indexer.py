@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter, defaultdict
 from math import log
 from pathlib import Path
@@ -13,10 +14,48 @@ from .query_processor import TOKENIZER_VERSION, process_query, tokenize_document
 TERM_CONTRIBUTION_CAP = 8.0
 PHRASE_BONUS_CAP = 0.8
 COVERAGE_BONUS_CAP = 0.6
+FORMULA_EXACT_BONUS_CAP = 2.2
+FORMULA_QUERY_SIGNAL_RE = re.compile(r"(?:\\[A-Za-z]+|[A-Za-z]\s*\(|[=^_{}|])")
+FORMULA_FRAGMENT_RE = re.compile(r"(?:\\[A-Za-z]+|[A-Za-z0-9]+|[=+\-*/^_(){}\[\]|,])+")
+FORMULA_KEEP_RE = re.compile(r"[a-z0-9=+\-*/^_(){}\[\]|]")
 
 
 def tokenize(text: str, *, drop_function_words: bool = True) -> list[str]:
     return tokenize_document(text, drop_function_words=drop_function_words)
+
+
+def _formula_compact(text: str) -> str:
+    normalized = str(text or "").lower()
+    normalized = normalized.replace("\\mid", "|")
+    normalized = normalized.replace("\\vert", "|")
+    normalized = normalized.replace("\\left", "")
+    normalized = normalized.replace("\\right", "")
+    normalized = normalized.replace("\\cdot", "*")
+    return "".join(FORMULA_KEEP_RE.findall(normalized))
+
+
+def _formula_query_fragments(query: str) -> tuple[str, ...]:
+    if not FORMULA_QUERY_SIGNAL_RE.search(query or ""):
+        return ()
+    fragments: list[str] = []
+    for match in FORMULA_FRAGMENT_RE.finditer(query or ""):
+        fragment = _formula_compact(match.group(0))
+        if len(fragment) >= 3 and FORMULA_QUERY_SIGNAL_RE.search(match.group(0)):
+            fragments.append(fragment)
+    return tuple(dict.fromkeys(fragments))
+
+
+def _formula_exact_bonus(query_fragments: tuple[str, ...], chunk_text: str) -> float:
+    if not query_fragments:
+        return 0.0
+    compact_text = _formula_compact(chunk_text)
+    if not compact_text:
+        return 0.0
+    matches = [fragment for fragment in query_fragments if fragment in compact_text]
+    if not matches:
+        return 0.0
+    longest = max(len(fragment) for fragment in matches)
+    return min(FORMULA_EXACT_BONUS_CAP, 0.9 + longest * 0.12)
 
 
 def build_search_index(chunks: list[Chunk]) -> dict[str, Any]:
@@ -64,6 +103,7 @@ def search_in_index(
     query_terms = list(query_plan.terms)
     if not query_terms:
         return []
+    formula_fragments = _formula_query_fragments(query)
 
     postings: dict[str, dict[str, int]] = index_data.get("postings", {})
     chunk_lengths: dict[str, int] = index_data.get("chunk_lengths", {})
@@ -110,7 +150,8 @@ def search_in_index(
         coverage_ratio = covered_core / len(core_terms) if core_terms else 0.0
         coverage_bonus = min(COVERAGE_BONUS_CAP, 0.15 * score * coverage_ratio)
         phrase_bonus = min(PHRASE_BONUS_CAP, 0.12 * score + 0.2) if phrase_matched else 0.0
-        results.append((chunk, score + coverage_bonus + phrase_bonus))
+        formula_bonus = _formula_exact_bonus(formula_fragments, chunk.text)
+        results.append((chunk, score + coverage_bonus + phrase_bonus + formula_bonus))
 
     results.sort(key=lambda item: item[1], reverse=True)
     return results[:top_k]

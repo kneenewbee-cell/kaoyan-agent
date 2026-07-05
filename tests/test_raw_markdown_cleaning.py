@@ -1528,7 +1528,7 @@ class RawMarkdownCleaningTest(unittest.TestCase):
                 source_file,
                 user_id="tester",
                 subject="math",
-                material_type="note",
+                material_type="lecture",
                 use_llm_cleanup=False,
             )
             self.assertEqual(result.parse_status.value, "ready")
@@ -2266,6 +2266,97 @@ class RawMarkdownCleaningTest(unittest.TestCase):
         self.assertIn("### 1.题干很长很长，包含句号。A.选项 B.选项 C.选项 D.选项", lines)
         self.assertIn("### 2.题干也很长很长，包含句号。A.选项 B.选项 C.选项 D.选项", lines)
         self.assertIn("question_item_arabic", result.parse_report["rule_execution"]["active_family_ids"])
+
+    def test_exercise_family_promotes_questions_but_not_solution_labels_or_options(self) -> None:
+        payload = family_strategy(
+            {
+                "id": "exam_section",
+                "kind": "major_section",
+                "anchors": [],
+                "ordinal_styles": ["chinese"],
+                "ordinal_required": True,
+                "separators": ["、"],
+                "examples": ["一、选择题", "二、填空题"],
+                "min_repeats": 1,
+            },
+            {
+                "id": "question_item",
+                "kind": "item",
+                "anchors": [],
+                "ordinal_styles": ["paren_arabic"],
+                "ordinal_required": True,
+                "examples": ["(1) 设函数 f(x) 连续", "(2) 已知矩阵 A"],
+                "parent_hints": ["exam_section"],
+                "min_repeats": 2,
+            },
+        )
+        payload["document_profile"]["document_type"] = "exercise_notes"
+        payload["relation_hints"] = [
+            {
+                "relation_type": "direct_parent",
+                "parent": "exam_section",
+                "child": "question_item",
+                "score": 90,
+                "certainty": "strong",
+                "scope": "body",
+            }
+        ]
+        markdown = """# 试题
+
+一、选择题
+
+(1) 设函数 f(x) 连续，求极限
+A. 0
+B. 1
+解：先化简。
+
+(2) 已知矩阵 A，求行列式
+答案：2
+"""
+
+        strategy, warnings, used_fallback = validate_cleaning_strategy(payload, fallback_source="qwen")
+        self.assertFalse(used_fallback, warnings)
+
+        result = clean_with_strategy(markdown, strategy)
+
+        self.assertIn("## 一、选择题", result.cleaned_markdown)
+        self.assertIn("### (1) 设函数 f(x) 连续，求极限", result.cleaned_markdown)
+        self.assertIn("### (2) 已知矩阵 A，求行列式", result.cleaned_markdown)
+        self.assertNotIn("### A. 0", result.cleaned_markdown)
+        self.assertIn("**解：** 先化简。", result.cleaned_markdown)
+        self.assertIn("**答案：** 2", result.cleaned_markdown)
+
+    def test_exercise_paren_arabic_family_can_promote_question_20_when_present(self) -> None:
+        payload = family_strategy(
+            {
+                "id": "question_item",
+                "kind": "item",
+                "anchors": [],
+                "ordinal_styles": ["paren_arabic"],
+                "ordinal_required": True,
+                "examples": ["(19) 求曲线积分", "(20) 求二重积分"],
+                "min_repeats": 2,
+            },
+        )
+        payload["document_profile"]["document_type"] = "exercise_notes"
+        markdown = """# 试题
+
+(19) 求曲线积分
+
+解析：略。
+
+(20) 求二重积分
+
+解析：略。
+"""
+
+        strategy, warnings, used_fallback = validate_cleaning_strategy(payload, fallback_source="qwen")
+        self.assertFalse(used_fallback, warnings)
+
+        result = clean_with_strategy(markdown, strategy)
+
+        self.assertRegex(result.cleaned_markdown, r"#{2,3} \(19\) 求曲线积分")
+        self.assertRegex(result.cleaned_markdown, r"#{2,3} \(20\) 求二重积分")
 
     def test_paren_arabic_outline_demotes_long_body_sentence(self) -> None:
         payload = family_strategy(

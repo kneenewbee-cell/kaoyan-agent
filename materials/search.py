@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from dataclasses import asdict
 from typing import Any
 
 from .embeddings.qwen_embedding import embed_texts, embedding_api_available, load_embedding_settings
@@ -14,9 +15,12 @@ from .indexing.material_indexer import (
     save_search_index,
     search_in_index,
 )
+from .indexing.query_processor import QueryPlan, process_query
+from .llm_reranker import apply_llm_decisions, build_candidate_payload, build_material_search_rerank_client_from_env
 from .pipeline_logger import monotonic_ms
 from .schemas import Chunk, MaterialSearchResult
 from .search_logger import write_material_search_log
+from .search_planning import build_retrieval_plan
 from .security import resolve_user_id
 from .storage import MaterialStorage
 from .vectorstores.chroma_store import ChromaUnavailableError, ChromaVectorStore
@@ -24,10 +28,26 @@ from .vectorstores.chroma_store import ChromaUnavailableError, ChromaVectorStore
 
 SearchMode = str
 TABLE_COMMENT_RE = re.compile(r"<!--\s*table:\s*([^\s>]+).*?source=layout\.json.*?-->", re.IGNORECASE)
+VECTOR_SCORE_BONUS_WEIGHT = 0.020
+VECTOR_SCORE_BONUS_CAP = 0.024
+TITLE_HIT_BONUS_CAP = 0.105
+TEXT_HIT_BONUS_CAP = 0.020
+SPECIFIC_TABLE_PENALTY = 0.025
+SPECIFIC_OVERVIEW_TABLE_PENALTY = 0.060
+OVERVIEW_TABLE_BONUS = 0.030
+HYBRID_DISPLAY_MIN_SCORE = 0.040
+QUERY_GATE_MIN_TERM_MATCHES = 2
+QUERY_GATE_MIN_TERM_MATCH_RATIO = 0.50
+EXACT_QUERY_HEADING_BONUS = 0.035
+EXACT_QUERY_TEXT_BONUS = 0.012
+OVERVIEW_QUERY_RE = re.compile(
+    r"(考试要求|考试内容|目录|概览|总览|汇总|一览|对比|区别|表格|列表|清单|范围)"
+)
+OVERVIEW_TABLE_RE = re.compile(r"(考试要求|考试内容|目录|概览|总览|汇总|一览|知识清单|知识网络|范围)")
 
 
 def _vector_min_score() -> float:
-    raw = os.getenv("MATERIALS_VECTOR_MIN_SCORE", "0.55")
+    raw = os.getenv("MATERIALS_VECTOR_MIN_SCORE", "0.60")
     try:
         return float(raw)
     except ValueError:
@@ -66,9 +86,13 @@ def _split_context_max_chars() -> int:
 
 def _normalize_search_mode(mode: str | None) -> SearchMode:
     normalized = (mode or "hybrid").strip().lower()
-    if normalized not in {"keyword", "vector", "hybrid"}:
+    if normalized not in {"keyword", "vector", "hybrid", "llm", "hybrid_llm"}:
         return "hybrid"
     return normalized
+
+
+def _search_scope(filters: dict[str, Any]) -> str:
+    return "material" if filters.get("material_id") else "subject"
 
 
 def _load_material_chunks(
@@ -108,6 +132,20 @@ def _filtered_ready_manifests(
     if filters.get("material_type"):
         manifests = [manifest for manifest in manifests if manifest.material_type.value == filters["material_type"]]
     return [manifest for manifest in manifests if manifest.parse_status.value == "ready"]
+
+
+def _search_scope_chunk_count(storage: MaterialStorage, user_id: str, filters: dict[str, Any]) -> int:
+    total = 0
+    for manifest in _filtered_ready_manifests(storage, user_id, filters):
+        manifest_count = int(getattr(manifest, "chunk_count", 0) or 0)
+        if manifest_count > 0:
+            total += manifest_count
+            continue
+        try:
+            total += len(_load_material_chunks(storage, user_id, manifest))
+        except Exception:
+            continue
+    return total
 
 
 def _table_id_from_text(text: str) -> str:
@@ -454,7 +492,270 @@ def _rrf(rank: int, k: int = 60) -> float:
     return 1.0 / (k + rank)
 
 
-def _hybrid_results(keyword_results: list[MaterialSearchResult], vector_results: list[MaterialSearchResult], top_k: int) -> list[MaterialSearchResult]:
+def _vector_score_bonus(score: float) -> float:
+    try:
+        value = float(score)
+    except (TypeError, ValueError):
+        return 0.0
+    if value <= 0:
+        return 0.0
+    return min(VECTOR_SCORE_BONUS_CAP, value * VECTOR_SCORE_BONUS_WEIGHT)
+
+
+def _query_intent(query: str) -> str:
+    return "overview" if OVERVIEW_QUERY_RE.search(query or "") else "specific"
+
+
+def _contains_compact(haystack: str, needle: str) -> bool:
+    if not haystack or not needle:
+        return False
+    return needle.lower() in "".join(str(haystack).lower().split())
+
+
+def _compact_text(text: str) -> str:
+    return "".join(str(text or "").lower().split())
+
+
+def _result_heading_text(result: MaterialSearchResult) -> str:
+    return " ".join([*(result.heading_path or []), result.section_title or ""])
+
+
+def _result_query_text(result: MaterialSearchResult) -> str:
+    return " ".join([_result_heading_text(result), result.text or ""])
+
+
+def _matched_query_terms(result: MaterialSearchResult, terms: tuple[str, ...]) -> tuple[str, ...]:
+    text = _result_query_text(result)
+    return tuple(term for term in terms if _contains_compact(text, term))
+
+
+def _query_gate_terms(plan: QueryPlan) -> tuple[str, ...]:
+    return tuple(
+        term
+        for term in (plan.core_terms or plan.phrase_terms or plan.terms)
+        if term and len(term) > 1
+    )
+
+
+def _passes_query_match_gate(result: MaterialSearchResult, plan: QueryPlan) -> bool:
+    terms = _query_gate_terms(plan)
+    if len(terms) < 3:
+        return True
+
+    matched_terms = _matched_query_terms(result, terms)
+    required_count = max(
+        QUERY_GATE_MIN_TERM_MATCHES,
+        int(len(terms) * QUERY_GATE_MIN_TERM_MATCH_RATIO + 0.999),
+    )
+    if len(matched_terms) >= required_count:
+        return True
+
+    phrase_terms = tuple(term for term in plan.phrase_terms if term and len(term) > 1)
+    if phrase_terms and _matched_query_terms(result, phrase_terms):
+        return True
+
+    metadata = dict(result.metadata or {})
+    metadata["query_gate"] = {
+        "matched_terms": list(matched_terms),
+        "matched_count": len(matched_terms),
+        "total_count": len(terms),
+        "required_count": required_count,
+    }
+    result.metadata = metadata
+    return False
+
+
+def _filter_query_match_gate(
+    results: list[MaterialSearchResult],
+    plan: QueryPlan,
+) -> list[MaterialSearchResult]:
+    if not results:
+        return results
+    filtered = [result for result in results if _passes_query_match_gate(result, plan)]
+    return filtered
+
+
+def _exact_query_bonus(result: MaterialSearchResult, query: str) -> float:
+    compact_query = _compact_text(query)
+    if len(compact_query) < 3:
+        return 0.0
+    if compact_query in _compact_text(_result_heading_text(result)):
+        return EXACT_QUERY_HEADING_BONUS
+    if compact_query in _compact_text(result.text or ""):
+        return EXACT_QUERY_TEXT_BONUS
+    return 0.0
+
+
+def _is_table_result(result: MaterialSearchResult) -> bool:
+    metadata = dict(result.metadata or {})
+    return bool(
+        str(metadata.get("source_type") or "").lower() == "table"
+        or metadata.get("table_id")
+        or _table_id_from_text(result.text)
+    )
+
+
+def _is_overview_table_result(result: MaterialSearchResult) -> bool:
+    if not _is_table_result(result):
+        return False
+    metadata = dict(result.metadata or {})
+    marker_text = " ".join(
+        [
+            str(metadata.get("kind_guess") or ""),
+            str(metadata.get("title") or ""),
+            result.section_title or "",
+            " ".join(result.heading_path or []),
+            (result.text or "")[:500],
+        ]
+    )
+    return bool(OVERVIEW_TABLE_RE.search(marker_text))
+
+
+def _rerank_adjustment(
+    result: MaterialSearchResult,
+    plan: QueryPlan,
+    intent: str,
+    query: str,
+) -> tuple[float, dict[str, Any]]:
+    heading_text = _result_heading_text(result)
+    body_text = result.text or ""
+    terms = tuple(
+        term
+        for term in (plan.core_terms or plan.phrase_terms or plan.terms)
+        if term and len(term) > 1
+    )
+
+    title_bonus = 0.0
+    text_bonus = 0.0
+    title_hits: list[str] = []
+    text_hits: list[str] = []
+    for term in terms:
+        weight = max(float(plan.term_weights.get(term, 1.0)), 1.0)
+        if _contains_compact(heading_text, term):
+            title_hits.append(term)
+            title_bonus += min(0.028 * weight, 0.04)
+        elif _contains_compact(body_text, term):
+            text_hits.append(term)
+            text_bonus += min(0.006 * weight, 0.01)
+
+    title_bonus = min(title_bonus, TITLE_HIT_BONUS_CAP)
+    text_bonus = min(text_bonus, TEXT_HIT_BONUS_CAP)
+
+    table_penalty = 0.0
+    table_bonus = 0.0
+    is_table = _is_table_result(result)
+    is_overview_table = _is_overview_table_result(result)
+    if intent == "specific":
+        if is_overview_table:
+            table_penalty = SPECIFIC_OVERVIEW_TABLE_PENALTY
+        elif is_table:
+            table_penalty = SPECIFIC_TABLE_PENALTY
+    elif intent == "overview" and is_table:
+        table_bonus = OVERVIEW_TABLE_BONUS
+
+    exact_query_bonus = _exact_query_bonus(result, query)
+    adjustment = title_bonus + text_bonus + table_bonus + exact_query_bonus - table_penalty
+    return adjustment, {
+        "intent": intent,
+        "title_hits": title_hits,
+        "text_hits": text_hits[:5],
+        "title_bonus": round(title_bonus, 6),
+        "text_bonus": round(text_bonus, 6),
+        "table_bonus": round(table_bonus, 6),
+        "table_penalty": round(table_penalty, 6),
+        "exact_query_bonus": round(exact_query_bonus, 6),
+        "is_table": is_table,
+        "is_overview_table": is_overview_table,
+        "adjustment": round(adjustment, 6),
+    }
+
+
+def _reranked_hybrid_scores(
+    merged: dict[str, MaterialSearchResult],
+    scores: dict[str, float],
+    query: str,
+) -> tuple[dict[str, float], dict[str, dict[str, Any]]]:
+    if not (query or "").strip():
+        return dict(scores), {}
+    plan = process_query(query)
+    intent = _query_intent(query)
+    final_scores: dict[str, float] = {}
+    details: dict[str, dict[str, Any]] = {}
+    for key, result in merged.items():
+        base_score = scores.get(key, 0.0)
+        adjustment, detail = _rerank_adjustment(result, plan, intent, query)
+        final_score = base_score + adjustment
+        final_scores[key] = final_score
+        detail["base_score"] = round(base_score, 6)
+        detail["final_score"] = round(final_score, 6)
+        details[key] = detail
+    return final_scores, details
+
+
+def _specific_phrase_terms(
+    results: list[MaterialSearchResult],
+    phrase_terms: tuple[str, ...],
+) -> tuple[str, ...]:
+    if not results or not phrase_terms:
+        return ()
+    counts: dict[str, int] = {}
+    for term in phrase_terms:
+        counts[term] = sum(1 for result in results if _contains_compact(_result_query_text(result), term))
+    total = len(results)
+    selected = [
+        term
+        for term, count in counts.items()
+        if count > 0 and (count == 1 or count / total <= 0.35)
+    ]
+    return tuple(selected)
+
+
+def _filter_hybrid_relevance(
+    ranked: list[tuple[str, MaterialSearchResult]],
+    *,
+    plan: QueryPlan,
+    intent: str,
+) -> list[tuple[str, MaterialSearchResult]]:
+    if intent != "specific" or not ranked:
+        return ranked
+
+    results = [result for _, result in ranked]
+    phrase_gate_terms = _specific_phrase_terms(results, tuple(term for term in plan.phrase_terms if len(term) > 1))
+    if phrase_gate_terms:
+        filtered = [
+            item
+            for item in ranked
+            if _matched_query_terms(item[1], phrase_gate_terms)
+        ]
+        if filtered:
+            return filtered
+
+    query_terms = _query_gate_terms(plan)
+    if len(query_terms) < 3:
+        return ranked
+
+    match_counts = [len(_matched_query_terms(result, query_terms)) for _, result in ranked]
+    minimum_count = max(
+        QUERY_GATE_MIN_TERM_MATCHES,
+        int(len(query_terms) * QUERY_GATE_MIN_TERM_MATCH_RATIO + 0.999),
+    )
+    filtered = [
+        item
+        for item, matched_count in zip(ranked, match_counts)
+        if matched_count >= minimum_count
+    ]
+    return filtered
+
+
+def _hybrid_results(
+    keyword_results: list[MaterialSearchResult],
+    vector_results: list[MaterialSearchResult],
+    top_k: int,
+    *,
+    query: str = "",
+    apply_relevance_filter: bool = True,
+    apply_display_filter: bool = True,
+) -> list[MaterialSearchResult]:
     merged: dict[str, MaterialSearchResult] = {}
     scores: dict[str, float] = {}
     sources: dict[str, set[str]] = {}
@@ -486,7 +787,7 @@ def _hybrid_results(keyword_results: list[MaterialSearchResult], vector_results:
         if duplicate_key:
             seen_sources = fingerprint_sources.setdefault(fingerprint, set())
             if "vector" not in seen_sources:
-                scores[duplicate_key] = scores.get(duplicate_key, 0.0) + _rrf(rank)
+                scores[duplicate_key] = scores.get(duplicate_key, 0.0) + _rrf(rank) + _vector_score_bonus(result.score)
                 sources.setdefault(duplicate_key, set()).add("vector")
                 seen_sources.add("vector")
             continue
@@ -494,20 +795,100 @@ def _hybrid_results(keyword_results: list[MaterialSearchResult], vector_results:
         if fingerprint:
             fingerprints[fingerprint] = key
             fingerprint_sources.setdefault(fingerprint, set()).add("vector")
-        scores[key] = scores.get(key, 0.0) + _rrf(rank)
+        scores[key] = scores.get(key, 0.0) + _rrf(rank) + _vector_score_bonus(result.score)
         sources.setdefault(key, set()).add("vector")
 
-    ranked = sorted(merged.items(), key=lambda item: scores.get(item[0], 0.0), reverse=True)
+    plan = process_query(query) if (query or "").strip() else None
+    intent = _query_intent(query)
+    final_scores, rerank_details = _reranked_hybrid_scores(merged, scores, query)
+    ranked = sorted(merged.items(), key=lambda item: final_scores.get(item[0], 0.0), reverse=True)
+    if plan is not None and apply_relevance_filter:
+        ranked = _filter_hybrid_relevance(ranked, plan=plan, intent=intent)
+    if plan is not None and apply_display_filter and HYBRID_DISPLAY_MIN_SCORE > 0:
+        ranked = [
+            item
+            for item in ranked
+            if final_scores.get(item[0], 0.0) >= HYBRID_DISPLAY_MIN_SCORE
+        ]
     output: list[MaterialSearchResult] = []
     for rank, (key, result) in enumerate(ranked[:top_k], start=1):
         metadata = dict(result.metadata or {})
         metadata["search_mode"] = "hybrid"
         metadata["matched_by"] = sorted(sources.get(key, set()))
+        if key in rerank_details:
+            metadata["rerank"] = rerank_details[key]
+            metadata["rerank_score"] = rerank_details[key]["final_score"]
         result.metadata = metadata
-        result.score = scores.get(key, result.score)
+        result.score = final_scores.get(key, result.score)
         result.rank = rank
         output.append(result)
     return output
+
+
+def _search_user_materials_with_llm(
+    *,
+    user_id: str,
+    query: str,
+    top_k: int,
+    filters: dict[str, Any],
+    storage: MaterialStorage,
+    rerank_client: Any | None,
+) -> list[MaterialSearchResult] | None:
+    chunk_count = _search_scope_chunk_count(storage, user_id, filters)
+    plan = build_retrieval_plan(
+        chunk_count=chunk_count,
+        query=query,
+        scope=_search_scope(filters),
+    )
+    keyword_results = search_user_materials_keyword(
+        user_id,
+        query,
+        top_k=max(plan.keyword_top_k, top_k),
+        filters=filters,
+        storage=storage,
+    )
+    vector_results = search_user_materials_vector(
+        user_id,
+        query,
+        top_k=max(plan.vector_top_k, top_k),
+        filters=filters,
+        storage=storage,
+    )
+    candidates = _hybrid_results(
+        keyword_results,
+        vector_results,
+        top_k=plan.recall_limit,
+        query=query,
+        apply_relevance_filter=False,
+        apply_display_filter=False,
+    )
+    if not candidates:
+        return []
+
+    candidates = candidates[: plan.llm_candidate_limit]
+    plan_metadata = asdict(plan)
+    for result in candidates:
+        metadata = dict(result.metadata or {})
+        metadata["retrieval_plan"] = plan_metadata
+        result.metadata = metadata
+
+    active_client = rerank_client
+    if active_client is None:
+        active_client = build_material_search_rerank_client_from_env()
+    if active_client is None:
+        return None
+
+    payload = build_candidate_payload(query, candidates)
+    payload["retrieval_plan"] = plan_metadata
+    try:
+        decision_payload = active_client.rerank(payload)
+    except Exception:
+        return None
+    if not isinstance(decision_payload, dict) or not isinstance(decision_payload.get("results"), list):
+        return None
+
+    ranked = apply_llm_decisions(candidates, decision_payload, top_k=top_k)
+    return _finalize_results(ranked, top_k)
 
 
 def search_user_materials(
@@ -517,6 +898,8 @@ def search_user_materials(
     filters: dict[str, Any] | None = None,
     storage: MaterialStorage | None = None,
     mode: str = "hybrid",
+    *,
+    rerank_client: Any | None = None,
 ) -> list[MaterialSearchResult]:
     started_at = time.perf_counter()
     safe_user_id = resolve_user_id(user_id)
@@ -526,6 +909,25 @@ def search_user_materials(
     results: list[MaterialSearchResult] = []
     logged_error = False
     try:
+        if mode in {"llm", "hybrid_llm"}:
+            llm_results = _search_user_materials_with_llm(
+                user_id=safe_user_id,
+                query=query,
+                top_k=top_k,
+                filters=filters,
+                storage=active_storage,
+                rerank_client=rerank_client,
+            )
+            if llm_results is not None:
+                results = _expand_result_split_context(
+                    llm_results,
+                    storage=active_storage,
+                    user_id=safe_user_id,
+                    filters=filters,
+                )
+                return results
+            mode = "hybrid"
+
         if mode == "keyword":
             raw_results = search_user_materials_keyword(
                 safe_user_id,
@@ -574,6 +976,8 @@ def search_user_materials(
             storage=active_storage,
         )
         if not vector_results:
+            if (query or "").strip():
+                keyword_results = _filter_query_match_gate(keyword_results, process_query(query))
             results = _finalize_results(keyword_results, top_k)
             results = _expand_result_split_context(
                 results,
@@ -592,7 +996,7 @@ def search_user_materials(
             )
             return results
         results = _finalize_results(
-            _hybrid_results(keyword_results, vector_results, max(top_k * 8, 40)),
+            _hybrid_results(keyword_results, vector_results, max(top_k * 8, 40), query=query),
             top_k,
         )
         results = _expand_result_split_context(
@@ -627,7 +1031,7 @@ def search_user_materials(
                     results=results,
                     elapsed_ms=monotonic_ms(started_at),
                 )
-            elif mode in {"keyword", "vector", "hybrid"}:
+            elif mode in {"keyword", "vector", "hybrid", "llm", "hybrid_llm"}:
                 write_material_search_log(
                     user_id=safe_user_id,
                     query=query,

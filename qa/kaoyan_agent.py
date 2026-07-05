@@ -438,11 +438,20 @@ def extract_question(markdown: str, question_number: int) -> str:
 
 
 def extract_answer(markdown: str, question_number: int) -> str | None:
+    answer_column: int | None = None
     for line in markdown.splitlines():
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells and cells[0] == "题号":
+            for index, cell in enumerate(cells):
+                if cell in {"答案", "标准答案", "答案速查"}:
+                    answer_column = index
+                    break
+            continue
         if len(cells) >= 2 and cells[0] == str(question_number):
+            if answer_column is not None and answer_column < len(cells):
+                return cells[answer_column]
             return cells[1]
     return None
 

@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-SubjectName = Literal["math", "politics", "english", "cs408", "408", "unknown"]
+SubjectName = Literal["math", "politics", "english", "cs408", "408", "other", "unknown"]
 DocumentType = Literal["knowledge_notes", "exercise_notes", "outline", "table_like", "mixed", "unknown"]
 LanguageName = Literal["zh", "en", "mixed"]
 MarkerType = Literal[

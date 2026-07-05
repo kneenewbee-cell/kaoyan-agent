@@ -45,6 +45,8 @@ def search_user_materials_tool(
             "search_mode": result.metadata.get("search_mode", mode),
             "matched_by": result.metadata.get("matched_by", []),
             "score_kind": _score_kind(str(result.metadata.get("search_mode", mode))),
+            "llm_rerank": result.metadata.get("llm_rerank", {}),
+            "retrieval_plan": result.metadata.get("retrieval_plan", {}),
             "chunk_index": result.metadata.get("chunk_index", ""),
             "split_reason": result.metadata.get("split_reason", ""),
             "part_index": result.metadata.get("part_index", ""),
@@ -63,6 +65,8 @@ def search_user_materials_tool(
 def _score_kind(search_mode: str) -> str:
     if search_mode == "vector":
         return "vector_similarity"
+    if search_mode in {"llm", "hybrid_llm"}:
+        return "llm_rerank"
     if search_mode == "hybrid":
         return "rank_fusion"
     return "keyword_score"
@@ -74,6 +78,8 @@ def ingest_user_material(
     subject: str = "unknown",
     material_type: str = "unknown",
     use_llm_cleanup: bool = True,
+    use_llm_formula_cleanup: bool = False,
+    llm_formula_min_confidence: float = 0.8,
     enable_vector_index: bool = True,
 ) -> dict[str, Any]:
     result = MaterialIngestionService().ingest_file(
@@ -81,6 +87,10 @@ def ingest_user_material(
         user_id=resolve_user_id(user_id),
         subject=subject,
         material_type=material_type,
+        metadata={
+            "use_llm_formula_cleanup": use_llm_formula_cleanup,
+            "llm_formula_min_confidence": llm_formula_min_confidence,
+        },
         use_llm_cleanup=use_llm_cleanup,
         enable_vector_index=enable_vector_index,
     )

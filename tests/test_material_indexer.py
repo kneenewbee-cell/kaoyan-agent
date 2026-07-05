@@ -12,17 +12,17 @@ class MaterialKeywordIndexerTest(unittest.TestCase):
         plan = process_query("\u7f57\u5c14\u5b9a\u7406\u600e\u4e48\u8bc1\u660e")
 
         self.assertIn("\u7f57\u5c14\u5b9a\u7406", plan.term_weights)
-        self.assertGreater(plan.term_weights["\u7f57\u5c14\u5b9a\u7406"], plan.term_weights["\u5b9a\u7406"])
+        self.assertGreater(plan.term_weights["\u7f57\u5c14\u5b9a\u7406"], plan.term_weights["\u8bc1\u660e"])
         self.assertNotIn("\u600e\u4e48", plan.term_weights)
         self.assertNotIn("\u600e\u4e48\u8bc1", plan.term_weights)
 
-    def test_process_query_keeps_ngram_fallback_when_domain_term_is_missing(self) -> None:
+    def test_process_query_uses_domain_terms_without_ngram_fallback_noise(self) -> None:
         plan = process_query("\u5939\u903c\u51c6\u5219\u5982\u4f55\u4f7f\u7528")
 
         self.assertNotIn("\u5982\u4f55", plan.term_weights)
-        self.assertIn("\u5939\u903c", plan.term_weights)
-        self.assertIn("\u5939\u903c\u51c6", plan.term_weights)
         self.assertIn("\u5939\u903c\u51c6\u5219", plan.term_weights)
+        self.assertNotIn("\u5939\u903c", plan.term_weights)
+        self.assertNotIn("\u5939\u903c\u51c6", plan.term_weights)
 
     def test_process_query_uses_single_characters_only_as_last_resort(self) -> None:
         plan = process_query("\u89d2\u6709\u54ea\u4e9b\u5206\u7c7b")
@@ -114,13 +114,13 @@ class MaterialKeywordIndexerTest(unittest.TestCase):
         self.assertTrue(results)
         self.assertEqual(results[0][0].chunk_id, "morality_law")
 
-    def test_query_tokenizer_uses_2_3_4_grams_and_filters_function_words(self) -> None:
+    def test_query_tokenizer_uses_jieba_terms_and_filters_function_words(self) -> None:
         terms = tokenize_query("\u4e09\u89d2\u51fd\u6570\u5982\u4f55\u5316\u7b80")
 
-        self.assertIn("\u4e09\u89d2", terms)
-        self.assertIn("\u4e09\u89d2\u51fd", terms)
         self.assertIn("\u4e09\u89d2\u51fd\u6570", terms)
         self.assertIn("\u5316\u7b80", terms)
+        self.assertNotIn("\u4e09\u89d2", terms)
+        self.assertNotIn("\u4e09\u89d2\u51fd", terms)
         self.assertNotIn("\u5982\u4f55", terms)
         self.assertNotIn("\u5982\u4f55\u5316", terms)
         self.assertNotIn("\u5982\u4f55\u5316\u7b80", terms)
@@ -137,10 +137,83 @@ class MaterialKeywordIndexerTest(unittest.TestCase):
         terms = tokenize_query("\u6b27\u62c9\u578b\u5fae\u5206\u65b9\u7a0b\u4e00\u822c\u600e\u4e48\u5904\u7406")
 
         self.assertIn("\u5fae\u5206\u65b9\u7a0b", terms)
+        self.assertIn("\u6b27\u62c9\u578b", terms)
+        self.assertNotIn("\u5fae\u5206", terms)
         self.assertNotIn("\u4e00\u822c", terms)
         self.assertNotIn("\u5904\u7406", terms)
         self.assertNotIn("\u4e00\u822c\u600e", terms)
-        self.assertNotIn("\u5904\u7406", terms)
+        self.assertNotIn("\u62c9\u578b", terms)
+        self.assertNotIn("\u578b\u5fae", terms)
+        self.assertNotIn("\u5206\u65b9", terms)
+
+    def test_query_tokenizer_prefers_longest_overlapping_domain_terms(self) -> None:
+        integral_terms = tokenize_query("\u4e0d\u5b9a\u79ef\u5206\u6362\u5143\u6cd5\u4ec0\u4e48\u65f6\u5019\u7528\u51d1\u5fae\u5206")
+        ode_terms = tokenize_query("\u4e8c\u9636\u5e38\u7cfb\u6570\u975e\u9f50\u6b21\u65b9\u7a0b\u7684\u7279\u89e3\u5f62\u5f0f\u600e\u4e48\u8bbe")
+
+        self.assertIn("\u4e0d\u5b9a\u79ef\u5206", integral_terms)
+        self.assertIn("\u6362\u5143\u6cd5", integral_terms)
+        self.assertIn("\u51d1\u5fae\u5206", integral_terms)
+        self.assertNotIn("\u5b9a\u79ef\u5206", integral_terms)
+        self.assertNotIn("\u5fae\u5206", integral_terms)
+
+        self.assertIn("\u975e\u9f50\u6b21\u65b9\u7a0b", ode_terms)
+        self.assertNotIn("\u9f50\u6b21\u65b9\u7a0b", ode_terms)
+
+    def test_query_tokenizer_expands_high_confidence_domain_aliases(self) -> None:
+        math_plan = process_query("\u6b27\u62c9\u578b\u5fae\u5206\u65b9\u7a0b\u4e00\u822c\u600e\u4e48\u5904\u7406")
+        politics_plan = process_query("\u77db\u76fe\u5206\u6790\u6cd5\u4e3a\u4ec0\u4e48\u91cd\u8981")
+
+        self.assertIn("\u6b27\u62c9\u65b9\u7a0b", math_plan.terms)
+        self.assertIn("\u6b27\u62c9\u65b9\u7a0b", math_plan.phrase_terms)
+        self.assertIn("\u77db\u76fe\u5206\u6790\u65b9\u6cd5", politics_plan.terms)
+        self.assertIn("\u5bf9\u7acb\u7edf\u4e00\u89c4\u5f8b", politics_plan.terms)
+        self.assertIn("\u5bf9\u7acb\u7edf\u4e00\u89c4\u5f8b", politics_plan.phrase_terms)
+
+    def test_query_tokenizer_keeps_distribution_names_as_domain_terms(self) -> None:
+        terms = tokenize_query("\u6cca\u677e\u5206\u5e03\u7684\u6982\u7387\u600e\u4e48\u8ba1\u7b97")
+
+        self.assertIn("\u6cca\u677e\u5206\u5e03", terms)
+        self.assertNotIn("\u6cca\u677e", terms)
+        self.assertNotIn("\u5206\u5e03", terms)
+
+    def test_query_plan_adds_composite_alias_for_marxism_sinicization(self) -> None:
+        plan = process_query(
+            "\u9a6c\u514b\u601d\u4e3b\u4e49\u4e3a\u4ec0\u4e48\u8981\u548c\u4e2d\u56fd\u5b9e\u9645\u7ed3\u5408"
+        )
+
+        self.assertIn("\u9a6c\u514b\u601d\u4e3b\u4e49\u4e2d\u56fd\u5316", plan.terms)
+        self.assertIn("\u9a6c\u514b\u601d\u4e3b\u4e49\u4e2d\u56fd\u5316\u65f6\u4ee3\u5316", plan.phrase_terms)
+
+    def test_query_plan_keeps_united_front_as_domain_phrase(self) -> None:
+        plan = process_query("\u6297\u65e5\u6c11\u65cf\u7edf\u4e00\u6218\u7ebf\u600e\u4e48\u5f62\u6210")
+
+        self.assertIn("\u6297\u65e5\u6c11\u65cf\u7edf\u4e00\u6218\u7ebf", plan.phrase_terms)
+        self.assertNotIn("\u5f62\u6210", plan.phrase_terms)
+
+    def test_query_plan_keeps_chebyshev_inequality_as_domain_phrase(self) -> None:
+        terms = tokenize_query("\u5207\u6bd4\u96ea\u592b\u4e0d\u7b49\u5f0f\u7528\u4e8e\u4ec0\u4e48")
+
+        self.assertIn("\u5207\u6bd4\u96ea\u592b\u4e0d\u7b49\u5f0f", terms)
+        self.assertNotIn("\u6bd4\u96ea\u592b", terms)
+
+    def test_query_plan_keeps_separable_variable_as_domain_phrase(self) -> None:
+        terms = tokenize_query("\u53ef\u5206\u79bb\u53d8\u91cf\u7684\u4e00\u9636\u5fae\u5206\u65b9\u7a0b\u600e\u4e48\u89e3")
+
+        self.assertIn("\u53ef\u5206\u79bb\u53d8\u91cf", terms)
+        self.assertNotIn("\u5206\u79bb", terms)
+        self.assertNotIn("\u53d8\u91cf", terms)
+
+    def test_query_plan_adds_socialism_essence_aliases(self) -> None:
+        plan = process_query("\u793e\u4f1a\u4e3b\u4e49\u672c\u8d28\u7406\u8bba\u662f\u4ec0\u4e48")
+
+        self.assertIn("\u793e\u4f1a\u4e3b\u4e49\u672c\u8d28", plan.phrase_terms)
+        self.assertIn("\u4ec0\u4e48\u662f\u793e\u4f1a\u4e3b\u4e49", plan.terms)
+
+    def test_query_plan_adds_new_democratic_revolution_three_magic_weapons(self) -> None:
+        plan = process_query("\u65b0\u6c11\u4e3b\u4e3b\u4e49\u9769\u547d\u7684\u4e09\u5927\u6cd5\u5b9d\u6709\u54ea\u4e9b")
+
+        self.assertIn("\u4e09\u5927\u6cd5\u5b9d", plan.phrase_terms)
+        self.assertIn("\u65b0\u6c11\u4e3b\u4e3b\u4e49\u9769\u547d\u4e09\u5927\u6cd5\u5b9d", plan.terms)
 
     def test_chinese_query_matches_related_heading_terms(self) -> None:
         chunks = [
@@ -276,6 +349,49 @@ class MaterialKeywordIndexerTest(unittest.TestCase):
         self.assertTrue(results)
         self.assertEqual(results[0][0].chunk_id, "rolle")
         self.assertEqual([result[0].chunk_id for result in results], ["rolle"])
+
+    def test_formula_exact_bonus_beats_repeated_concept_text_for_formula_query(self) -> None:
+        chunks = [
+            Chunk(
+                chunk_id="formula",
+                material_id="mat_1",
+                user_id="tester",
+                chunk_index=0,
+                text="formula: P(A|B)=P(AB)/P(B).",
+                section_title="conditional probability formula",
+            ),
+            Chunk(
+                chunk_id="concept_repeat",
+                material_id="mat_1",
+                user_id="tester",
+                chunk_index=1,
+                text="P A B probability P A B probability P A B probability basic concept.",
+                section_title="conditional probability concept",
+            ),
+        ]
+
+        index_data = build_search_index(chunks)
+        results = search_in_index("P(A|B) probability", index_data, chunks, top_k=2)
+
+        self.assertTrue(results)
+        self.assertEqual(results[0][0].chunk_id, "formula")
+
+    def test_keyword_search_requires_explicit_morality_rule_term_for_rule_of_law_query(self) -> None:
+        chunks = [
+            Chunk(
+                chunk_id="law_relation_noise",
+                material_id="mat_1",
+                user_id="tester",
+                chunk_index=0,
+                text="\u6cd5\u5f8b\u662f\u4e0a\u5c42\u5efa\u7b51\u7684\u91cd\u8981\u7ec4\u6210\u90e8\u5206\uff0c\u8fd9\u91cc\u8ba8\u8bba\u7ecf\u6d4e\u5173\u7cfb\u3002",
+                section_title="\u7ecf\u6d4e\u57fa\u7840\u4e0e\u4e0a\u5c42\u5efa\u7b51\u7684\u5173\u7cfb",
+            )
+        ]
+
+        index_data = build_search_index(chunks)
+        results = search_in_index("\u6cd5\u6cbb\u548c\u5fb7\u6cbb\u5173\u7cfb", index_data, chunks, top_k=3)
+
+        self.assertEqual(results, [])
 
 
 if __name__ == "__main__":

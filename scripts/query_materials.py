@@ -48,7 +48,7 @@ def main() -> None:
         "--mode",
         type=str,
         default="hybrid",
-        choices=["keyword", "vector", "hybrid"],
+        choices=["keyword", "vector", "hybrid", "llm", "hybrid_llm"],
         help="Search mode, default: hybrid",
     )
     parser.add_argument(
@@ -68,7 +68,7 @@ def main() -> None:
         "--material-type",
         type=str,
         default=None,
-        choices=["lecture", "note", "exam", "wrong_book", "school_info", "unknown"],
+        choices=["textbook", "lecture", "exercise"],
         help="Optional material type filter",
     )
 

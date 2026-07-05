@@ -30,13 +30,35 @@ class Subject(str, Enum):
 
 
 class MaterialType(str, Enum):
+    TEXTBOOK = "textbook"
     LECTURE = "lecture"
-    NOTE = "note"
-    EXAM = "exam"
-    WRONG_BOOK = "wrong_book"
-    SCHOOL_INFO = "school_info"
-    OTHER = "other"
+    EXERCISE = "exercise"
     UNKNOWN = "unknown"
+
+
+ACTIVE_MATERIAL_TYPES = {
+    MaterialType.TEXTBOOK,
+    MaterialType.LECTURE,
+    MaterialType.EXERCISE,
+}
+
+LEGACY_MATERIAL_TYPE_MAP = {
+    "note": MaterialType.LECTURE,
+    "exam": MaterialType.EXERCISE,
+    "wrong_book": MaterialType.EXERCISE,
+    "school_info": MaterialType.LECTURE,
+    "other": MaterialType.LECTURE,
+}
+
+
+def normalize_material_type_value(value: Any, *, default: MaterialType = MaterialType.UNKNOWN) -> MaterialType:
+    raw_value = str(value or "").strip()
+    if not raw_value or raw_value == "auto":
+        return default
+    try:
+        return MaterialType(raw_value)
+    except ValueError:
+        return LEGACY_MATERIAL_TYPE_MAP.get(raw_value, default)
 
 
 class ParseStatus(str, Enum):
@@ -71,6 +93,7 @@ class DetectedFile:
     mime_type: str
     sha256: str
     size_bytes: int
+    page_count: int | None = None
 
 
 @dataclass
@@ -254,10 +277,14 @@ class MaterialManifest:
         "parse_report": None,
         "format_probe": None,
         "cleaning_strategy": None,
-        "document_zones": None,
-        "zone_report": None,
-        "pipeline_log": None,
-    })
+            "document_zones": None,
+            "zone_report": None,
+            "large_pdf_route_plan": None,
+            "large_pdf_sample_pages": None,
+            "large_pdf_chapter_plan": None,
+            "llm_cleaning_report": None,
+            "pipeline_log": None,
+        })
     chunk_count: int = 0
     asset_count: int = 0
     quality_status: str = "unknown"
@@ -307,6 +334,10 @@ class MaterialManifest:
         paths.setdefault("cleaning_strategy", None)
         paths.setdefault("document_zones", None)
         paths.setdefault("zone_report", None)
+        paths.setdefault("large_pdf_route_plan", None)
+        paths.setdefault("large_pdf_sample_pages", None)
+        paths.setdefault("large_pdf_chapter_plan", None)
+        paths.setdefault("llm_cleaning_report", None)
         paths.setdefault("pipeline_log", None)
         return cls(
             material_id=d["material_id"],
@@ -317,7 +348,7 @@ class MaterialManifest:
             sha256=d.get("sha256", ""),
             subject=Subject(d.get("subject", "unknown")),
             course=d.get("course"),
-            material_type=MaterialType(d.get("material_type", "unknown")),
+            material_type=normalize_material_type_value(d.get("material_type", "unknown")),
             parser_name=ParserName(d.get("parser_name", "unsupported")),
             parse_status=ParseStatus(d.get("parse_status", "pending")),
             paths=paths,

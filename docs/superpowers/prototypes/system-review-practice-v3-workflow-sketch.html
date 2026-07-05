@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>复习规划 + 练习单 v3 工作流草图</title>
+  <style>
+    :root {
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      color: #172033;
+      background: linear-gradient(180deg, #f5efe2 0%, #eef1f6 60%, #f8fafc 100%);
+      --ink: #172033;
+      --muted: #637083;
+      --line: rgba(23, 32, 51, 0.12);
+      --panel: rgba(255, 255, 255, 0.86);
+      --nav: #132238;
+      --green: #1c6e5b;
+      --blue: #2f64d6;
+      --gold: #c59a43;
+      --red: #b43636;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 13px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button.primary { border-color: var(--green); background: var(--green); color: #fff; }
+    button.dark { border-color: var(--ink); background: var(--ink); color: #fff; }
+    button.blue { border-color: var(--blue); background: var(--blue); color: #fff; }
+    button.warn { border-color: rgba(197,154,67,.35); background: rgba(197,154,67,.14); color: #7a5b17; }
+    button.danger { border-color: rgba(180,54,54,.28); background: rgba(180,54,54,.1); color: #8e2323; }
+    button:disabled { opacity: .56; cursor: not-allowed; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .side {
+      padding: 26px 20px;
+      color: #f4f7fb;
+      background: linear-gradient(180deg, #0d1a2b 0%, #162842 100%);
+    }
+    .side .brand { margin-bottom: 26px; }
+    .eyebrow {
+      margin: 0 0 7px;
+      color: #d3b96c;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    h1, h2, h3, h4 { margin: 0; }
+    .side h1 { font-family: Georgia, "STKaiti", serif; font-size: 32px; }
+    .side p { color: #c8d3df; line-height: 1.7; }
+    .nav { display: grid; gap: 10px; margin: 26px 0; }
+    .nav button {
+      width: 100%;
+      text-align: left;
+      border-color: rgba(255,255,255,.08);
+      background: rgba(255,255,255,.05);
+      color: #f4f7fb;
+      border-radius: 12px;
+      padding: 13px 16px;
+    }
+    .nav button.active {
+      background: linear-gradient(135deg, rgba(243,200,113,.22), rgba(28,110,91,.28));
+      box-shadow: inset 4px 0 0 rgba(243,200,113,.7);
+    }
+    .side-card {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255,255,255,.06);
+      color: #c8d3df;
+      line-height: 1.7;
+    }
+
+    .main {
+      padding: 28px;
+      min-width: 0;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .topbar p { margin: 8px 0 0; color: var(--muted); line-height: 1.6; }
+    .mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mode-tabs button.active { background: var(--green); border-color: var(--green); color: #fff; }
+
+    .page { display: none; gap: 16px; }
+    .page.active { display: grid; }
+    .panel, .card, .drawer, .modal {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 18px 40px rgba(33,45,72,.08);
+    }
+    .panel { padding: 16px; }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+    label { display: grid; gap: 6px; font-weight: 800; }
+    label span { color: var(--muted); font-size: 12px; }
+    select, input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(23,32,51,.08);
+      background: #fff;
+    }
+    .metric strong { display: block; font-size: 22px; }
+    .metric span { color: var(--muted); font-size: 12px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(330px, 34%);
+      gap: 16px;
+      align-items: start;
+    }
+    .task-list, .question-list { display: grid; gap: 12px; }
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 0 2px;
+    }
+    .card { padding: 14px; display: grid; gap: 10px; }
+    .card.selected { border-color: rgba(28,110,91,.45); box-shadow: inset 3px 0 0 var(--green); }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .meta, .chips, .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .meta { color: var(--muted); font-size: 12px; }
+    .chip {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(23,32,51,.07);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .chip.question { background: rgba(47,100,214,.1); color: #244c9f; }
+    .chip.practice { background: rgba(28,110,91,.12); color: #145544; }
+    .chip.topic { background: rgba(197,154,67,.15); color: #765915; }
+    .chip.overdue { background: rgba(180,54,54,.12); color: #8e2323; }
+    .chip.today { background: rgba(197,154,67,.18); color: #7a5b17; }
+    .chip.future { background: rgba(47,100,214,.1); color: #244c9f; }
+    .card p { margin: 0; line-height: 1.65; color: #2c374a; }
+
+    .drawer { padding: 16px; position: sticky; top: 20px; display: grid; gap: 14px; }
+    .drawer section {
+      border-bottom: 1px solid rgba(23,32,51,.08);
+      padding-bottom: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .drawer section:last-child { border-bottom: 0; padding-bottom: 0; }
+    .drawer .empty { color: var(--muted); background: rgba(23,32,51,.04); border-radius: 8px; padding: 14px; }
+
+    .modal-wrap {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      background: rgba(12,20,34,.48);
+    }
+    .modal-wrap.open { display: grid; }
+    .modal {
+      width: min(860px, 100%);
+      max-height: calc(100vh - 60px);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+    .modal header, .modal footer {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      border-bottom: 1px solid rgba(23,32,51,.08);
+    }
+    .modal footer { border-top: 1px solid rgba(23,32,51,.08); border-bottom: 0; }
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      display: grid;
+      gap: 16px;
+    }
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-weight: 800;
+    }
+    .check-row input { width: auto; }
+    .candidate-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .candidate { padding: 12px; border: 1px solid rgba(23,32,51,.08); border-radius: 8px; background: #fff; }
+    .candidate p { margin: 6px 0 0; color: var(--muted); line-height: 1.55; }
+
+    .practice-detail {
+      display: none;
+      gap: 16px;
+    }
+    .practice-detail.active { display: grid; }
+    .practice-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .practice-paper {
+      display: grid;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 18px 40px rgba(33,45,72,.08);
+    }
+    .practice-paper-intro {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 18px 10px;
+      border-bottom: 1px solid rgba(23,32,51,.08);
+    }
+    .practice-paper-intro p { margin: 6px 0 0; color: var(--muted); line-height: 1.6; }
+    .practice-question {
+      display: grid;
+      gap: 12px;
+      padding: 22px 18px;
+      border-bottom: 1px solid rgba(23,32,51,.1);
+    }
+    .practice-question:last-child {
+      border-bottom: 0;
+    }
+    .question-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+    }
+    .question-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .question-title h3 {
+      margin-right: 4px;
+    }
+    .question-menu {
+      position: relative;
+    }
+    .question-menu summary {
+      list-style: none;
+      display: inline-grid;
+      place-items: center;
+      width: 38px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+    }
+    .question-menu summary::-webkit-details-marker {
+      display: none;
+    }
+    .question-menu-panel {
+      position: absolute;
+      right: 0;
+      top: 40px;
+      z-index: 3;
+      width: 170px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 14px 32px rgba(15,23,42,.18);
+    }
+    .question-menu-panel button {
+      width: 100%;
+      padding: 8px 10px;
+      text-align: left;
+      background: rgba(23,32,51,.04);
+    }
+    .question-body {
+      display: grid;
+      gap: 12px;
+      line-height: 1.75;
+    }
+    .question-body p {
+      margin: 0;
+    }
+    .formula {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(23,32,51,.04);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18px;
+      overflow-x: auto;
+    }
+    .image-placeholder {
+      width: min(460px, 100%);
+      aspect-ratio: 16 / 9;
+      display: grid;
+      place-items: center;
+      border: 1px dashed rgba(23,32,51,.22);
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(28,110,91,.08), rgba(47,100,214,.06));
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .note {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(47,100,214,.08);
+      color: #244c9f;
+      line-height: 1.65;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .layout, .filters, .summary, .candidate-grid { grid-template-columns: 1fr; }
+      .drawer { position: static; }
+      .practice-paper-intro, .question-line { grid-template-columns: 1fr; display: grid; }
+      .question-menu-panel { left: 0; right: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <p class="eyebrow">KAOYAN AGENT</p>
+        <h1>考研助手</h1>
+        <p>v3 草图重点：统一“开始复习”，让单题、练习单、知识点都走同一套复习任务模型。</p>
+      </div>
+      <nav class="nav">
+        <button>考研问答</button>
+        <button>资料库</button>
+        <button class="active">复习规划</button>
+        <button>院校查询</button>
+      </nav>
+      <div class="side-card">
+        任务统一模型：target_type + target_id。页面只放一个主动作“开始复习”，具体打开单题、练习单或知识点由系统判断。
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">REVIEW WORKFLOW V3</p>
+          <h2>复习规划 + 练习单工作流草图</h2>
+          <p>三个画面：复习规划页、生成同类训练弹窗、练习单详情页。按钮都按入口、结果、反向操作设计。</p>
+        </div>
+        <div class="mode-tabs">
+          <button class="active" data-view="reviewPage">复习规划页</button>
+          <button data-open-practice-modal>生成同类训练</button>
+          <button data-view="practicePage">练习单详情页</button>
+        </div>
+      </div>
+
+      <section id="reviewPage" class="page active">
+        <section class="panel">
+          <div class="filters">
+            <label>
+              <span>学科</span>
+              <select>
+                <option>全部学科</option>
+                <option selected>数学</option>
+                <option>政治</option>
+                <option>英语</option>
+                <option>408</option>
+                <option>其他</option>
+              </select>
+            </label>
+            <label>
+              <span>任务类型</span>
+              <select>
+                <option>全部类型</option>
+                <option>单题</option>
+                <option>练习单</option>
+                <option>知识点</option>
+              </select>
+            </label>
+            <label>
+              <span>时间状态</span>
+              <select>
+                <option>全部</option>
+                <option>逾期</option>
+                <option selected>今日 + 未来</option>
+                <option>已完成</option>
+                <option>已取消</option>
+              </select>
+            </label>
+            <label>
+              <span>资料库</span>
+              <select>
+                <option>全部资料库</option>
+                <option selected>数一历年真题</option>
+              </select>
+            </label>
+            <label>
+              <span>关键词</span>
+              <input value="" placeholder="题号、知识点、备注">
+            </label>
+          </div>
+        </section>
+
+        <section class="summary">
+          <div class="metric"><strong>2</strong><span>今日</span></div>
+          <div class="metric"><strong>1</strong><span>逾期</span></div>
+          <div class="metric"><strong>4</strong><span>未来</span></div>
+          <div class="metric"><strong>3</strong><span>练习单</span></div>
+          <div class="metric"><strong>8</strong><span>本周总量</span></div>
+        </section>
+
+        <div class="layout">
+          <section class="task-list">
+            <div class="section-title"><span>今日任务</span><span>2</span></div>
+            <article class="card selected" data-task="question">
+              <div class="card-head">
+                <div>
+                  <h3>2025 数一 Q1 复习</h3>
+                  <div class="meta"><span>到期：2026-07-03</span><span>数一历年真题</span><span>普通</span></div>
+                </div>
+                <span class="chip question">单题</span>
+              </div>
+              <p>已知函数 f(x)=...，判断函数奇偶性与极限性质。</p>
+              <div class="chips">
+                <span class="chip today">今日</span>
+                <span class="chip">极限</span>
+                <span class="chip">导数</span>
+              </div>
+              <div class="actions">
+                <button class="primary" data-start-review="question">开始复习</button>
+                <button class="dark">完成</button>
+                <button class="warn">推迟</button>
+                <button class="danger">取消</button>
+                <button class="danger">删除</button>
+              </div>
+            </article>
+
+            <article class="card" data-task="practice">
+              <div class="card-head">
+                <div>
+                  <h3>2025 数一 Q1 同类训练</h3>
+                  <div class="meta"><span>到期：2026-07-03</span><span>5 题</span><span>高优先级</span></div>
+                </div>
+                <span class="chip practice">练习单</span>
+              </div>
+              <p>围绕极限、导数、积分生成的同类训练，来自数一历年真题。</p>
+              <div class="chips">
+                <span class="chip today">今日</span>
+                <span class="chip">极限</span>
+                <span class="chip">积分</span>
+                <span class="chip">微分方程</span>
+              </div>
+              <div class="actions">
+                <button class="primary" data-start-review="practice">开始复习</button>
+                <button class="dark">完成</button>
+                <button class="warn">推迟</button>
+                <button class="danger">取消</button>
+                <button class="danger">删除</button>
+              </div>
+            </article>
+
+            <div class="section-title"><span>未来任务</span><span>1</span></div>
+            <article class="card" data-task="topic">
+              <div class="card-head">
+                <div>
+                  <h3>中值定理知识点复习</h3>
+                  <div class="meta"><span>到期：2026-07-05</span><span>知识点库</span><span>普通</span></div>
+                </div>
+                <span class="chip topic">知识点</span>
+              </div>
+              <p>复习罗尔定理、拉格朗日中值定理、柯西中值定理的区别与使用条件。</p>
+              <div class="actions">
+                <button class="primary" data-start-review="topic">开始复习</button>
+                <button class="dark">完成</button>
+                <button class="warn">推迟</button>
+                <button class="danger">取消</button>
+                <button class="danger">删除</button>
+              </div>
+            </article>
+          </section>
+
+          <aside id="reviewDrawer" class="drawer">
+            <section>
+              <p class="eyebrow">TASK DETAIL</p>
+              <h3>2025 数一 Q1 复习</h3>
+              <div class="chips">
+                <span class="chip question">单题</span>
+                <span class="chip today">今日</span>
+                <span class="chip">数学</span>
+              </div>
+            </section>
+            <section>
+              <h4>按钮含义</h4>
+              <div class="note">
+                “开始复习”是统一入口：单题打开题目详情；练习单打开练习单详情；知识点打开知识点详情。这里不再出现“打开题目/打开练习单”两个按钮。
+              </div>
+            </section>
+            <section>
+              <h4>结果流向</h4>
+              <p class="meta">完成：写入 completed_at；推迟：修改 due_at；取消：status=cancelled；删除：移除任务记录。</p>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="practicePage" class="page practice-detail">
+        <section class="panel">
+          <div class="practice-head">
+            <div>
+              <p class="eyebrow">PRACTICE SET</p>
+              <h2>2025 数一 Q1 同类训练</h2>
+              <p class="meta">5 题 · 数学 · 数一历年真题 · 匹配知识点：极限 / 导数 / 积分 / 级数 / 微分方程</p>
+            </div>
+            <div class="actions">
+              <button data-view="reviewPage">返回复习规划</button>
+              <button class="dark">加入复习规划</button>
+              <button>打印/另存 PDF</button>
+              <button class="danger">删除练习单</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="practice-paper">
+          <div class="practice-paper-intro">
+            <div>
+              <h3>练习题</h3>
+              <p>题目连续排版，像一张练习卷；每题只保留状态和一个轻量操作入口，点击“···”后才显示查看详情、错题、掌握等单题操作。</p>
+            </div>
+            <div class="chips">
+              <span class="chip practice">5 题</span>
+              <span class="chip">建议 25 分钟</span>
+              <span class="chip today">复习中</span>
+            </div>
+          </div>
+
+          <article class="practice-question">
+            <div class="question-line">
+              <div>
+                <div class="question-title">
+                  <h3>一、2025 数一 Q1</h3>
+                  <span class="chip question">选择题</span>
+                  <span class="chip">未掌握</span>
+                </div>
+                <div class="meta"><span>数一历年真题</span><span>极限 / 导数 / 积分</span></div>
+              </div>
+              <details class="question-menu">
+                <summary aria-label="题目操作">···</summary>
+                <div class="question-menu-panel">
+                  <button>查看详情</button>
+                  <button>加入错题</button>
+                  <button>标记掌握</button>
+                  <button>加入复习规划</button>
+                </div>
+              </details>
+            </div>
+            <div class="question-body">
+              <p>已知函数 f(x), g(x)，判断函数奇偶性与极限性质。这里展示完整题干，而不是只显示题号。</p>
+              <div class="formula">f(x)=∫<sub>0</sub><sup>x</sup> e<sup>t²</sup> sin t dt，g(x)=(∫<sub>0</sub><sup>x</sup> e<sup>t²</sup>dt)sin²x</div>
+            </div>
+          </article>
+
+          <article class="practice-question">
+            <div class="question-line">
+              <div>
+                <div class="question-title">
+                  <h3>二、2009 数一 Q3</h3>
+                  <span class="chip question">选择题</span>
+                  <span class="chip wrong">错题</span>
+                </div>
+                <div class="meta"><span>数一历年真题</span><span>图像 / 积分函数 / 单调性</span></div>
+              </div>
+              <details class="question-menu">
+                <summary aria-label="题目操作">···</summary>
+                <div class="question-menu-panel">
+                  <button>查看详情</button>
+                  <button>移出错题</button>
+                  <button>标记掌握</button>
+                  <button>加入复习规划</button>
+                </div>
+              </details>
+            </div>
+            <div class="question-body">
+              <p>设函数 y=f(x) 在区间 [-1,3] 上的图形如图所示，则函数 F(x)=∫0^x f(t)dt 的图形为（ ）。</p>
+              <div class="image-placeholder">题图按原题位置显示，不集中堆到最后</div>
+            </div>
+          </article>
+
+          <article class="practice-question">
+            <div class="question-line">
+              <div>
+                <div class="question-title">
+                  <h3>三、2024 数一 Q18</h3>
+                  <span class="chip topic">解答题</span>
+                  <span class="chip">学习中</span>
+                </div>
+                <div class="meta"><span>数一历年真题</span><span>空间几何 / 证明</span></div>
+              </div>
+              <details class="question-menu">
+                <summary aria-label="题目操作">···</summary>
+                <div class="question-menu-panel">
+                  <button>查看详情</button>
+                  <button>加入错题</button>
+                  <button>标记掌握</button>
+                  <button>加入复习规划</button>
+                </div>
+              </details>
+            </div>
+            <div class="question-body">
+              <p>如图，四棱锥 P-ABCD 中，底面 ABCD 是平行四边形，求证并求高。</p>
+              <div class="image-placeholder">几何图随题干位置渲染</div>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="practiceModal" class="modal-wrap">
+    <section class="modal">
+      <header>
+        <div>
+          <p class="eyebrow">GENERATE PRACTICE</p>
+          <h3>生成同类训练</h3>
+          <p class="meta">从当前题、已选题或当前筛选结果出发，生成可追踪练习单。</p>
+        </div>
+        <button data-close-modal>关闭</button>
+      </header>
+      <div class="modal-body">
+        <section class="panel">
+          <div class="filters">
+            <label>
+              <span>题源</span>
+              <select>
+                <option selected>当前题：2025 数一 Q1</option>
+                <option>已勾选题目</option>
+                <option>当前筛选结果</option>
+              </select>
+            </label>
+            <label>
+              <span>数量</span>
+              <select>
+                <option selected>5 题</option>
+                <option>10 题</option>
+                <option>自定义</option>
+              </select>
+            </label>
+            <label>
+              <span>资料库</span>
+              <select>
+                <option selected>数一历年真题</option>
+                <option>全部数学库</option>
+              </select>
+            </label>
+            <label>
+              <span>年份</span>
+              <select>
+                <option selected>全部年份</option>
+                <option>近 5 年</option>
+                <option>自定义</option>
+              </select>
+            </label>
+            <label>
+              <span>题型</span>
+              <select>
+                <option selected>同题型优先</option>
+                <option>严格同题型</option>
+                <option>不限题型</option>
+              </select>
+            </label>
+          </div>
+        </section>
+        <section class="panel">
+          <h4>知识点筛选</h4>
+          <div class="chips" style="margin-top:10px">
+            <span class="chip practice">极限 ×</span>
+            <span class="chip practice">导数 ×</span>
+            <span class="chip practice">积分 ×</span>
+            <button>添加知识点</button>
+          </div>
+        </section>
+        <section class="panel">
+          <h4>排除条件</h4>
+          <div class="chips" style="margin-top:10px">
+            <label class="check-row"><input type="checkbox" checked> 排除当前题</label>
+            <label class="check-row"><input type="checkbox" checked> 排除已掌握</label>
+            <label class="check-row"><input type="checkbox"> 排除错题</label>
+            <label class="check-row"><input type="checkbox"> 只看收藏题</label>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="card-head">
+            <h4>候选预览</h4>
+            <span class="meta">按共享知识点、同题型、同资料库排序</span>
+          </div>
+          <div class="candidate-grid" style="margin-top:12px">
+            <article class="candidate"><strong>2025 数一 Q2</strong><p>共享：极限 / 导数 / 积分 · 同题型</p></article>
+            <article class="candidate"><strong>2009 数一 Q3</strong><p>共享：图像 / 积分函数 · 近似知识点</p></article>
+            <article class="candidate"><strong>2024 数一 Q18</strong><p>共享：综合解答 · 放宽题型补足</p></article>
+            <article class="candidate"><strong>2021 数一 Q10</strong><p>共享：级数 / 收敛性 · 同资料库</p></article>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <div class="meta">生成后保存为 practice_set，可加入复习规划。</div>
+        <div class="actions">
+          <button data-close-modal>取消</button>
+          <button class="primary" data-generate-practice>生成练习单</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    const pages = [...document.querySelectorAll(".page")];
+    const viewButtons = [...document.querySelectorAll("[data-view]")];
+    const modal = document.querySelector("#practiceModal");
+
+    function showView(id) {
+      pages.forEach((page) => page.classList.toggle("active", page.id === id));
+      viewButtons.forEach((button) => button.classList.toggle("active", button.dataset.view === id));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    viewButtons.forEach((button) => {
+      button.addEventListener("click", () => showView(button.dataset.view));
+    });
+
+    document.querySelector("[data-open-practice-modal]").addEventListener("click", () => {
+      modal.classList.add("open");
+    });
+
+    document.querySelectorAll("[data-close-modal]").forEach((button) => {
+      button.addEventListener("click", () => modal.classList.remove("open"));
+    });
+
+    document.querySelector("[data-generate-practice]").addEventListener("click", () => {
+      modal.classList.remove("open");
+      showView("practicePage");
+    });
+
+    document.querySelectorAll("[data-start-review]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const type = button.dataset.startReview;
+        const drawer = document.querySelector("#reviewDrawer");
+        if (type === "practice") {
+          showView("practicePage");
+          return;
+        }
+        if (type === "question") {
+          drawer.innerHTML = `
+            <section>
+              <p class="eyebrow">QUESTION REVIEW</p>
+              <h3>2025 数一 Q1</h3>
+              <div class="chips"><span class="chip question">单题</span><span class="chip today">复习中</span></div>
+            </section>
+            <section><h4>题目</h4><p>这里进入单题复习视图，沿用系统题目详情抽屉。</p></section>
+            <section><h4>动作</h4><div class="actions"><button class="dark">完成本次复习</button><button>返回任务</button></div></section>
+          `;
+          return;
+        }
+        drawer.innerHTML = `
+          <section>
+            <p class="eyebrow">TOPIC REVIEW</p>
+            <h3>中值定理</h3>
+            <div class="chips"><span class="chip topic">知识点</span><span class="chip future">复习中</span></div>
+          </section>
+          <section><h4>知识点详情</h4><p>这里未来进入知识点复习视图：定义、公式、常见题型、关联真题。</p></section>
+          <section><h4>动作</h4><div class="actions"><button class="dark">完成本次复习</button><button>返回任务</button></div></section>
+        `;
+      });
+    });
+  </script>
+</body>
+</html>

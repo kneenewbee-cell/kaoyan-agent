@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import re
+import logging
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+try:
+    import jieba
+except ImportError:  # pragma: no cover - dependency is declared, fallback keeps import safe.
+    jieba = None
 
-TOKENIZER_VERSION = "cjk_ngram_v5_numbered_labels"
-NGRAM_SIZES = (2, 3, 4)
-TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{2,}|[\u4e00-\u9fff]")
+TOKENIZER_VERSION = "jieba_v7_domain_composite_aliases"
+TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]+")
+TOKEN_KEEP_RE = re.compile(r"^[A-Za-z0-9_]+$|^[\u4e00-\u9fff]+$")
 STRUCTURED_LABEL_RE = re.compile(
     r"(?:\u8003\u70b9|\u5178\u578b|\u4f8b|\u9898\u578b|\u91cd\u96be\u70b9|\u6613\u9519\u70b9|\u51fa\u9898\u89d2\u5ea6|\u77e5\u8bc6\u7ec4)\s*"
     r"(?:[0-9]+|[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e]+)"
@@ -28,7 +33,26 @@ QUERY_ALIASES = {
     "\u6cd5\u5236": ("\u6cd5\u5f8b", "\u6cd5\u6cbb"),
     "\u6cd5\u6cbb": ("\u6cd5\u5f8b",),
     "\u6cd5\u5f8b": ("\u6cd5\u6cbb",),
+    "\u6b27\u62c9\u578b": ("\u6b27\u62c9\u65b9\u7a0b",),
+    "\u975e\u9f50\u6b21\u65b9\u7a0b": ("\u975e\u9f50\u6b21\u7ebf\u6027\u5fae\u5206\u65b9\u7a0b", "\u5e38\u7cfb\u6570\u975e\u9f50\u6b21\u7ebf\u6027\u5fae\u5206\u65b9\u7a0b"),
+    "\u53d8\u91cf\u53ef\u5206\u79bb": ("\u53ef\u5206\u79bb\u53d8\u91cf",),
+    "\u77db\u76fe\u5206\u6790\u6cd5": ("\u77db\u76fe\u5206\u6790\u65b9\u6cd5", "\u5bf9\u7acb\u7edf\u4e00\u89c4\u5f8b"),
+    "\u793e\u4f1a\u4e3b\u4e49\u672c\u8d28": ("\u4ec0\u4e48\u662f\u793e\u4f1a\u4e3b\u4e49", "\u600e\u6837\u5efa\u8bbe\u793e\u4f1a\u4e3b\u4e49"),
 }
+COMPOSITE_QUERY_ALIASES = (
+    (
+        ("\u9a6c\u514b\u601d\u4e3b\u4e49", "\u4e2d\u56fd"),
+        ("\u9a6c\u514b\u601d\u4e3b\u4e49\u4e2d\u56fd\u5316", "\u9a6c\u514b\u601d\u4e3b\u4e49\u4e2d\u56fd\u5316\u65f6\u4ee3\u5316"),
+    ),
+    (
+        ("\u793e\u4f1a\u4e3b\u4e49", "\u672c\u8d28"),
+        ("\u793e\u4f1a\u4e3b\u4e49\u672c\u8d28", "\u4ec0\u4e48\u662f\u793e\u4f1a\u4e3b\u4e49", "\u600e\u6837\u5efa\u8bbe\u793e\u4f1a\u4e3b\u4e49"),
+    ),
+    (
+        ("\u65b0\u6c11\u4e3b\u4e3b\u4e49\u9769\u547d", "\u4e09\u5927\u6cd5\u5b9d"),
+        ("\u4e09\u5927\u6cd5\u5b9d", "\u65b0\u6c11\u4e3b\u4e3b\u4e49\u9769\u547d\u4e09\u5927\u6cd5\u5b9d"),
+    ),
+)
 LEXICON_DIR = Path(__file__).resolve().parent / "lexicons"
 
 
@@ -70,23 +94,28 @@ def _is_cjk(text: str) -> bool:
     return bool(re.fullmatch(r"[\u4e00-\u9fff]+", text or ""))
 
 
-def _tokenize_cjk_run(text: str) -> list[str]:
-    if not text:
-        return []
-
-    tokens: list[str] = []
-    if len(text) <= 12:
-        tokens.append(text)
-    for size in NGRAM_SIZES:
-        if len(text) >= size:
-            tokens.extend(text[index : index + size] for index in range(len(text) - size + 1))
-    tokens.extend(text)
-    return tokens
-
-
 def _domain_terms_in_text(text: str) -> list[str]:
     lowered = (text or "").lower()
-    return [term for term in domain_terms() if term and term in lowered]
+    selected: list[str] = []
+    occupied_spans: list[tuple[int, int]] = []
+
+    for term in domain_terms():
+        if not term:
+            continue
+        start = 0
+        while True:
+            index = lowered.find(term, start)
+            if index < 0:
+                break
+            span = (index, index + len(term))
+            overlaps = any(max(span[0], used[0]) < min(span[1], used[1]) for used in occupied_spans)
+            if not overlaps:
+                selected.append(term)
+                occupied_spans.append(span)
+                break
+            start = index + 1
+
+    return selected
 
 
 def _structured_label_terms_in_text(text: str) -> list[str]:
@@ -110,7 +139,18 @@ def _drop_stopwords(tokens: list[str]) -> list[str]:
     return [token for token in tokens if token not in stopword_set]
 
 
-def _tokenize_raw(text: str) -> list[str]:
+@lru_cache(maxsize=1)
+def _configure_jieba() -> bool:
+    if jieba is None:
+        return False
+    jieba.setLogLevel(logging.WARN)
+    for term in [*domain_terms(), *STRUCTURED_LABEL_WORDS]:
+        if term and _is_cjk(term):
+            jieba.add_word(term, freq=2_000_000)
+    return True
+
+
+def _fallback_tokenize_raw(text: str) -> list[str]:
     tokens: list[str] = []
     for token in TOKEN_RE.findall(text or ""):
         token = token.strip().lower()
@@ -119,9 +159,25 @@ def _tokenize_raw(text: str) -> list[str]:
         if _is_cjk(token):
             for segment in CONNECTOR_CHAR_RE.split(token):
                 if segment:
-                    tokens.extend(_tokenize_cjk_run(segment))
+                    tokens.append(segment)
         else:
             tokens.append(token)
+    return tokens
+
+
+def _tokenize_raw(text: str) -> list[str]:
+    if not _configure_jieba():
+        return _fallback_tokenize_raw(text)
+
+    tokens: list[str] = []
+    for piece in jieba.cut(text or "", HMM=True):
+        piece = piece.strip().lower()
+        if not piece:
+            continue
+        if TOKEN_KEEP_RE.fullmatch(piece):
+            tokens.append(piece)
+            continue
+        tokens.extend(match.group(0).lower() for match in TOKEN_RE.finditer(piece))
     return tokens
 
 
@@ -137,6 +193,15 @@ def _expand_query_aliases(tokens: list[str]) -> list[str]:
                 expanded.append(alias)
                 seen.add(alias)
     return expanded
+
+
+def _composite_alias_terms(text: str) -> tuple[str, ...]:
+    compact = "".join((text or "").lower().split())
+    aliases: list[str] = []
+    for triggers, replacements in COMPOSITE_QUERY_ALIASES:
+        if all(trigger in compact for trigger in triggers):
+            aliases.extend(replacements)
+    return tuple(dict.fromkeys(aliases))
 
 
 def tokenize_document(text: str, *, drop_function_words: bool = True) -> list[str]:
@@ -183,8 +248,15 @@ def process_query(query: str) -> QueryPlan:
     cleaned = _remove_stopword_phrases(query)
     raw_terms = _expand_query_aliases(_drop_stopwords(_tokenize_raw(cleaned)))
     structured_terms = tuple(_structured_label_terms_in_text(cleaned))
+    composite_terms = _composite_alias_terms(cleaned)
+    domain_term_set = set(domain_terms())
     phrase_terms = tuple(
-        dict.fromkeys([*structured_terms, *(term for term in _domain_terms_in_text(cleaned) if term not in stopwords())])
+        dict.fromkeys([
+            *structured_terms,
+            *composite_terms,
+            *(term for term in _domain_terms_in_text(cleaned) if term not in stopwords()),
+            *(term for term in raw_terms if term in domain_term_set and term not in stopwords()),
+        ])
     )
 
     ordered_terms: list[str] = []

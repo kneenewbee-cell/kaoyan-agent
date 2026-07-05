@@ -10,6 +10,17 @@ from .schemas import Chunk, MaterialManifest, MaterialType, ParseStatus, ParserN
 from .security import ensure_within_base, resolve_material_id, resolve_user_id
 
 DEFAULT_USER_MATERIALS_DIR: Path = Path(__file__).resolve().parents[1] / "data" / "user_materials"
+SUBJECT_DIRS = {Subject.MATH.value, Subject.POLITICS.value, Subject.COMPUTER_408.value, Subject.ENGLISH.value, Subject.OTHER.value}
+
+
+def subject_dir_name(subject: str | Subject | None) -> str:
+    raw = subject.value if isinstance(subject, Subject) else str(subject or "")
+    normalized = raw.strip().lower()
+    if normalized == "cs408":
+        normalized = Subject.COMPUTER_408.value
+    if normalized in SUBJECT_DIRS:
+        return normalized
+    return Subject.OTHER.value
 
 
 class MaterialStorage:
@@ -27,12 +38,28 @@ class MaterialStorage:
         safe_user_id = resolve_user_id(user_id)
         safe_material_id = resolve_material_id(material_id)
         user_dir = self.user_dir(safe_user_id)
+
+        legacy_target = user_dir / safe_material_id
+        ensure_within_base(user_dir, legacy_target)
+        if legacy_target.exists():
+            return legacy_target
+
+        for subject_dir in sorted(SUBJECT_DIRS):
+            candidate = user_dir / subject_dir / safe_material_id
+            ensure_within_base(user_dir, candidate)
+            if candidate.exists():
+                return candidate
+
         target = user_dir / safe_material_id
         ensure_within_base(user_dir, target)
         return target
 
-    def create_material_dir(self, user_id: str, material_id: str) -> Path:
-        root = self.material_dir(user_id, material_id)
+    def create_material_dir(self, user_id: str, material_id: str, subject: str | Subject | None = None) -> Path:
+        safe_user_id = resolve_user_id(user_id)
+        safe_material_id = resolve_material_id(material_id)
+        user_dir = self.user_dir(safe_user_id)
+        root = user_dir / subject_dir_name(subject) / safe_material_id
+        ensure_within_base(user_dir, root)
         for sub_dir in ["original", "parsed", "assets/images", "chunks", "index"]:
             (root / sub_dir).mkdir(parents=True, exist_ok=True)
         return root
@@ -75,6 +102,22 @@ class MaterialStorage:
         target.write_text(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
         return target
 
+    def move_material_to_subject(self, user_id: str, material_id: str, subject: str | Subject) -> Path:
+        safe_user_id = resolve_user_id(user_id)
+        safe_material_id = resolve_material_id(material_id)
+        user_dir = self.user_dir(safe_user_id)
+        source = self.material_dir(safe_user_id, safe_material_id)
+        target = user_dir / subject_dir_name(subject) / safe_material_id
+        ensure_within_base(user_dir, source)
+        ensure_within_base(user_dir, target)
+        if source.resolve() == target.resolve():
+            return source
+        if target.exists():
+            raise FileExistsError(f"Material target already exists: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source), str(target))
+        return target
+
     def load_manifest(self, user_id: str, material_id: str) -> MaterialManifest | None:
         target = self.material_dir(user_id, material_id) / "manifest.json"
         if not target.exists():
@@ -87,10 +130,16 @@ class MaterialStorage:
             return []
 
         manifests: list[MaterialManifest] = []
-        for material_dir in sorted(user_dir.iterdir()):
-            if not material_dir.is_dir():
+        material_dirs: list[Path] = []
+        for child in sorted(user_dir.iterdir()):
+            if not child.is_dir():
                 continue
+            if child.name in SUBJECT_DIRS:
+                material_dirs.extend(sorted(candidate for candidate in child.iterdir() if candidate.is_dir()))
+            else:
+                material_dirs.append(child)
 
+        for material_dir in material_dirs:
             manifest_path = material_dir / "manifest.json"
             if not manifest_path.exists():
                 manifests.append(

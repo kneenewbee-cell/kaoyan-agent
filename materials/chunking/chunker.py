@@ -34,6 +34,7 @@ class _MainSection:
     end_line: int
     level: int = 0
     split_reason: str = "section"
+    problem_group: dict[str, Any] | None = None
 
 
 CATALOG_ZONE_MIN_CONFIDENCE = 0.65
@@ -212,6 +213,39 @@ def _split_main_sections(markdown: str, main_level: int, *, document_zones: Any 
     return sections
 
 
+def _problem_group_sections(markdown: str, problem_groups: list[dict[str, Any]] | None) -> list[_MainSection]:
+    if not problem_groups or len(problem_groups) < 2:
+        return []
+    lines = markdown.splitlines()
+    sections: list[_MainSection] = []
+    for group in problem_groups:
+        try:
+            start = max(int(group["start_line"]) - 1, 0)
+            end = min(int(group["end_line"]) - 1, len(lines) - 1)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start < 0 or end < start or start >= len(lines):
+            continue
+        content = "\n".join(lines[start : end + 1]).strip()
+        if not content:
+            continue
+        title = str(group.get("title") or "").strip() or None
+        heading_path = list(group.get("heading_path") or ([title] if title else []))
+        sections.append(
+            _MainSection(
+                title=title,
+                heading_path=heading_path,
+                content=content,
+                start_line=start,
+                end_line=end,
+                level=3,
+                split_reason="problem_group",
+                problem_group=group,
+            )
+        )
+    return sections
+
+
 def _section_path_diversity(sections: list[_MainSection]) -> int:
     return len({tuple(section.heading_path) for section in sections if section.heading_path})
 
@@ -259,6 +293,7 @@ def chunk_markdown(
     *,
     strategy: dict | None = None,
     document_zones: Any | None = None,
+    problem_groups: list[dict[str, Any]] | None = None,
 ) -> list[Chunk]:
     validated = validate_structure_strategy(strategy)
     main_level = int(validated["main_section_rule"].get("target_level", 2))
@@ -266,10 +301,13 @@ def chunk_markdown(
     max_chars = int(chunk_rule["max_chars"])
     overlap_chars = min(int(chunk_rule.get("overlap_chars", 0)), max_chars // 2)
     effective_main_level = main_level
-    sections = _split_main_sections(markdown, main_level, document_zones=document_zones)
+    sections = _problem_group_sections(markdown, problem_groups)
+    using_problem_groups = bool(sections)
+    if not sections:
+        sections = _split_main_sections(markdown, main_level, document_zones=document_zones)
     current_diversity = _section_path_diversity(sections)
     current_max_chars = _max_section_chars(sections)
-    if main_level < 5:
+    if main_level < 5 and not using_problem_groups:
         for candidate_level in range(main_level + 1, 6):
             if not _sections_need_finer_split(sections, max_chars):
                 break
@@ -305,6 +343,15 @@ def chunk_markdown(
         for part_index, text in enumerate(token_safe_parts, start=1):
             chunk_index = len(chunks)
             split_reason = section.split_reason if section.split_reason != "section" else ("length" if len(token_safe_parts) > 1 else "section")
+            problem_metadata: dict[str, Any] = {}
+            if section.problem_group:
+                problem_metadata = {
+                    "problem_id": section.problem_group.get("problem_id"),
+                    "problem_index": section.problem_group.get("problem_index"),
+                    "problem_title": section.problem_group.get("title"),
+                    "problem_kind": section.problem_group.get("problem_kind"),
+                    "problem_part_index": part_index,
+                }
             chunks.append(
                 Chunk(
                     chunk_id=_make_chunk_id(material_id, chunk_index),
@@ -323,6 +370,7 @@ def chunk_markdown(
                         "effective_main_level": effective_main_level,
                         "part_index": part_index,
                         "split_reason": split_reason,
+                        **problem_metadata,
                     },
                 )
             )
@@ -337,6 +385,7 @@ def chunk_markdown_file(
     *,
     strategy: dict | None = None,
     document_zones: Any | None = None,
+    problem_groups: list[dict[str, Any]] | None = None,
 ) -> list[Chunk]:
     return chunk_markdown(
         markdown_path.read_text(encoding="utf-8"),
@@ -345,4 +394,5 @@ def chunk_markdown_file(
         max_tokens,
         strategy=strategy,
         document_zones=document_zones,
+        problem_groups=problem_groups,
     )

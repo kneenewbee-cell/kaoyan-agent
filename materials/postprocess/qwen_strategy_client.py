@@ -10,6 +10,7 @@ from typing import Any
 from .strategy_schema import CleaningStrategy, DocumentZones
 from .strategy_validator import summarize_strategy_payload
 from .document_zones import summarize_document_zones_payload
+from .metadata_profile import MetadataProfile, summarize_metadata_profile_payload
 
 
 DEFAULT_QWEN_STRATEGY_MODEL = "qwen3.5-plus-2026-04-20"
@@ -127,6 +128,22 @@ SYSTEM_PROMPT += """
 - 只有“常用方法 / 解题方法 / 方法总结 / 证明方法 / 证明技巧 / 证明专题 / 证明思路总结”等明确结构栏目，才可以作为标题规则。
 - 本地清洗器会把局部步骤标签转成正文标签；你只需要描述稳定、可重复的文档结构。
 - 资料库清洗中 H1 通常保留给整份资料标题；“第一章/第二章/第一节/一、/（一）”这类重复结构不要设为 H1，通常从 H2 或更深层级开始。
+"""
+SYSTEM_PROMPT += """
+Exercise/problem-family guidance:
+- For exercise materials, keep the same heading_families mechanism; do not infer hard subtypes such as exam_paper,
+  worked_examples, problem_set, or wrong_book_like as routing fields.
+- Use reusable family ids such as exam_section, problem_group, question_item, example_item, and variant_item when the
+  document has repeated body evidence.
+- True problem/example boundaries may look like “第1题”, “(1) 题干”, “1. 题干”, “例1”, “例题2”, “典型例题3”.
+- Section boundaries may look like “一、选择题”, “二、填空题”, “三、解答题”; express them as ordinary heading_families
+  with relation_hints to child question/example families when evidence is strong.
+- Never make answer/solution labels into heading_families: 解, 答, 答案, 解析, 分析, 证明, 评注, 点评, 点拨,
+  提示, 说明, 注意, 变式. These are local labels inside the nearest problem/example group.
+- Never treat options A/B/C/D, formula numbers such as (1.1), page numbers, or isolated metadata badges as question
+  headings.
+- If a problem marker appears only once, leave it out of heading_families unless the surrounding context clearly shows
+  it is the only problem in a short document.
 """
 SYSTEM_PROMPT += """
 前置区/目录区识别要求：
@@ -280,19 +297,21 @@ def write_qwen_zone_log(metrics: dict[str, Any]) -> Path:
     return write_qwen_strategy_log(metrics, event="material_document_zones")
 
 
-BUNDLE_SYSTEM_PROMPT = """You are a raw_markdown structure analyst. Output JSON only.
+BUNDLE_SYSTEM_PROMPT = """You are a raw_markdown structure analyst and material metadata classifier. Output JSON only.
 
 Task:
-Return one JSON object with exactly two top-level objects:
+Return one JSON object with exactly three top-level objects:
 {
   "cleaning_strategy": {...},
-  "document_zones": {...}
+  "document_zones": {...},
+  "metadata_profile": {...}
 }
 
 Hard boundaries:
 - cleaning_strategy must match the CleaningStrategy schema and must NOT contain document_zones.
 - document_zones must match the DocumentZones schema and must NOT contain heading_families,
   cleanup_rules, metadata_rules, or any other cleaning_strategy fields.
+- metadata_profile must match the MetadataProfile schema and must NOT contain cleaning or zone fields.
 - Never output cleaned_markdown. Never output code, regex to execute, explanations, or text outside JSON.
 - Do not summarize, rewrite, translate, add, or delete source content.
 
@@ -333,6 +352,15 @@ cleaning_strategy guidance:
 - If A contains B and B contains C, output A>B and B>C only; do not output A>C.
 - If uncertain, set relation_hints=[] and let local rules handle hierarchy.
 - Keep the original CleaningStrategy field format exactly; no document_zones inside it.
+
+metadata_profile guidance:
+- Classify the whole uploaded material, not a single excerpt.
+- subject must be exactly one of: math, politics, english, 408, other, unknown.
+- material_type must be exactly one of: textbook, lecture, exercise, unknown.
+- Use textbook for教材/课本/主册/体系化书籍内容; lecture for讲义/笔记/课程资料/强化班/冲刺班; exercise for习题/练习/真题/试卷/题集/错题.
+- Use confidence 0.0-1.0. Use >=0.75 only when the file name, headings, and sampled content agree or the subject/type is very obvious.
+- evidence should contain short reasons from filename/headings/probe signals. Do not quote long source text.
+- If uncertain, output unknown with confidence <=0.5.
 
 document_zones guidance:
 - Use real line numbers from front_block_index/body_start_candidates.
@@ -390,11 +418,13 @@ def generate_strategy_bundle_with_qwen(
                 {
                     "role": "user",
                     "content": (
-                        "Return the strategy bundle JSON. The two schemas are below.\n\n"
+                        "Return the strategy bundle JSON. The three schemas are below.\n\n"
                         "CleaningStrategy JSON Schema:\n"
                         + json.dumps(CleaningStrategy.model_json_schema(), ensure_ascii=False)
                         + "\n\nDocumentZones JSON Schema:\n"
                         + json.dumps(DocumentZones.model_json_schema(), ensure_ascii=False)
+                        + "\n\nMetadataProfile JSON Schema:\n"
+                        + json.dumps(MetadataProfile.model_json_schema(), ensure_ascii=False)
                         + "\n\nformat_probe.json:\n"
                         + json.dumps(qwen_probe, ensure_ascii=False)
                     ),
@@ -418,14 +448,16 @@ def generate_strategy_bundle_with_qwen(
             raise ValueError("Qwen strategy bundle response is not a JSON object")
         cleaning_strategy = parsed.get("cleaning_strategy")
         document_zones = parsed.get("document_zones")
-        if not isinstance(cleaning_strategy, dict) or not isinstance(document_zones, dict):
-            raise ValueError("Qwen strategy bundle must include cleaning_strategy and document_zones objects")
+        metadata_profile = parsed.get("metadata_profile")
+        if not isinstance(cleaning_strategy, dict) or not isinstance(document_zones, dict) or not isinstance(metadata_profile, dict):
+            raise ValueError("Qwen strategy bundle must include cleaning_strategy, document_zones, and metadata_profile objects")
         cleaning_strategy["strategy_source"] = "qwen"
         parsed["cleaning_strategy"] = cleaning_strategy
         if usage_metrics is not None:
             metrics["response_summary"] = {
                 "cleaning_strategy": summarize_strategy_payload(cleaning_strategy),
                 "document_zones": summarize_document_zones_payload(document_zones),
+                "metadata_profile": summarize_metadata_profile_payload(metadata_profile),
             }
             usage_metrics.update(metrics)
         return parsed

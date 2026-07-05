@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>我的资料搜索增强版草图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --line: #dbe2ec;
+      --line-soft: #e9eef5;
+      --text: #172033;
+      --muted: #637083;
+      --sidebar: #132238;
+      --sidebar-2: #1d2f49;
+      --accent: #1c6e5b;
+      --accent-soft: #e6f2ee;
+      --warn: #8b641e;
+      --warn-soft: #fff4da;
+      --danger: #9c2d2d;
+      --danger-soft: #fae7e7;
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      cursor: default;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 22px 18px;
+      background: var(--sidebar);
+      color: #f4f7fb;
+    }
+
+    .brand {
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: #cbb78a;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .brand h1,
+    .page-title h2,
+    .panel h3,
+    .result-title {
+      margin: 0;
+    }
+
+    .brand h1 {
+      font-size: 24px;
+    }
+
+    .brand p:last-child {
+      margin: 10px 0 0;
+      color: #c6d1de;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .nav button {
+      width: 100%;
+      padding: 11px 14px;
+      border-color: rgba(255, 255, 255, 0.14);
+      background: var(--sidebar-2);
+      color: #f4f7fb;
+      text-align: left;
+    }
+
+    .nav .active {
+      border-color: rgba(203, 183, 138, 0.5);
+      background: #203a4d;
+      box-shadow: inset 4px 0 0 #cbb78a;
+    }
+
+    .sidebar-card {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #c6d1de;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 14px;
+      padding: 20px;
+      min-width: 0;
+    }
+
+    .page-title {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .page-title h2 {
+      font-size: 26px;
+    }
+
+    .tabs,
+    .subject-tabs,
+    .segmented,
+    .chips,
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tabs button,
+    .subject-tabs button,
+    .segmented button,
+    .chip {
+      padding: 8px 12px;
+      font-weight: 800;
+    }
+
+    .tabs .active,
+    .subject-tabs .active,
+    .segmented .active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(300px, 34%) minmax(0, 1fr);
+      gap: 14px;
+      min-height: 0;
+      position: relative;
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 12px 28px rgba(23, 32, 51, 0.06);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .upload-box,
+    .health-card,
+    .material-row,
+    .result-card,
+    .drawer-section {
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .upload-box {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .field input,
+    .field select,
+    .search-input {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #ffffff;
+      color: var(--text);
+    }
+
+    .primary {
+      border-color: #172033;
+      background: #172033;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .material-list,
+    .results {
+      display: grid;
+      gap: 10px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .material-row {
+      padding: 12px;
+    }
+
+    .material-row.selected {
+      border-color: rgba(28, 110, 91, 0.36);
+      background: #f2faf7;
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .row-head,
+    .result-head,
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .file-name,
+    .result-title {
+      font-weight: 900;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(23, 32, 51, 0.08);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status.good {
+      background: var(--accent-soft);
+      color: #165444;
+    }
+
+    .status.warn {
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+
+    .status.danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .meta {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .search-panel {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .search-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .coverage {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid #cfe3db;
+      border-radius: 8px;
+      background: #f2faf7;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .chip.hit {
+      border-color: #b9d7cc;
+      background: var(--accent-soft);
+      color: #165444;
+    }
+
+    .chip.miss {
+      border-color: #efd18d;
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+
+    .result-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      background: #ffffff;
+    }
+
+    .result-card.related {
+      background: #fbfcfe;
+    }
+
+    .result-card.filtered {
+      border-style: dashed;
+      background: #f9fbfd;
+      opacity: 0.82;
+    }
+
+    .reason {
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: #165444;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .preview {
+      margin: 0;
+      max-height: 118px;
+      overflow: hidden;
+      padding: 10px;
+      border-radius: 8px;
+      background: #172033;
+      color: #edf4ff;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .drawer {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(12, 20, 34, 0.28);
+    }
+
+    .detail-drawer {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      bottom: 18px;
+      z-index: 31;
+      width: min(430px, calc(100vw - 36px));
+      overflow: hidden;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+    }
+
+    .detail-drawer[hidden],
+    .drawer-backdrop[hidden] {
+      display: none !important;
+    }
+
+    .drawer-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .drawer-tabs button {
+      padding-inline: 8px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .drawer-tabs .active {
+      border-color: #172033;
+      background: #172033;
+      color: #ffffff;
+    }
+
+    .drawer-body {
+      display: grid;
+      gap: 10px;
+      overflow: auto;
+    }
+
+    .drawer-section {
+      padding: 12px;
+    }
+
+    .metric-row {
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 13px;
+    }
+
+    .metric-row:last-child {
+      border-bottom: 0;
+    }
+
+    .json-box {
+      margin: 8px 0 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: #172033;
+      color: #d8e4f3;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 980px) {
+      .workbench {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .main {
+        padding: 14px;
+      }
+
+      .page-title,
+      .row-head,
+      .result-head {
+        display: grid;
+      }
+
+      .filters,
+      .search-bar,
+      .drawer-tabs {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-drawer {
+        inset: 12px;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <p class="eyebrow">Kaoyan Agent</p>
+        <h1>考研助手</h1>
+        <p>资料库保持工作台风格，当前草图聚焦“我的资料”的搜索和资料健康度。</p>
+      </div>
+
+      <nav class="nav" aria-label="主导航">
+        <button type="button">考研问答</button>
+        <button type="button" class="active">资料库</button>
+        <button type="button">复习规划</button>
+        <button type="button">院校查询</button>
+      </nav>
+
+      <section class="sidebar-card">
+        当前用户：tester<br />
+        默认在当前学科内检索，可切换到单份资料或全部我的资料。
+      </section>
+    </aside>
+
+    <section class="main">
+      <header class="page-title">
+        <div>
+          <p class="eyebrow">Materials</p>
+          <h2>资料库</h2>
+        </div>
+        <div class="tabs" role="tablist" aria-label="资料库类型">
+          <button type="button" class="active">我的资料</button>
+          <button type="button">系统资料</button>
+        </div>
+      </header>
+
+      <div class="subject-tabs" role="tablist" aria-label="学科">
+        <button type="button" class="active">数学</button>
+        <button type="button">政治</button>
+        <button type="button">英语</button>
+        <button type="button">408</button>
+        <button type="button">其他</button>
+      </div>
+
+      <section class="workbench">
+        <aside class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>资料</h3>
+              <p class="muted">列表展示资料是否可搜索，诊断信息收进详情。</p>
+            </div>
+            <button type="button">刷新</button>
+          </div>
+
+          <div class="upload-box">
+            <div class="field">
+              <span>上传资料</span>
+              <input type="text" value="选择 .md / .txt / .pdf 文件" readonly />
+            </div>
+            <div class="actions">
+              <button type="button" class="primary">上传入库</button>
+              <button type="button">查看任务</button>
+            </div>
+          </div>
+
+          <div class="material-list">
+            <article class="material-row" data-material-title="2025概率统计(主册).pdf" data-material-meta="数学 / 讲义 / 上传于 2026-07-03" data-material-chunks="181" data-material-health="最近测试：方差公式、二项分布、正态分布均可命中；无关政治查询不展示。">
+              <div class="row-head">
+                <div class="file-name">2025概率统计(主册).pdf</div>
+                <span class="status good">质量高</span>
+              </div>
+              <p class="meta">数学 / 讲义 / 181 chunks / 索引已建立</p>
+              <p class="meta">最近搜索命中：方差公式、二项分布、正态分布</p>
+              <div class="actions" style="margin-top:10px">
+                <button type="button" data-scope-material>在本资料搜索</button>
+                <button type="button" data-open-detail>详情</button>
+              </div>
+            </article>
+
+            <article class="material-row" data-material-title="2、26徐涛强化班笔记（思修）.pdf" data-material-meta="政治 / 讲义 / 上传于 2026-07-03" data-material-chunks="99" data-material-health="最近测试：理想信念、法治思维、社会主义核心价值观可命中；数学查询不展示。">
+              <div class="row-head">
+                <div class="file-name">2、26徐涛强化班笔记（思修）.pdf</div>
+                <span class="status good">质量高</span>
+              </div>
+              <p class="meta">政治 / 讲义 / 99 chunks / 索引已建立</p>
+              <p class="meta">跨学科搜索时不会混入数学结果。</p>
+              <div class="actions" style="margin-top:10px">
+                <button type="button" data-scope-material>在本资料搜索</button>
+                <button type="button" data-open-detail>详情</button>
+              </div>
+            </article>
+          </div>
+        </aside>
+
+        <section class="panel search-panel">
+          <div class="panel-header">
+            <div>
+              <h3>搜索我的资料</h3>
+              <p class="muted">先用混合检索召回候选，需要更准时切换 AI 精排。</p>
+            </div>
+            <span id="searchModeStatus" class="status good">当前：AI 精排</span>
+          </div>
+
+          <div>
+            <div class="search-bar">
+              <input class="search-input" value="二项分布 泊松分布 方差公式" aria-label="搜索词" />
+              <button type="button" class="primary">搜索</button>
+            </div>
+            <div class="filters" style="margin-top:10px">
+              <label class="field">
+                <span>范围</span>
+                <select id="scopeSelect">
+                  <option value="subject" selected>当前学科</option>
+                  <option value="2025概率统计(主册).pdf">当前资料：概率统计主册</option>
+                  <option value="2、26徐涛强化班笔记（思修）.pdf">当前资料：徐涛思修笔记</option>
+                  <option value="all">全部我的资料</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>模式</span>
+                <select id="modeSelect">
+                  <option value="hybrid">快速检索</option>
+                  <option value="llm" selected>AI 精排</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>展示数</span>
+                <select>
+                  <option selected>最多 6 条</option>
+                  <option>最多 10 条</option>
+                  <option>最多 15 条</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="results">
+            <section class="coverage">
+              <div class="row-head">
+                <strong>概念覆盖</strong>
+                <span class="muted">AI 已判定 6 个候选，展示 4 个</span>
+              </div>
+              <div class="chips">
+                <span class="chip hit">已覆盖：二项分布</span>
+                <span class="chip hit">已覆盖：泊松分布</span>
+                <span class="chip hit">已覆盖：方差公式</span>
+                <span class="chip miss">未覆盖：协方差公式</span>
+              </div>
+            </section>
+
+            <article class="result-card">
+              <div class="result-head">
+                <div>
+                  <div class="result-title">二、常见离散型分布</div>
+                  <p class="meta">2025概率统计(主册).pdf / 随机变量及其分布 / chunk_042</p>
+                </div>
+                <span class="status good">强匹配</span>
+              </div>
+              <div class="reason">AI 判定：同时覆盖二项分布与泊松分布，适合作为多概念查询的总览结果。</div>
+              <pre class="preview">二项分布：X ~ B(n, p)，P{X=k}=C_n^k p^k(1-p)^{n-k}
+泊松分布：X ~ P(lambda)，P{X=k}=lambda^k e^{-lambda}/k!</pre>
+              <div class="actions">
+                <button type="button">查看片段</button>
+                <button type="button">定位资料</button>
+                <button type="button">复制引用</button>
+              </div>
+            </article>
+
+            <article class="result-card">
+              <div class="result-head">
+                <div>
+                  <div class="result-title">一、定义：方差</div>
+                  <p class="meta">2025概率统计(主册).pdf / 数字特征 / chunk_067</p>
+                </div>
+                <span class="status good">强匹配</span>
+              </div>
+              <div class="reason">AI 判定：直接包含 D(X)=E(X-EX)^2=EX^2-(EX)^2，满足“方差公式”。</div>
+              <pre class="preview">方差定义为 D(X)=E(X-EX)^2，常用计算式为 D(X)=EX^2-(EX)^2。</pre>
+              <div class="actions">
+                <button type="button">查看片段</button>
+                <button type="button">定位资料</button>
+              </div>
+            </article>
+
+            <article class="result-card related">
+              <div class="result-head">
+                <div>
+                  <div class="result-title">协方差与相关系数</div>
+                  <p class="meta">2025概率统计(主册).pdf / 数字特征 / chunk_071</p>
+                </div>
+                <span class="status warn">相关参考</span>
+              </div>
+              <div class="reason">AI 判定：与方差相关，但不是“方差公式”的直接答案，因此放入相关参考。</div>
+              <pre class="preview">协方差 Cov(X,Y)=E[(X-EX)(Y-EY)]，相关系数 rho=Cov(X,Y)/(sqrt(DX)sqrt(DY))。</pre>
+            </article>
+
+            <article class="result-card filtered">
+              <div class="result-head">
+                <div>
+                  <div class="result-title">已过滤的候选不会默认展示</div>
+                  <p class="meta">例：政治资料中的“理想信念”与当前数学查询不相关</p>
+                </div>
+                <span class="status danger">已过滤</span>
+              </div>
+              <p class="muted">仅在调试模式中可查看，避免用户被弱相关内容干扰。</p>
+            </article>
+          </div>
+        </section>
+
+        <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+        <aside id="detailDrawer" class="panel drawer detail-drawer" hidden aria-hidden="true">
+          <div class="panel-header">
+            <div>
+              <h3>资料详情</h3>
+              <p class="muted">普通信息默认展示，诊断信息折叠到高级页。</p>
+            </div>
+            <button id="closeDetailDrawer" type="button">关闭</button>
+          </div>
+
+          <div class="drawer-tabs" role="tablist" aria-label="资料详情">
+            <button type="button" class="active">概览</button>
+            <button type="button">搜索健康</button>
+            <button type="button">内容预览</button>
+            <button type="button">高级诊断</button>
+          </div>
+
+          <div class="drawer-body">
+            <section class="drawer-section">
+              <div id="drawerTitle" class="file-name">2025概率统计(主册).pdf</div>
+              <p id="drawerMeta" class="meta">数学 / 讲义 / 上传于 2026-07-03</p>
+              <div style="margin-top:10px" class="chips">
+                <span class="chip hit">解析完成</span>
+                <span class="chip hit">公式清洗完成</span>
+                <span class="chip hit">索引完成</span>
+              </div>
+            </section>
+
+            <section class="drawer-section">
+              <div class="metric-row">
+                <span>质量状态</span>
+                <strong>high</strong>
+              </div>
+              <div class="metric-row">
+                <span>overall_confidence</span>
+                <strong>1.00</strong>
+              </div>
+              <div class="metric-row">
+                <span>chunks</span>
+                <strong id="drawerChunks">181</strong>
+              </div>
+              <div class="metric-row">
+                <span>索引状态</span>
+                <strong>可搜索</strong>
+              </div>
+            </section>
+
+            <section class="drawer-section">
+              <strong>搜索健康</strong>
+              <p id="drawerHealth" class="meta">最近测试：方差公式、二项分布、正态分布均可命中；无关政治查询不展示。</p>
+              <div class="actions" style="margin-top:10px">
+                <button type="button">重建索引</button>
+                <button type="button">重新解析</button>
+              </div>
+            </section>
+
+            <section class="drawer-section">
+              <strong>高级诊断摘要</strong>
+              <pre class="json-box">parse_report: high
+formula_cleaning: enabled, safe
+llm_cleaning: disabled
+retrieval_plan: adaptive candidate limit
+chunks_preview: heading_path + text_preview</pre>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const drawer = document.querySelector("#detailDrawer");
+      const backdrop = document.querySelector("#drawerBackdrop");
+      const closeButton = document.querySelector("#closeDetailDrawer");
+      const scopeSelect = document.querySelector("#scopeSelect");
+      const modeSelect = document.querySelector("#modeSelect");
+      const searchModeStatus = document.querySelector("#searchModeStatus");
+      const searchInput = document.querySelector(".search-input");
+      const rows = [...document.querySelectorAll("[data-material-title]")];
+
+      const drawerTitle = document.querySelector("#drawerTitle");
+      const drawerMeta = document.querySelector("#drawerMeta");
+      const drawerChunks = document.querySelector("#drawerChunks");
+      const drawerHealth = document.querySelector("#drawerHealth");
+
+      function selectRow(row) {
+        rows.forEach((item) => item.classList.toggle("selected", item === row));
+      }
+
+      function setScopeToMaterial(row) {
+        if (!row || !scopeSelect) return;
+        scopeSelect.value = row.dataset.materialTitle;
+        selectRow(row);
+        searchInput?.focus();
+      }
+
+      function openDrawer(row) {
+        if (!row || !drawer || !backdrop) return;
+        drawerTitle.textContent = row.dataset.materialTitle;
+        drawerMeta.textContent = row.dataset.materialMeta;
+        drawerChunks.textContent = row.dataset.materialChunks;
+        drawerHealth.textContent = row.dataset.materialHealth;
+        selectRow(row);
+        drawer.hidden = false;
+        backdrop.hidden = false;
+        drawer.setAttribute("aria-hidden", "false");
+      }
+
+      function closeDrawer() {
+        if (!drawer || !backdrop) return;
+        drawer.hidden = true;
+        backdrop.hidden = true;
+        drawer.setAttribute("aria-hidden", "true");
+      }
+
+      document.querySelectorAll("[data-scope-material]").forEach((button) => {
+        button.addEventListener("click", () => setScopeToMaterial(button.closest("[data-material-title]")));
+      });
+
+      document.querySelectorAll("[data-open-detail]").forEach((button) => {
+        button.addEventListener("click", () => openDrawer(button.closest("[data-material-title]")));
+      });
+
+      closeButton?.addEventListener("click", closeDrawer);
+      backdrop?.addEventListener("click", closeDrawer);
+
+      modeSelect?.addEventListener("change", () => {
+        const label = modeSelect.value === "llm" ? "AI 精排" : "快速检索";
+        searchModeStatus.textContent = `当前：${label}`;
+      });
+    })();
+  </script>
+</body>
+</html>

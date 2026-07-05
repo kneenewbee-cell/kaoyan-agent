@@ -1,0 +1,1385 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>系统资料库 v1.2 HTML 草图</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #101827;
+      --muted: #667085;
+      --soft: #f4f6f8;
+      --line: #d9e0ea;
+      --panel: #ffffff;
+      --page: #f6f1e7;
+      --nav: #111c2b;
+      --nav-2: #1d2a3a;
+      --green: #13795b;
+      --green-soft: #e8f5ef;
+      --blue: #2f63dc;
+      --blue-soft: #eaf1ff;
+      --gold: #bd8a2d;
+      --gold-soft: #fff4dc;
+      --red: #c94a4a;
+      --red-soft: #fdecec;
+      --shadow: 0 18px 50px rgba(16, 24, 40, .10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.9), transparent 28rem),
+        var(--page);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+      letter-spacing: 0;
+    }
+
+    button,
+    select,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      min-height: calc(100vh - 48px);
+      padding: 28px 20px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--nav), #162437);
+      color: #fff;
+    }
+
+    .brand-kicker {
+      color: #d8bd74;
+      font-size: 12px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .brand-title {
+      margin: 10px 0 8px;
+      font-size: 30px;
+      font-weight: 760;
+    }
+
+    .brand-copy {
+      margin: 0 0 24px;
+      color: #cbd5e1;
+      font-size: 15px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .nav button {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,.045);
+      color: #edf2f7;
+      text-align: left;
+    }
+
+    .nav button.active {
+      border-color: rgba(216,189,116,.75);
+      background: linear-gradient(90deg, rgba(216,189,116,.24), rgba(19,121,91,.24));
+      box-shadow: inset 4px 0 0 #d8bd74;
+    }
+
+    .main-shell {
+      min-width: 0;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 2px 0 16px;
+    }
+
+    .page-head h1 {
+      margin: 0;
+      font-size: 32px;
+      font-weight: 800;
+    }
+
+    .top-tabs,
+    .seg-row,
+    .summary-row,
+    .bulk-row,
+    .card-actions,
+    .drawer-actions,
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab,
+    .seg,
+    .chip,
+    .action,
+    .icon-action,
+    .page-btn {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #253349;
+      font-weight: 700;
+    }
+
+    .tab {
+      padding: 0 18px;
+    }
+
+    .tab.active,
+    .seg.active,
+    .action.primary,
+    .page-btn.primary {
+      border-color: transparent;
+      background: var(--green);
+      color: #fff;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(560px, 1fr) 380px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .list-pane,
+    .drawer {
+      border: 1px solid rgba(217,224,234,.78);
+      border-radius: 8px;
+      background: rgba(255,255,255,.92);
+      box-shadow: var(--shadow);
+    }
+
+    .list-pane {
+      padding: 18px;
+    }
+
+    .control-block {
+      padding-bottom: 14px;
+      border-bottom: 1px solid #e8edf4;
+    }
+
+    .control-block + .control-block {
+      padding-top: 14px;
+    }
+
+    .row-label {
+      width: 68px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .seg-line {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+    }
+
+    .seg-line + .seg-line {
+      margin-top: 12px;
+    }
+
+    .seg {
+      padding: 0 18px;
+    }
+
+    .seg.content.active {
+      background: var(--blue);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px 12px;
+      margin-top: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .field select,
+    .field input {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #26354d;
+    }
+
+    .summary-row {
+      margin: 16px 0 12px;
+    }
+
+    .chip {
+      min-height: 34px;
+      padding: 0 12px;
+      color: #475467;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .chip.active {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .chip.red {
+      background: var(--red-soft);
+      color: #a73737;
+    }
+
+    .chip.gold {
+      background: var(--gold-soft);
+      color: #8a5f10;
+    }
+
+    .bulk-row {
+      justify-content: space-between;
+      margin: 10px 0 14px;
+    }
+
+    .bulk-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 14px;
+    }
+
+    .action.dark {
+      border-color: transparent;
+      background: #111827;
+      color: #fff;
+    }
+
+    .action.gold {
+      border-color: #f0c36c;
+      background: #fff6e3;
+      color: #8a4f00;
+    }
+
+    .selection-meta {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .question-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .q-card {
+      min-height: 210px;
+      padding: 16px;
+      border: 1px solid #e1e7f0;
+      border-radius: 8px;
+      background: #fff;
+      transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+    }
+
+    .q-card.active {
+      border-color: var(--green);
+      background: linear-gradient(90deg, rgba(19,121,91,.06), #fff 18%);
+      box-shadow: inset 4px 0 0 var(--green);
+    }
+
+    .q-top {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .check {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #adb8c7;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    .q-title-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .q-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .meta-pill,
+    .status-pill,
+    .topic-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .meta-pill {
+      background: #f1f4f8;
+      color: #586174;
+    }
+
+    .status-pill.not_started {
+      background: var(--red-soft);
+      color: #a73737;
+    }
+
+    .status-pill.learning {
+      background: var(--gold-soft);
+      color: #8a5f10;
+    }
+
+    .status-pill.mastered {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .source-name {
+      color: #667085;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .preview-text {
+      height: 78px;
+      margin: 18px 0 10px 52px;
+      overflow: hidden;
+      color: #26354d;
+      font-size: 15px;
+      line-height: 1.75;
+      -webkit-mask-image: linear-gradient(#000 72%, transparent);
+      mask-image: linear-gradient(#000 72%, transparent);
+    }
+
+    .q-bottom {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-left: 52px;
+    }
+
+    .topic-list {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .topic-pill {
+      min-height: 26px;
+      background: #f4f6f8;
+      color: #667085;
+    }
+
+    .card-actions {
+      gap: 8px;
+      flex-wrap: nowrap;
+    }
+
+    .icon-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 40px;
+      padding: 0 11px;
+      color: #22304a;
+    }
+
+    .icon-action svg,
+    .action svg {
+      width: 17px;
+      height: 17px;
+      stroke-width: 2.2;
+    }
+
+    .icon-action.view {
+      border-color: transparent;
+      background: #111827;
+      color: #fff;
+    }
+
+    .icon-action.on {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .icon-action.wrong.on {
+      border-color: #f0c36c;
+      background: var(--gold-soft);
+      color: #8a4f00;
+    }
+
+    .pagination {
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #e8edf4;
+    }
+
+    .page-meta {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .page-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-btn {
+      min-width: 42px;
+      padding: 0 12px;
+    }
+
+    .drawer {
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 48px);
+      overflow: auto;
+    }
+
+    .drawer-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid #e8edf4;
+    }
+
+    .drawer-eyebrow {
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .drawer h2 {
+      margin: 2px 0 0;
+      font-size: 22px;
+      line-height: 1.25;
+    }
+
+    .close {
+      min-width: 44px;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #253349;
+      font-weight: 750;
+    }
+
+    .drawer-section {
+      padding: 16px 18px;
+      border-bottom: 1px solid #e8edf4;
+    }
+
+    .drawer-section h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .status-control,
+    .drawer-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .status-control button,
+    .drawer-actions button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #344054;
+      font-weight: 760;
+    }
+
+    .status-control button.active.not_started {
+      border-color: var(--red);
+      background: var(--red-soft);
+      color: #a73737;
+    }
+
+    .status-control button.active.learning {
+      border-color: var(--gold);
+      background: var(--gold-soft);
+      color: #8a5f10;
+    }
+
+    .status-control button.active.mastered,
+    .drawer-actions button.active {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .drawer-actions button.wrong.active {
+      border-color: #f0c36c;
+      background: var(--gold-soft);
+      color: #8a4f00;
+    }
+
+    .question-body {
+      color: #202b3c;
+      font-size: 15px;
+    }
+
+    .question-body .formula {
+      overflow-x: auto;
+      padding: 6px 0;
+      font-size: 16px;
+    }
+
+    .source-image {
+      display: block;
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      margin: 10px 0;
+      border: 1px solid #e8edf4;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    details.answer-block {
+      margin-top: 10px;
+      border: 1px solid #e4eaf2;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    details.answer-block summary {
+      min-height: 42px;
+      padding: 9px 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    details.answer-block div {
+      padding: 0 12px 12px;
+      color: #344054;
+    }
+
+    textarea.note {
+      width: 100%;
+      min-height: 112px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: #26354d;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 20;
+      display: none;
+      min-width: 180px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #111827;
+      color: #fff;
+      box-shadow: 0 12px 30px rgba(16,24,40,.22);
+      font-weight: 750;
+    }
+
+    .toast.show {
+      display: block;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      place-items: center;
+      padding: 28px;
+      background: rgba(15,23,42,.44);
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal {
+      width: min(860px, 100%);
+      max-height: min(82vh, 860px);
+      overflow: auto;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 24px 70px rgba(15,23,42,.32);
+    }
+
+    .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e8edf4;
+      background: rgba(255,255,255,.96);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        min-height: auto;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .drawer {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        padding: 14px;
+      }
+
+      .page-head,
+      .bulk-row,
+      .q-bottom {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .q-top {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .source-name {
+        grid-column: 2;
+      }
+
+      .preview-text,
+      .q-bottom {
+        margin-left: 0;
+      }
+
+      .card-actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand-kicker">Kaoyan Agent</div>
+      <div class="brand-title">考研助手</div>
+      <p class="brand-copy">聊天问答和资料库分开展示，默认测试用户是 tester。</p>
+      <nav class="nav" aria-label="主导航">
+        <button>考研问答</button>
+        <button class="active">资料库</button>
+        <button>复习规划</button>
+        <button>院校查询</button>
+      </nav>
+    </aside>
+
+    <main class="main-shell">
+      <header class="page-head">
+        <h1>资料库</h1>
+        <div class="top-tabs" aria-label="资料库类型">
+          <button class="tab">我的资料</button>
+          <button class="tab active">系统资料</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <section class="list-pane" aria-label="系统资料列表">
+          <div class="control-block">
+            <div class="seg-line">
+              <div class="row-label">学科</div>
+              <div class="seg-row" aria-label="学科筛选">
+                <button class="seg active">数学</button>
+                <button class="seg">政治</button>
+                <button class="seg">英语</button>
+                <button class="seg">408</button>
+                <button class="seg">其他</button>
+              </div>
+            </div>
+            <div class="seg-line">
+              <div class="row-label">内容</div>
+              <div class="seg-row" aria-label="内容类型">
+                <button class="seg content active">习题</button>
+                <button class="seg content">知识点</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="filters" aria-label="筛选条件">
+            <div class="field">
+              <label for="repo">资料库名</label>
+              <select id="repo">
+                <option>全部</option>
+                <option selected>数学一真题</option>
+                <option>数学二真题</option>
+                <option>数学三真题</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="year">年份</label>
+              <select id="year">
+                <option>全部</option>
+                <option selected>2025</option>
+                <option>2024</option>
+                <option>2023</option>
+                <option>2022</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="type">题型</label>
+              <select id="type">
+                <option selected>全部</option>
+                <option>选择题</option>
+                <option>填空题</option>
+                <option>解答题</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="topic">知识点</label>
+              <select id="topic">
+                <option selected>全部</option>
+                <option>极限</option>
+                <option>导数</option>
+                <option>积分</option>
+                <option>级数</option>
+                <option>微分方程</option>
+                <option>矩阵</option>
+                <option>概率分布</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="userStatus">当前页状态</label>
+              <select id="userStatus">
+                <option selected>全部</option>
+                <option>未开始</option>
+                <option>学习中</option>
+                <option>已掌握</option>
+                <option>已收藏</option>
+                <option>错题</option>
+                <option>有备注</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="keyword">关键词</label>
+              <input id="keyword" value="" placeholder="题干、解析、知识点">
+            </div>
+          </div>
+
+          <div class="summary-row" aria-label="状态统计">
+            <button class="chip active" data-filter="all">全部 873</button>
+            <button class="chip red" data-filter="not_started">未开始 872</button>
+            <button class="chip gold" data-filter="learning">学习中 1</button>
+            <button class="chip" data-filter="mastered">已掌握 0</button>
+            <button class="chip" data-filter="favorite">已收藏 0</button>
+            <button class="chip gold" data-filter="wrong">错题 1</button>
+            <button class="chip" data-filter="note">有备注 0</button>
+          </div>
+
+          <div class="bulk-row">
+            <div class="selection-meta" id="selectionMeta">已选 1 道 · 当前筛选 873 道</div>
+            <div class="bulk-actions">
+              <button class="action dark" id="bulkMaster"><i data-lucide="check-check"></i>标记掌握</button>
+              <button class="action gold" id="bulkWrong"><i data-lucide="triangle-alert"></i>加入错题</button>
+              <button class="action primary" id="bulkPractice"><i data-lucide="file-plus-2"></i>生成练习</button>
+            </div>
+          </div>
+
+          <div class="question-list" id="questionList"></div>
+
+          <div class="pagination">
+            <div class="page-meta" id="pageMeta">第 1 页 / 共 175 页 · 每页 5 题</div>
+            <div class="page-controls">
+              <button class="page-btn" id="firstPage">首页</button>
+              <button class="page-btn" id="prevPage">上一页</button>
+              <button class="page-btn primary" id="pageNow">1</button>
+              <button class="page-btn" id="nextPage">下一页</button>
+              <button class="page-btn" id="lastPage">末页</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="drawer" aria-label="题目详情" id="drawer"></aside>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="previewModal" role="dialog" aria-modal="true" aria-label="题目预览">
+    <section class="modal">
+      <header class="modal-head">
+        <h2 id="modalTitle">题目预览</h2>
+        <button class="close" id="closeModal">关闭</button>
+      </header>
+      <div class="modal-body" id="modalBody"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast">已保存</div>
+
+  <script>
+    const pageSize = 5;
+    const totalCount = 873;
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    const baseQuestions = [
+      {
+        number: 1,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['极限', '导数', '积分', '级数', '微分方程'],
+        stem: '已知函数 $f(x)=\\int_0^x e^{t^2}\\sin t\\,dt$，$g(x)=\\left(\\int_0^x e^{t^2}\\,dt\\right)\\sin^2x$。则（ ）',
+        answer: '答案：B。',
+        analysis: '比较 $f(x)$ 与 $g(x)$ 在 $x=0$ 附近的导数和高阶无穷小阶数，结合极值和拐点判断。'
+      },
+      {
+        number: 2,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['级数', '极限', '积分'],
+        stem: '已知级数：(1) $\\sum_{n=1}^{\\infty}\\sin\\frac{n^3\\pi}{n^2+1}$，(2) $\\sum_{n=1}^{\\infty}(-1)^n\\left(\\frac1{n^2}-\\tan\\frac1{n^2}\\right)$。判断其敛散性。',
+        answer: '答案：A。',
+        analysis: '第一项用等价无穷小与比较判别，第二项用交错项和泰勒展开判断绝对收敛性。'
+      },
+      {
+        number: 3,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['导数', '极限', '积分'],
+        stem: '设函数 $f(x)$ 在区间 $[0,+\\infty)$ 上可导，则（ ）选项涉及 $\\lim_{x\\to+\\infty} f(x)$、$\\lim_{x\\to+\\infty} f\\prime(x)$ 与积分平均值。',
+        answer: '答案：C。',
+        analysis: '需要区分函数极限、导数极限和积分平均值极限之间的充分条件。'
+      },
+      {
+        number: 4,
+        type: '选择题',
+        status: 'learning',
+        favorite: true,
+        wrong: false,
+        note: '二刷时重点看极限替换。',
+        source: '数学一真题',
+        topics: ['极限', '泰勒公式'],
+        stem: '设函数在零点附近满足可导条件，利用泰勒展开比较 $x\\to0$ 时若干表达式的极限阶数。',
+        answer: '答案：D。',
+        analysis: '先展开到必要阶，再比较主部。'
+      },
+      {
+        number: 5,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: true,
+        note: '',
+        source: '数学一真题',
+        topics: ['线性代数', '矩阵'],
+        stem: '设 $A$ 为三阶矩阵，讨论矩阵秩、特征值和可逆性的关系，并判断命题真伪。',
+        answer: '答案：B。',
+        analysis: '从特征值为零和行列式为零的等价关系入手。'
+      },
+      {
+        number: 6,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['概率分布', '参数估计'],
+        stem: '设随机变量服从给定分布，求参数估计量并判断其无偏性与一致性。',
+        answer: '答案：A。',
+        analysis: '写出期望和方差，再用大数定律判断。'
+      },
+      {
+        number: 7,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['二重积分', '换元法'],
+        stem: '计算二重积分，并说明换元区域与雅可比因子的处理。',
+        answer: '答案：C。',
+        analysis: '关键是先画出积分区域，再选择合适变量。'
+      },
+      {
+        number: 8,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['随机变量', '概率分布'],
+        stem: '设二维随机变量服从正态分布，求函数最大值与相关系数的关系。',
+        answer: '答案：D。',
+        analysis: '利用联合密度和相关系数范围进行化简。'
+      },
+      {
+        number: 9,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['概率分布', '参数统计'],
+        stem: '设 $X_1,\\ldots,X_{20}$ 是来自总体 $B(1,0.1)$ 的简单随机样本，令 $T=\\sum_{i=1}^{20}X_i$，用泊松近似求概率。',
+        answer: '答案：B。',
+        analysis: '二项分布可用泊松分布近似，参数为 $np$。'
+      },
+      {
+        number: 10,
+        type: '选择题',
+        status: 'not_started',
+        favorite: false,
+        wrong: false,
+        note: '',
+        source: '数学一真题',
+        topics: ['假设检验', '正态分布'],
+        stem: '设 $X_1,\\ldots,X_n$ 为来自正态总体的样本，讨论显著性水平为 $\\alpha$ 的拒绝域。',
+        answer: '答案：C。',
+        analysis: '由检验统计量的分布和备择假设方向确定临界值。'
+      }
+    ];
+
+    const state = {
+      page: 1,
+      selectedNumber: 1,
+      activeFilter: 'all'
+    };
+
+    function statusLabel(status) {
+      return {
+        not_started: '未开始',
+        learning: '学习中',
+        mastered: '已掌握'
+      }[status] || '未开始';
+    }
+
+    function getQuestion(number) {
+      let found = baseQuestions.find(item => item.number === number);
+      if (found) return found;
+      const clone = { ...baseQuestions[(number - 1) % baseQuestions.length] };
+      clone.number = number;
+      clone.status = 'not_started';
+      clone.favorite = false;
+      clone.wrong = false;
+      clone.note = '';
+      return clone;
+    }
+
+    function currentPageQuestions() {
+      const start = (state.page - 1) * pageSize + 1;
+      return Array.from({ length: pageSize }, (_, index) => getQuestion(start + index));
+    }
+
+    function renderCards() {
+      const list = document.getElementById('questionList');
+      const cards = currentPageQuestions();
+      list.innerHTML = cards.map(q => `
+        <article class="q-card ${q.number === state.selectedNumber ? 'active' : ''}" data-number="${q.number}">
+          <div class="q-top">
+            <button class="check" aria-label="选择 ${q.number} 题"></button>
+            <div class="q-title-line">
+              <span class="q-title">2025 数一 Q${q.number}</span>
+              <span class="meta-pill">${q.type}</span>
+              <span class="status-pill ${q.status}">${statusLabel(q.status)}</span>
+            </div>
+            <span class="source-name">${q.source}</span>
+          </div>
+          <div class="preview-text">${q.stem}</div>
+          <div class="q-bottom">
+            <div class="topic-list">${q.topics.map(t => `<span class="topic-pill">${t}</span>`).join('')}</div>
+            <div class="card-actions">
+              <button class="icon-action preview" data-preview="${q.number}" aria-label="预览 2025 数一 Q${q.number}">
+                <i data-lucide="eye"></i><span>预览</span>
+              </button>
+              <button class="icon-action view" data-view="${q.number}">查看</button>
+              <button class="icon-action ${q.favorite ? 'on' : ''}" data-favorite="${q.number}">
+                <i data-lucide="star"></i><span>${q.favorite ? '已收藏' : '收藏'}</span>
+              </button>
+              <button class="icon-action wrong ${q.wrong ? 'on' : ''}" data-wrong="${q.number}">
+                <i data-lucide="book-x"></i><span>${q.wrong ? '在错题' : '错题'}</span>
+              </button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+
+      document.getElementById('pageMeta').textContent = `第 ${state.page} 页 / 共 ${totalPages} 页 · 每页 5 题`;
+      document.getElementById('pageNow').textContent = state.page;
+      bindCardEvents();
+      refreshIcons();
+      typeset();
+    }
+
+    function renderDrawer() {
+      const drawer = document.getElementById('drawer');
+      const q = getQuestion(state.selectedNumber);
+      drawer.innerHTML = `
+        <header class="drawer-head">
+          <div>
+            <div class="drawer-eyebrow">System Question</div>
+            <h2>2025 数一 Q${q.number}</h2>
+          </div>
+          <button class="close" id="closeDrawer">关闭</button>
+        </header>
+
+        <section class="drawer-section">
+          <h3>掌握状态</h3>
+          <div class="status-control">
+            <button class="${q.status === 'not_started' ? 'active not_started' : ''}" data-set-status="not_started">未开始</button>
+            <button class="${q.status === 'learning' ? 'active learning' : ''}" data-set-status="learning">学习中</button>
+            <button class="${q.status === 'mastered' ? 'active mastered' : ''}" data-set-status="mastered">已掌握</button>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <h3>个人操作</h3>
+          <div class="drawer-actions">
+            <button class="${q.favorite ? 'active' : ''}" data-drawer-favorite>${q.favorite ? '已收藏' : '收藏'}</button>
+            <button class="wrong ${q.wrong ? 'active' : ''}" data-drawer-wrong>${q.wrong ? '在错题' : '加入错题'}</button>
+            <button class="${q.note ? 'active' : ''}" data-note-focus>${q.note ? '有备注' : '无备注'}</button>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <h3>题目详情</h3>
+          <div class="question-body">
+            <p>${q.source} · ${q.type}</p>
+            <p>${q.topics.join(' / ')}</p>
+            <p>${q.stem}</p>
+            <img class="source-image" src="../../../data/raw/math/exam_papers/math1/2025/images/q01-q06.png" alt="2025 数一真题 Q1-Q6 原始题图">
+            <details class="answer-block">
+              <summary>答案</summary>
+              <div>${q.answer}</div>
+            </details>
+            <details class="answer-block">
+              <summary>解析</summary>
+              <div>${q.analysis}</div>
+            </details>
+          </div>
+        </section>
+
+        <section class="drawer-section">
+          <h3>个人备注</h3>
+          <textarea class="note" id="noteInput" placeholder="写下这道题的易错点、解题入口或复习提醒">${q.note}</textarea>
+        </section>
+
+        <section class="drawer-section">
+          <h3>动作</h3>
+          <div class="drawer-actions">
+            <button>问 AI 讲题</button>
+            <button class="active">生成同类练习</button>
+            <button>加入复习规划</button>
+          </div>
+        </section>
+      `;
+
+      document.getElementById('closeDrawer').addEventListener('click', () => {
+        drawer.innerHTML = `<div class="drawer-section"><h3>选择一道题查看详情</h3></div>`;
+      });
+
+      drawer.querySelectorAll('[data-set-status]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          q.status = btn.dataset.setStatus;
+          saveAndRender('掌握状态已保存');
+        });
+      });
+
+      drawer.querySelector('[data-drawer-favorite]').addEventListener('click', () => {
+        q.favorite = !q.favorite;
+        saveAndRender(q.favorite ? '已收藏' : '已取消收藏');
+      });
+
+      drawer.querySelector('[data-drawer-wrong]').addEventListener('click', () => {
+        q.wrong = !q.wrong;
+        saveAndRender(q.wrong ? '已加入错题' : '已移出错题');
+      });
+
+      drawer.querySelector('[data-note-focus]').addEventListener('click', () => {
+        document.getElementById('noteInput').focus();
+      });
+
+      document.getElementById('noteInput').addEventListener('input', event => {
+        q.note = event.target.value;
+        clearTimeout(window.noteTimer);
+        window.noteTimer = setTimeout(() => {
+          renderCards();
+          showToast(q.note ? '备注已保存' : '备注已清空');
+        }, 260);
+      });
+
+      refreshIcons();
+      typeset();
+    }
+
+    function bindCardEvents() {
+      document.querySelectorAll('.q-card').forEach(card => {
+        card.addEventListener('click', () => {
+          state.selectedNumber = Number(card.dataset.number);
+          renderCards();
+          renderDrawer();
+        });
+      });
+
+      document.querySelectorAll('[data-view]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          state.selectedNumber = Number(btn.dataset.view);
+          renderCards();
+          renderDrawer();
+        });
+      });
+
+      document.querySelectorAll('[data-preview]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          openPreview(Number(btn.dataset.preview));
+        });
+      });
+
+      document.querySelectorAll('[data-favorite]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          const q = getQuestion(Number(btn.dataset.favorite));
+          q.favorite = !q.favorite;
+          state.selectedNumber = q.number;
+          saveAndRender(q.favorite ? '已收藏' : '已取消收藏');
+        });
+      });
+
+      document.querySelectorAll('[data-wrong]').forEach(btn => {
+        btn.addEventListener('click', event => {
+          event.stopPropagation();
+          const q = getQuestion(Number(btn.dataset.wrong));
+          q.wrong = !q.wrong;
+          state.selectedNumber = q.number;
+          saveAndRender(q.wrong ? '已加入错题' : '已移出错题');
+        });
+      });
+    }
+
+    function openPreview(number) {
+      const q = getQuestion(number);
+      document.getElementById('modalTitle').textContent = `2025 数一 Q${q.number} · ${q.type}`;
+      document.getElementById('modalBody').innerHTML = `
+        <div class="question-body">
+          <p><strong>${q.source}</strong> · ${q.topics.join(' / ')}</p>
+          <p>${q.stem}</p>
+          <img class="source-image" src="../../../data/raw/math/exam_papers/math1/2025/images/q01-q06.png" alt="2025 数一真题 Q1-Q6 原始题图">
+        </div>
+      `;
+      document.getElementById('previewModal').classList.add('open');
+      typeset();
+    }
+
+    function saveAndRender(message) {
+      renderCards();
+      renderDrawer();
+      showToast(message);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+    }
+
+    function setPage(page) {
+      state.page = Math.max(1, Math.min(totalPages, page));
+      const start = (state.page - 1) * pageSize + 1;
+      state.selectedNumber = start;
+      renderCards();
+      renderDrawer();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function refreshIcons() {
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function typeset() {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(() => {});
+      }
+    }
+
+    document.getElementById('firstPage').addEventListener('click', () => setPage(1));
+    document.getElementById('prevPage').addEventListener('click', () => setPage(state.page - 1));
+    document.getElementById('nextPage').addEventListener('click', () => setPage(state.page + 1));
+    document.getElementById('lastPage').addEventListener('click', () => setPage(totalPages));
+
+    document.querySelectorAll('[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter]').forEach(item => item.classList.remove('active'));
+        chip.classList.add('active');
+        state.activeFilter = chip.dataset.filter;
+        document.getElementById('selectionMeta').textContent = `已选 1 道 · 当前筛选 ${state.activeFilter === 'all' ? '873' : '演示'} 道`;
+      });
+    });
+
+    document.getElementById('bulkMaster').addEventListener('click', () => {
+      getQuestion(state.selectedNumber).status = 'mastered';
+      saveAndRender('批量状态已保存');
+    });
+
+    document.getElementById('bulkWrong').addEventListener('click', () => {
+      getQuestion(state.selectedNumber).wrong = true;
+      saveAndRender('已加入错题');
+    });
+
+    document.getElementById('bulkPractice').addEventListener('click', () => showToast('练习单已生成'));
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('previewModal').classList.remove('open');
+    });
+
+    document.getElementById('previewModal').addEventListener('click', event => {
+      if (event.target.id === 'previewModal') {
+        document.getElementById('previewModal').classList.remove('open');
+      }
+    });
+
+    renderCards();
+    renderDrawer();
+  </script>
+</body>
+</html>

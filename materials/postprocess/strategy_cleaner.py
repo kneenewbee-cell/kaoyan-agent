@@ -839,7 +839,12 @@ def _outline_sequence_required(family: HeadingFamily) -> bool:
     return not family.anchors and bool(sequence_styles.intersection(family.ordinal_styles))
 
 
-def _outline_sequence_allowed_lines(lines: list[str], families: list[HeadingFamily]) -> dict[str, set[int]]:
+def _outline_sequence_allowed_lines(
+    lines: list[str],
+    families: list[HeadingFamily],
+    *,
+    document_type: str | None = None,
+) -> dict[str, set[int]]:
     sequence_families = [family for family in families if family.enabled and _outline_sequence_required(family)]
     if not sequence_families:
         return {}
@@ -899,11 +904,11 @@ def _outline_sequence_allowed_lines(lines: list[str], families: list[HeadingFami
             if previous_ordinal is None or ordinal == previous_ordinal + 1:
                 run.append((line_no, ordinal))
             else:
-                if len(run) >= 2 and run[0][1] == 1:
+                if len(run) >= 2 and (run[0][1] == 1 or document_type == "exercise_notes"):
                     allowed[family_id].update(item_line_no for item_line_no, _ in run)
                 run = [(line_no, ordinal)]
             previous_ordinal = ordinal
-        if len(run) >= 2 and run[0][1] == 1:
+        if len(run) >= 2 and (run[0][1] == 1 or document_type == "exercise_notes"):
             allowed[family_id].update(item_line_no for item_line_no, _ in run)
     return allowed
 
@@ -1313,7 +1318,11 @@ def clean_with_strategy(
     relation_child_map: dict[str, set[str]] = {}
     active_relation_hints: list[dict[str, Any]] = []
     if use_heading_families:
-        heading_family_sequence_allowed = _outline_sequence_allowed_lines(lines, strategy.heading_families)
+        heading_family_sequence_allowed = _outline_sequence_allowed_lines(
+            lines,
+            strategy.heading_families,
+            document_type=document_type,
+        )
         heading_family_counts = _count_heading_family_matches(
             lines,
             strategy.heading_families,

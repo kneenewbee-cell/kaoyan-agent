@@ -33,7 +33,7 @@ class MaterialsSearchLoggerTest(unittest.TestCase):
                 metadata={
                     "original_filename": "rolle.md",
                     "subject": "math",
-                    "material_type": "note",
+                    "material_type": "lecture",
                     "search_mode": "hybrid",
                     "matched_by": ["keyword", "vector"],
                     "distance": 0.1245678,

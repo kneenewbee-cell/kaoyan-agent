@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
+import re
 from pathlib import Path
 
 from .schemas import DetectedFile
@@ -34,6 +35,8 @@ EXT_DESCRIPTIONS: dict[str, str] = {
     ".zip": "ZIP Archive",
 }
 
+PDF_PAGE_MARKER_RE = re.compile(rb"/Type\s*/Page\b")
+
 
 def _compute_sha256(file_path: Path, chunk_size: int = 65536) -> str:
     """计算文件 SHA-256。"""
@@ -45,6 +48,29 @@ def _compute_sha256(file_path: Path, chunk_size: int = 65536) -> str:
                 break
             sha.update(chunk)
     return sha.hexdigest()
+
+
+def _count_pdf_page_markers(file_path: Path) -> int | None:
+    try:
+        data = file_path.read_bytes()
+    except OSError:
+        return None
+
+    count = len(PDF_PAGE_MARKER_RE.findall(data))
+    return count or None
+
+
+def _detect_pdf_page_count(file_path: Path) -> int | None:
+    try:
+        from pypdf import PdfReader  # type: ignore[import-not-found]
+    except Exception:
+        return _count_pdf_page_markers(file_path)
+
+    try:
+        reader = PdfReader(str(file_path))
+        return len(reader.pages)
+    except Exception:
+        return _count_pdf_page_markers(file_path)
 
 
 def detect_file(file_path: Path) -> DetectedFile:
@@ -81,6 +107,7 @@ def detect_file(file_path: Path) -> DetectedFile:
 
     sha256 = _compute_sha256(file_path)
     size_bytes = file_path.stat().st_size
+    page_count = _detect_pdf_page_count(file_path) if ext == ".pdf" else None
 
     return DetectedFile(
         path=file_path,
@@ -89,6 +116,7 @@ def detect_file(file_path: Path) -> DetectedFile:
         mime_type=mime_type,
         sha256=sha256,
         size_bytes=size_bytes,
+        page_count=page_count,
     )
 
 
