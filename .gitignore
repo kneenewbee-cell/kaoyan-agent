@@ -84,6 +84,7 @@ data/raw/data/
 *.bak
 ~$*
 scripts/run_current_affairs_llm_smoke.py
+patch_weave.py
 node_modules/
 dist/
 build/
