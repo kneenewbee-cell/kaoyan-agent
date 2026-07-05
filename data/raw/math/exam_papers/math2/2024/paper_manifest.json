@@ -1,0 +1,42 @@
+{
+  "exam_id": "kaoyan_math2_2024",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 2024,
+  "source_files": {
+    "questions": "math2_2024_questions.md",
+    "answers": "math2_2024_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 22,
+  "explanation_count": 22,
+  "question_ids": [
+    "kaoyan_math2_2024_q001",
+    "kaoyan_math2_2024_q002",
+    "kaoyan_math2_2024_q003",
+    "kaoyan_math2_2024_q004",
+    "kaoyan_math2_2024_q005",
+    "kaoyan_math2_2024_q006",
+    "kaoyan_math2_2024_q007",
+    "kaoyan_math2_2024_q008",
+    "kaoyan_math2_2024_q009",
+    "kaoyan_math2_2024_q010",
+    "kaoyan_math2_2024_q011",
+    "kaoyan_math2_2024_q012",
+    "kaoyan_math2_2024_q013",
+    "kaoyan_math2_2024_q014",
+    "kaoyan_math2_2024_q015",
+    "kaoyan_math2_2024_q016",
+    "kaoyan_math2_2024_q017",
+    "kaoyan_math2_2024_q018",
+    "kaoyan_math2_2024_q019",
+    "kaoyan_math2_2024_q020",
+    "kaoyan_math2_2024_q021",
+    "kaoyan_math2_2024_q022"
+  ],
+  "generated_at": "2026-07-02T07:38:54.505694+00:00",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

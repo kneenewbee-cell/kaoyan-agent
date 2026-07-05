@@ -1,0 +1,43 @@
+{
+  "exam_id": "kaoyan_math3_2010",
+  "exam_type": "math3",
+  "exam_label": "数学三",
+  "year": 2010,
+  "source_files": {
+    "questions": "math3_2010_questions.md",
+    "answers": "math3_2010_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 23,
+  "explanation_count": 23,
+  "question_ids": [
+    "kaoyan_math3_2010_q001",
+    "kaoyan_math3_2010_q002",
+    "kaoyan_math3_2010_q003",
+    "kaoyan_math3_2010_q004",
+    "kaoyan_math3_2010_q005",
+    "kaoyan_math3_2010_q006",
+    "kaoyan_math3_2010_q007",
+    "kaoyan_math3_2010_q008",
+    "kaoyan_math3_2010_q009",
+    "kaoyan_math3_2010_q010",
+    "kaoyan_math3_2010_q011",
+    "kaoyan_math3_2010_q012",
+    "kaoyan_math3_2010_q013",
+    "kaoyan_math3_2010_q014",
+    "kaoyan_math3_2010_q015",
+    "kaoyan_math3_2010_q016",
+    "kaoyan_math3_2010_q017",
+    "kaoyan_math3_2010_q018",
+    "kaoyan_math3_2010_q019",
+    "kaoyan_math3_2010_q020",
+    "kaoyan_math3_2010_q021",
+    "kaoyan_math3_2010_q022",
+    "kaoyan_math3_2010_q023"
+  ],
+  "generated_at": "2026-07-02T09:56:12.053633+00:00",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

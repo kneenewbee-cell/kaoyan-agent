@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_1997",
+  "exam_type": "math3",
+  "year": 1997,
+  "question_count": 21,
+  "source_files": [
+    "math3_1997_questions.md",
+    "math3_1997_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "题干、标准答案与解析已逐题整理为可直接展示版本。",
+    "questions.jsonl、单题卡与总答案文件已同步为 reviewed/available。",
+    "建议后续按原始扫描件做抽样复核。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

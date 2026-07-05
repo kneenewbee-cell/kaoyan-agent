@@ -1,0 +1,82 @@
+{
+  "text": "[[page:1]]\n2009年（数一）真题答案解析\n一、选择题\n(1） A\n解由已知条件\nf(x)\n—sinar\nx--sinax\n1—acosar\na²sinax\nlim\n=lim-\nlim\nlim\n1-mx²1n(1-bx)\nlim\nx→0g(x)\nc²。(-bx)\nr→0x\n-3bx\n-6br\n0←\n66\n所以α”=一6b.故应选A.\n(2)A\n解令=cosx,则关于为奇函数,关于x 为偶函数,由题意易知 D,D均关于轴\n对称,D2,D4均关于x 轴对称.所以由对称性\nI2=I=0,\n1=\nycosxdxdy=2\nycosxdx=2 |^ ysinydy>0,\nD1右\n0\nycosxdxdy=\nycosxdx=-\nysinydy<0.故应选A.\nD3右\n0\n(3) D\n解不妨设f(x)=g(x）（0≤x≤2),其中g(0)=－1,g(1)=0,g（2)=2,由题干图得，\n(1，-1≤x<0,\n‘≥≥0‘()=()\n[0,\n2<x≤3.\nF(x）\nf(t)dt.\n0\n当一1≤x<0时,F（x）=\nf(t)dt=\nf(t)dt=\n=x，由此可排除A,C.\n又当2<x≤3时，\nF(x）=\nf(t）dt=\nf(t)dt+\nf(t)dt-\nf(t)d\n-P()\nP（2）\ng(x)dx.\n又由定积分的几何意义知，\ng(x)dx>0,故2<x≤3时 F(x)>0.故应选 D.\n(4) C\n（-1)\"\n,则lima,=0,6，收敛,却有anb,=一发散，\n解若令απ=bn=\nur\nn=1\nn=1n\nn=1\nn=1n\n，则lima，=0,lb,|发散,却有α,b，=收敛.故排除 B.\n1\n若取α=bπ=\nn\nn=1\nn =1\nn=1n\n又lb,|与αb²均为正项级数,且\nn=1\nlima,=0,lim|b,|=0,\n\n[[page:2]]\n=liman²·lim|b,|=0,\nbn\n由正项级数比较判别法的极限形式知：当I6,|收敛时，α²6²收敛.\nn = 1\nn=1\n(5）A\n1\n0\n0\n1\n1\n1\n0\n0\n2\n1\n0\n0\n3\n1\n0\nLo\n得（α,α2,α)=(α\n0\n2\n0\n0\n0\n3\n故\n(α+α2,α2+α,α+α)=(α1,α2,α3)\n1\n0\n0\n1\n1\n0\n0\n0\n=(α1'2\n1\n1\nα2，\nα3)\n0\n2\n0\n1\n0\nα3）\n2\n2\nQ\n0\n3\n0\n0\n3\n(6)B\n解\n由|A|=2，|B|=3,得A,B可逆且\nA*=|A|A-1=2A-1,\nB*=|B|B-1=3B-1\n[o\n0\n0\nA\n0\nB-1\n故\n=（—1)2×2|A|·|B|\nB\n0\nB\n0\n[A-1\n0\n0\n6B-1\n0\n2B*\n6A-1\n0\n3A*\n0\n(7) C\n0.7\n解f(x)=F'(x)=0.3Φ'(x)+\n2\nEX:\nxf(x)dx =0.3\nxΦ'(x)dx+0.35\n由于Φ(x)为标准正态分布函数,所以\nxΦ'(x)dx=0,\n2\n(2u+1)Φ'(u)du=2,\n则EX=0+0.35X2=0.7.\n(8)B\n解\nFz(z)=P{xy≤}\n=P(xy≤|y=0}P{y=0}+P{xy≤|y=1}P{y=1}\n\n[[page:3]]\n由于,y相互独立,故Fz(z)=\n1\n(1)若z<0,则Fz（z）=\nΦ(z),\n2\n1\n(2)若z≥0,则Fz(z）\n-[1+Φ(z)],\n2\n所以=0为间断点.故有一个间断点.\n二、填空题\n(9) xf+f+xyf2\n²z\n解\n=f'+yf2,\n=xf\"+f,+xyf\n3x\nxay\n(10)x(1-e^)+2\n解由齐次通解为=（C+C2x)e²,得特征根为r=r2=1,故α=-2,b=1.\n微分方程为\"-2y'+y=.\n设特解为\ny*=Ax+B,(y*)'=A,(y*)\"=0,\n-2A+Ax+B=x,A=1,\n-2+B=0,B=2.\n所以特解为*=x十2.\n非齐次的通解为y=（C,+C2x)e²十x十2.\n把 y(0)=2,y'(0)=0代人得 C,=0,C2=--1.\n故应填一xe*十x十2.\n13\n(11)\n6\n解由题意可知,x=x,y=x²,0≤x≤√2,则 ds=~1+4x²dx.\n所以\n√2\n1\n√2\n√1+4x²d(1+4x²)=\n2\n2/\nxds\n=xp+Ix\n(1+4x²)\n8\n6\n4\n(12)\n15”\n由对称性\nx²dx dydz =\nz²dxdydz ,\ny\"dxdydz\n1\n1\n所以\nz²dxdydz=\n(x²+y²+²)dxdydz=\ndo\n3\n15\n3\n八\nn\nn\n(13）2\n解设入是βαT的非零特征值,n是属于入的特征向量,从而BαT=入n.\n由于入≠0,n≠0,故αTm≠0.\n所以,入=2.\n（14）-1\n\n[[page:4]]\n解因为X+kS²为np²的无偏估计,所以\nE(X+kS²)=np².\n而\n(-)du+u=x+X=(S)+(X)=(S+X)\n则k(l-p)=p-1，即k=-1.\n三、解答题\n(15）解f'(x,y)=2x(2+y²）,\nf'(x,y)=2x²+lny +1.\nf'(x,y)=0,\n解得唯一驻点\n(f'(x,y)=0,\n由于\n=2(2+y²)|(o)=2(\nB-f\"(0,\n=4xy|(o)=0,\nC=f\"(o,-\n() =e\n所以\nB²-AC=-2e(\n(0,且A>0,\n从而\n是f(,)的极小值,极小值为f\n（16）解曲线=x”与=x\"+1的交点为(0,0)与(1,1),所围区域的面积\n1\n1\n\"—xn+1)dx=\nn+1\nn+2’\nS=∑a,=\n1\n(n+1n+2\n》=\n2\n1\n2n+1)-(-1)\n2n\nn\nx”,知其收敛域为（一1,1］,和函数为一ln(1十x）.\nn=1\nn\n（-1)”\n因为S(x)=\n\"=x-ln（1+x）,令x=1,得\nn\nS2= ∑a2n\n2n-1=S(1)=1-ln 2.\n（17）解（I）椭球面S的方程为\n3\n设切点为（,y。）,则\nyoy\n4\n3\n4\n3\n3\n将x=4,y=0代人切线方程得x。=1,从而y。=±\n2\n2\n所以切线方程为\ny\n=1,从而圆锥面S2的方程为\n4\n2\n即\n(x-4)²-4y²-4x²=0.\n\n[[page:5]]\n（Ⅱ）S，与S2之间的体积等于一个底面半径为一\n、高为3的锥体体积\nπ与部分椭球体\n体积V之差,其中\n3π\n5\n(4-x²)dx\n4\n9\n5\n故所求体积为\n4\n4\n（18）解（I)取\n(x-a),\nb-a\n由题意知F(x)在[a,6]上连续,在(a,6)内可导,且\n(a-a)=f(a),\nb-a\nf(b)-f(a)\nF(b)=f(b)-\n-(b-a)=f(a).\np-9\n根据罗尔定理，存在E∈（α，b），使得\nb-a\n=0，\n即\nf(b)-f(a)=f'(ε)(b-a).\n（Ⅱ）对于任意的t∈（0,），函数f（x)在[0,t］上连续，在（0,t）内可导，由右导数定义及拉\n格朗日中值定理可得\nf(t)-f(0)\nf'(E)t\nf′(0)= lim\nlim\nlimf'(∈),其中εE(O,t).\nt-0\nt→→0+\n/ ~→0 +\nt\n→→0+\n由于 limf'(t)=A,且当 t→0*时，→0+,所以 limf'()=A,故f(0)存在,且f(0)=A.\n→0\n→0+\n（19）解取≥:x²+y²十2²=1的外侧,Ω2为∑与≥，之间的部分.\nxdydz +ydzdx +zdxdy\n3\n(x²+y²+x²)\nxdydz+ ydzdx +zdxdy\nxdydz+ydzdx +dxdy\n∑-∑1\n(x²+y²+x²)≥\n∑1\n(x²+y²+x²)\n根据高斯公式，可得\nx dydz+ydzdx+zdxdy\nOdxdydz=0,\n∑-1\n(x²+y²+x²)\nxdydz+ydzdx+zdxdy\nxdydz+ydzdx +xdxdy=\n3dxdydx=4π,\nE1\n(x²+y²+x²)≥\nE1\nx²+y²+x²≤1\n所以I=4π.\n（20）解\n（I）对矩阵（A：)施以初等行变换,得\n0\n1\n1\n2\n2\n(A:,)=\n-1\n1\n1\n1\n1\n0\n1\n0\n-4\n-2\n2\n2\n0\n0\n0\n0\n可求得\n\n[[page:6]]\n2\n2\n1\nk\n2\n2\nk\n其中 k 为任意常数.\n又\n2\n2\n01\n一\n2\n一\n2\n0\n4\n4\n0\n对矩阵（A²：)施以初等行变换，得\n2\n0\n1\n1\n2\n(A²:)=|-2\n-2\n0\n0\n0\n0\n0\n4\n4\n0\n2\n0\n0\n0\n0\n可求得\n1\n2\n3\na\nb\n其中 α,b 为任意常数.\n（Ⅱ）证法一由（I)知\nk\n1\n2\n2\n2\n15, 52 531=\n1\nk\n1\na\n2\n2\n2\n2\nk\n6\n所以与1，与2，与：线性无关\n证法二由题设可得A§，=0.设存在数k,k2,k3,使得\nk151+k252+k353=0,\n等式两端左乘A,得\nk2A2+kA3=0,\n即\nk251+k3A53=0,\n等式两端再左乘A,得\nk3A²E3=0,\n即\nk351=0,\n于是k3=0,代人②式，得k2=0,故k2=0,将k2=k3=0代人①式，可得k1=0,从而，\n52，与线性无关.\n（21）解（I）二次型f的矩阵\n(a\n0\n1\nA=\n0\na\n1\n1\na-1\n\n[[page:7]]\n由于\n入一a\n0\n|AE-A|=|0\n入-a\n1\n-1\n1\n入-a+1\n=(入-a)(x-(a+1))(x-(a-2)),\n所以A的特征值为\n入1=a,入2=a+1,入3=a-2.\n1\n0\n0\n（Ⅱ）由于f的规范形为y²+y²，所以A合同于0\n1\n0\n，其秩为2,故丨A|=入入2入3=0，\n0\n0\n于是α=０或α=-l或α=2.\n当α=0 时,,=0,入2=1,入=－2,此时f 的规范形为²－y²,不合题意.\n当α=-1时，=-1,入2=0,入=一3,此时f的规范形为一²—y²,不合题意.\n当α=2时,入=2,入2=3,入=0,此时f的规范形为y²十y².\n综上可知,α=2.\nP{X=1,Z=0}\n（22）解\n（I）P{X=1|Z=0}=\nP(Z=0}\n（Ⅱ）由题意知X与Y的所有可能取值均为0,1,2.\n(X,Y)的概率分布为\nY\n0\n1\n2\nX\n1\n1\n1\n0\n4\n3\n9\n1\n1\n1\n0\n6\n9\n1\n2\n0\n0\n36\n2\n（23）解（I）EX=\nxf(x)dx\nd.r\n2\n2\n令X=EX,即X=\n,得入的矩估计量为，\nX\n（Ⅱ）\n设x1,2，\",x，（x;>0,i=1,2，\",n）为样本观测值,则似然函数为\nxi\nL(x1,x2,,xn;A)=入2ne-=\ni=1\nIn L=2nln 入-入 x;+ ln x;,\ni=1\ni=1\nd ln L\n2n\nx;=0,得入的最大似然估计量为2=\n2\n由\nd\n入\ni=1\nX、",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 80,
+      "avg_score": 0.8906,
+      "elapsed": [
+        2.202422000002116,
+        0.3372347354888916,
+        4.713403701782227
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 101,
+      "avg_score": 0.8958,
+      "elapsed": [
+        1.2128494000062346,
+        0.30865979194641113,
+        4.2412965297698975
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 69,
+      "avg_score": 0.8936,
+      "elapsed": [
+        1.1006015001330525,
+        0.5173077583312988,
+        5.390169858932495
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 65,
+      "avg_score": 0.9126,
+      "elapsed": [
+        1.1501807998865843,
+        0.2410597801208496,
+        4.15134072303772
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 91,
+      "avg_score": 0.9187,
+      "elapsed": [
+        1.1176254998426884,
+        0.18538331985473633,
+        6.218559265136719
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 88,
+      "avg_score": 0.945,
+      "elapsed": [
+        1.4157707002013922,
+        0.2854461669921875,
+        4.924955368041992
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 81,
+      "avg_score": 0.9241,
+      "elapsed": [
+        1.4510900999885052,
+        0.263730525970459,
+        5.617141962051392
+      ]
+    }
+  ]
+}

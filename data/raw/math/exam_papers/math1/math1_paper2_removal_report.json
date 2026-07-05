@@ -1,0 +1,252 @@
+[
+  {
+    "year": 1987,
+    "removed_question_numbers": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1987\\questions\\q022.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1987\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1987\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1987\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1988,
+    "removed_question_numbers": [
+      23,
+      24
+    ],
+    "jsonl_removed": [
+      23,
+      24
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24
+    ],
+    "answer_sections_removed": [
+      23,
+      24
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1988\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1988\\questions\\q024.md"
+    ]
+  },
+  {
+    "year": 1989,
+    "removed_question_numbers": [
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1989\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1989\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1990,
+    "removed_question_numbers": [
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1990\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1990\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1991,
+    "removed_question_numbers": [
+      23,
+      24
+    ],
+    "jsonl_removed": [
+      23,
+      24
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24
+    ],
+    "answer_sections_removed": [
+      23,
+      24
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1991\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1991\\questions\\q024.md"
+    ]
+  },
+  {
+    "year": 1992,
+    "removed_question_numbers": [
+      23,
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      23,
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      23,
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1992\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1992\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1992\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1993,
+    "removed_question_numbers": [
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1993\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1993\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1994,
+    "removed_question_numbers": [
+      23,
+      24
+    ],
+    "jsonl_removed": [
+      23,
+      24
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24
+    ],
+    "answer_sections_removed": [
+      23,
+      24
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1994\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1994\\questions\\q024.md"
+    ]
+  },
+  {
+    "year": 1995,
+    "removed_question_numbers": [
+      23,
+      24,
+      25
+    ],
+    "jsonl_removed": [
+      23,
+      24,
+      25
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24,
+      25
+    ],
+    "answer_sections_removed": [
+      23,
+      24,
+      25
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1995\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1995\\questions\\q024.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1995\\questions\\q025.md"
+    ]
+  },
+  {
+    "year": 1996,
+    "removed_question_numbers": [
+      23,
+      24
+    ],
+    "jsonl_removed": [
+      23,
+      24
+    ],
+    "answer_table_rows_removed": [
+      23,
+      24
+    ],
+    "answer_sections_removed": [
+      23,
+      24
+    ],
+    "deleted_card_files": [
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1996\\questions\\q023.md",
+      "E:\\python_project\\data\\raw\\math\\exam_papers\\math1\\1996\\questions\\q024.md"
+    ]
+  }
+]

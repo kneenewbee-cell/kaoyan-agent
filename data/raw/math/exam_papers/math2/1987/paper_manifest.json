@@ -1,0 +1,31 @@
+{
+  "exam_id": "kaoyan_math2_1987",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 1987,
+  "source_files": {
+    "questions": "math2_1987_questions.md",
+    "answers": "math2_1987_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 10,
+  "explanation_count": 10,
+  "question_ids": [
+    "kaoyan_math2_1987_q001",
+    "kaoyan_math2_1987_q002",
+    "kaoyan_math2_1987_q003",
+    "kaoyan_math2_1987_q004",
+    "kaoyan_math2_1987_q005",
+    "kaoyan_math2_1987_q006",
+    "kaoyan_math2_1987_q007",
+    "kaoyan_math2_1987_q008",
+    "kaoyan_math2_1987_q009",
+    "kaoyan_math2_1987_q010"
+  ],
+  "generated_at": "2026-06-30T00:00:00+08:00",
+  "paper_scope": "试卷 III",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

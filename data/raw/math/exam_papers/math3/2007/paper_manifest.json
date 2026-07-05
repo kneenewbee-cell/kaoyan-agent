@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_2007",
+  "exam_type": "math3",
+  "year": 2007,
+  "question_count": 24,
+  "source_files": [
+    "math3_2007_questions.md",
+    "math3_2007_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "数三 2007 全 24 题题卡、questions.jsonl、总题面、总答案已同步精修。",
+    "标准答案与解析已清除未标注内容与明显公式残缺。",
+    "直接复用的同年题目已与数一/数二已校对版本交叉对齐。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

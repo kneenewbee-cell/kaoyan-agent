@@ -1,0 +1,200 @@
+[
+  {
+    "question_number": 1,
+    "question_type": "选择题",
+    "question_text": "函数\n$$\nf(x)=|x|^{\\frac{1}{(1-x)(x-2)}}\n$$\n的第一类间断点的个数是\nA. 3\nB. 2\nC. 1\nD. 0",
+    "answer": "C",
+    "explanation": "无定义点为 $x=1,2$。当 $x\\to1$ 时，\n$$\n|x|^{\\frac{1}{(1-x)(x-2)}}=e^{\\frac{\\ln|x|}{(1-x)(x-2)}}\\to e,\n$$\n故 $x=1$ 是可去间断点。当 $x\\to2$ 时，函数趋于无穷大，故 $x=2$ 为第二类间断点。又 $x=0$ 是分段点，且\n$$\n\\lim_{x\\to0}|x|^{\\frac{1}{(1-x)(x-2)}}=+\\infty,\n$$\n所以 $x=0$ 也是第二类间断点。因此只有一个第一类间断点。",
+    "module": "高等数学",
+    "topics": ["间断点分类", "极限", "指数型极限"]
+  },
+  {
+    "question_number": 2,
+    "question_type": "选择题",
+    "question_text": "设函数 $y=f(x)$ 由参数方程\n$$\n\\begin{cases}\nx=1+t^3,\\\\\ny=e^{t^2}\n\\end{cases}\n$$\n确定，则\n$$\n\\lim_{x\\to+\\infty}x\\left[f\\!\\left(2+\\frac{2}{x}\\right)-f(2)\\right]=\n$$\nA. $2e$\nB. $\\dfrac{4e}{3}$\nC. $\\dfrac{2e}{3}$\nD. $\\dfrac{e}{3}$",
+    "answer": "B",
+    "explanation": "令 $h=\\dfrac{2}{x}$，则当 $x\\to+\\infty$ 时 $h\\to0^+$，原式化为\n$$\n\\lim_{h\\to0^+}\\frac{f(2+h)-f(2)}{h}\\cdot2=2f_+\\!'(2).\n$$\n由参数方程可知点 $x=2$ 对应 $t=1$，故\n$$\nf_+\\!'(2)=\\left.\\frac{dy/dt}{dx/dt}\\right|_{t=1}=\\left.\\frac{2te^{t^2}}{3t^2}\\right|_{t=1}=\\frac{2e}{3}.\n$$\n因此原式等于 $2\\cdot\\dfrac{2e}{3}=\\dfrac{4e}{3}$。",
+    "module": "高等数学",
+    "topics": ["参数方程求导", "导数定义", "极限"]
+  },
+  {
+    "question_number": 3,
+    "question_type": "选择题",
+    "question_text": "已知\n$$\nf(x)=\\int_0^{\\sin x}\\sin t^3\\,dt,\\qquad g(x)=\\int_0^x f(t)\\,dt,\n$$\n则\nA. $f(x)$ 为奇函数，$g(x)$ 为奇函数\nB. $f(x)$ 为奇函数，$g(x)$ 为偶函数\nC. $f(x)$ 为偶函数，$g(x)$ 为偶函数\nD. $f(x)$ 为偶函数，$g(x)$ 为奇函数",
+    "answer": "D",
+    "explanation": "由变上限积分求导得\n$$\nf'(x)=\\sin\\bigl((\\sin x)^3\\bigr)\\cos x.\n$$\n其中 $\\sin\\bigl((\\sin x)^3\\bigr)$ 为奇函数，$\\cos x$ 为偶函数，所以 $f'(x)$ 为奇函数，从而 $f(x)$ 为偶函数。又\n$$\ng(x)=\\int_0^x f(t)\\,dt,\n$$\n偶函数从 $0$ 到 $x$ 的积分是奇函数，所以 $g(x)$ 为奇函数。",
+    "module": "高等数学",
+    "topics": ["奇偶性", "变上限积分", "复合函数"]
+  },
+  {
+    "question_number": 4,
+    "question_type": "选择题",
+    "question_text": "已知数列 $\\{a_n\\}$（$a_n\\ne0$），若 $\\{a_n\\}$ 发散，则\nA. $\\left\\{a_n+\\dfrac1{a_n}\\right\\}$ 发散\nB. $\\left\\{a_n-\\dfrac1{a_n}\\right\\}$ 发散\nC. $\\left\\{e^{a_n}+e^{-a_n}\\right\\}$ 发散\nD. $\\left\\{e^{a_n}-e^{-a_n}\\right\\}$ 发散",
+    "answer": "D",
+    "explanation": "逐项反例可排除 A、B、C：\nA 取 $a_n=2,\\frac12,2,\\frac12,\\dots$，则 $a_n+\\dfrac1{a_n}$ 恒为 $\\dfrac52$；\nB 取 $a_n=1,-1,1,-1,\\dots$，则 $a_n-\\dfrac1{a_n}$ 恒为 $0$；\nC 取 $a_n=\\ln2,-\\ln2,\\ln2,-\\ln2,\\dots$，则 $e^{a_n}+e^{-a_n}$ 恒为 $\\dfrac52$。而函数 $\\varphi(x)=e^x-e^{-x}$ 严格单调，若 $\\{e^{a_n}-e^{-a_n}\\}$ 收敛，则由反函数连续性可推出 $\\{a_n\\}$ 收敛，矛盾。因此 D 正确。",
+    "module": "高等数学",
+    "topics": ["数列收敛性", "反例构造", "单调函数"]
+  },
+  {
+    "question_number": 5,
+    "question_type": "选择题",
+    "question_text": "已知函数\n$$\nf(x,y)=\n\\begin{cases}\n(x^2+y^2)\\sin\\dfrac1{xy}, & xy\\ne0,\\\\\n0, & xy=0,\n\\end{cases}\n$$\n则在点 $(0,0)$ 处\nA. $\\dfrac{\\partial f}{\\partial x}$ 连续，$f(x,y)$ 可微\nB. $\\dfrac{\\partial f}{\\partial x}$ 连续，$f(x,y)$ 不可微\nC. $\\dfrac{\\partial f}{\\partial x}$ 不连续，$f(x,y)$ 可微\nD. $\\dfrac{\\partial f}{\\partial x}$ 不连续，$f(x,y)$ 不可微",
+    "answer": "C",
+    "explanation": "由估计\n$$\n|f(x,y)|\\le x^2+y^2,\n$$\n可得\n$$\n\\frac{|f(x,y)-f(0,0)|}{\\sqrt{x^2+y^2}}\\le\\sqrt{x^2+y^2}\\to0,\n$$\n故 $f$ 在 $(0,0)$ 处可微。对 $xy\\ne0$ 有\n$$\n\\frac{\\partial f}{\\partial x}=2x\\sin\\frac1{xy}-(x^2+y^2)\\cos\\frac1{xy}\\cdot\\frac1{x^2y}.\n$$\n该式在 $(0,0)$ 邻域内极限不存在，因此 $\\dfrac{\\partial f}{\\partial x}$ 在 $(0,0)$ 不连续。",
+    "module": "高等数学",
+    "topics": ["多元函数可微性", "偏导数连续性", "极限估计"]
+  },
+  {
+    "question_number": 6,
+    "question_type": "选择题",
+    "question_text": "设 $f(x,y)$ 是连续函数，则\n$$\n\\int_{\\pi/6}^{\\pi/2}dx\\int_{\\sin x}^{1}f(x,y)\\,dy=\n$$\nA. $\\displaystyle \\int_{1/2}^{1}dy\\int_{\\pi/6}^{\\arcsin y}f(x,y)\\,dx$\nB. $\\displaystyle \\int_{1/2}^{1}dy\\int_{\\arcsin y}^{\\pi/2}f(x,y)\\,dx$\nC. $\\displaystyle \\int_{0}^{1/2}dy\\int_{\\pi/6}^{\\arcsin y}f(x,y)\\,dx$\nD. $\\displaystyle \\int_{0}^{1/2}dy\\int_{\\arcsin y}^{\\pi/2}f(x,y)\\,dx$",
+    "answer": "A",
+    "explanation": "积分区域为\n$$\nD=\\{(x,y)\\mid \\pi/6\\le x\\le\\pi/2,\\ \\sin x\\le y\\le1\\}.\n$$\n由 $y\\ge\\sin x$ 得 $x\\le\\arcsin y$，且 $y$ 的范围为 $\\dfrac12\\le y\\le1$。因此换序后\n$$\n\\iint_D f(x,y)\\,d\\sigma=\\int_{1/2}^1dy\\int_{\\pi/6}^{\\arcsin y}f(x,y)\\,dx.\n$$",
+    "module": "高等数学",
+    "topics": ["二重积分换序", "积分区域", "反三角函数"]
+  },
+  {
+    "question_number": 7,
+    "question_type": "选择题",
+    "question_text": "设非负函数 $f(x)$ 在 $[0,+\\infty)$ 上连续，给定以下三个命题：\n\n(1) 若 $\\int_0^{+\\infty}f^2(x)\\,dx$ 收敛，则 $\\int_0^{+\\infty}f(x)\\,dx$ 收敛；\n\n(2) 若存在 $p>1$，使极限 $\\lim_{x\\to+\\infty}x^pf(x)$ 存在，则 $\\int_0^{+\\infty}f(x)\\,dx$ 收敛；\n\n(3) 若 $\\int_0^{+\\infty}f(x)\\,dx$ 收敛，则存在 $p>1$，使极限 $\\lim_{x\\to+\\infty}x^pf(x)$ 存在。\n\n其中正确命题的个数是\nA. 0\nB. 1\nC. 2\nD. 3",
+    "answer": "B",
+    "explanation": "(1) 错。取 $f(x)=\\dfrac1{x+1}$，则 $\\int_0^{+\\infty}f^2(x)\\,dx$ 收敛，而 $\\int_0^{+\\infty}f(x)\\,dx$ 发散。\n\n(2) 对。若 $\\lim\\limits_{x\\to+\\infty}x^pf(x)=L$ 且 $p>1$，则 $f(x)\\sim \\dfrac{L}{x^p}$ 或满足同阶比较，依极限比较判别法知广义积分收敛。\n\n(3) 错。取\n$$\nf(x)=\\frac1{(x+1)\\ln^2(x+1)},\n$$\n则积分收敛，但任意 $p>1$ 时 $x^pf(x)\\to+\\infty$，极限不存在为有限值。",
+    "module": "高等数学",
+    "topics": ["广义积分敛散性", "比较判别法", "反例构造"]
+  },
+  {
+    "question_number": 8,
+    "question_type": "选择题",
+    "question_text": "设 $A$ 为 3 阶矩阵，\n$$\nP=\\begin{pmatrix}1&0&0\\\\0&1&0\\\\1&0&1\\end{pmatrix},\n$$\n若\n$$\nP^TAP^2=\\begin{pmatrix}a+2c&0&c\\\\0&b&0\\\\2c&0&c\\end{pmatrix},\n$$\n则矩阵 $A$ 为\nA. $\\begin{pmatrix}c&0&0\\\\0&a&0\\\\0&0&b\\end{pmatrix}$\nB. $\\begin{pmatrix}b&0&0\\\\0&c&0\\\\0&0&a\\end{pmatrix}$\nC. $\\begin{pmatrix}a&0&0\\\\0&b&0\\\\0&0&c\\end{pmatrix}$\nD. $\\begin{pmatrix}c&0&0\\\\0&b&0\\\\0&0&a\\end{pmatrix}$",
+    "answer": "C",
+    "explanation": "记\n$$\nB=P^TAP^2=\\begin{pmatrix}a+2c&0&c\\\\0&b&0\\\\2c&0&c\\end{pmatrix}.\n$$\n由 $P=E_{31}(1)$，故\n$$\nA=(P^T)^{-1}B(P^2)^{-1}=E_{31}^T(-1)BE_{31}(-1)E_{31}(-1).\n$$\n直接乘开可得\n$$\nA=\\begin{pmatrix}a&0&0\\\\0&b&0\\\\0&0&c\\end{pmatrix}.\n$$",
+    "module": "线性代数",
+    "topics": ["矩阵乘法", "初等矩阵", "合同变换"]
+  },
+  {
+    "question_number": 9,
+    "question_type": "选择题",
+    "question_text": "设 $A$ 为四阶矩阵，$A^*$ 为 $A$ 的伴随矩阵，若 $A(A-A^*)=O$ 且 $A\\ne A^*$，则 $r(A)$ 的可能取值为\nA. 0 或 1\nB. 1 或 3\nC. 2 或 3\nD. 1 或 2",
+    "answer": "D",
+    "explanation": "由 $A(A-A^*)=O$，得\n$$\nr(A)+r(A-A^*)\\le4.\n$$\n又因 $A\\ne A^*$，故 $A-A^*\\ne0$，从而 $r(A-A^*)\\ge1$，于是 $r(A)\\le3$。\n再由伴随矩阵性质 $AA^*=|A|E$，可化为\n$$\nA^2-|A|E=0.\n$$\n若 $r(A)=3$，则 $r(A^*)=1$，与上式推出的结构矛盾；进一步分析可知只能有 $r(A)\\le2$。又 $A\\ne A^*$ 排除 $r(A)=0$，故 $r(A)=1$ 或 $2$。",
+    "module": "线性代数",
+    "topics": ["伴随矩阵", "矩阵秩", "矩阵恒等式"]
+  },
+  {
+    "question_number": 10,
+    "question_type": "选择题",
+    "question_text": "设 $A,B$ 均为 2 阶矩阵，且 $AB=BA$，则“$A$ 有两个不相等的特征值”是“$B$ 可对角化”的\nA. 充要条件\nB. 充分非必要条件\nC. 必要非充分条件\nD. 既非充分又非必要条件",
+    "answer": "B",
+    "explanation": "若 $A$ 有两个不同特征值，则 $A$ 可对角化。由 $AB=BA$ 可知，$B$ 保持 $A$ 的各特征子空间不变，在与 $A$ 同一组特征向量基下，$B$ 也为对角矩阵，因此 $B$ 可对角化，所以该条件是充分的。\n\n但它不是必要的，例如取 $B=E$ 时，$B$ 显然可对角化，而 $A$ 不一定有两个不同特征值，因此不是必要条件。",
+    "module": "线性代数",
+    "topics": ["特征值", "可对角化", "矩阵可交换"]
+  },
+  {
+    "question_number": 11,
+    "question_type": "填空题",
+    "question_text": "曲线 $y^2=x$ 在点 $(0,0)$ 处的曲率圆方程为 ______。",
+    "answer": "$\\left(x-\\dfrac12\\right)^2+y^2=\\dfrac14$",
+    "explanation": "将曲线写成 $x=y^2$，视作 $x$ 关于 $y$ 的函数。等价看作抛物线 $y=x^2$ 在顶点的曲率。其曲率为\n$$\nk=\\frac{|y''|}{(1+(y')^2)^{3/2}}\\Big|_{(0,0)}=2,\n$$\n故曲率半径 $R=\\dfrac12$，曲率圆圆心在 $(\\dfrac12,0)$，从而曲率圆方程为\n$$\n\\left(x-\\frac12\\right)^2+y^2=\\frac14.\n$$",
+    "module": "高等数学",
+    "topics": ["曲率", "曲率圆", "平面曲线"]
+  },
+  {
+    "question_number": 12,
+    "question_type": "填空题",
+    "question_text": "函数\n$$\nf(x,y)=2x^3-9x^2-6y^4+12x+24y\n$$\n的极值点是 ______。",
+    "answer": "$(1,1)$",
+    "explanation": "令一阶偏导为零：\n$$\nf_x'=6x^2-18x+12=0,\\qquad f_y'=-24y^3+24=0.\n$$\n解得驻点为 $(1,1)$ 与 $(2,1)$。再算二阶偏导\n$$\nf_{xx}''=12x-18,\\quad f_{xy}''=0,\\quad f_{yy}''=-72y^2.\n$$\n在 $(1,1)$ 处有 $f_{xx}''f_{yy}''-(f_{xy}'')^2=432>0$ 且 $f_{xx}''=-6<0$，故 $(1,1)$ 为极大值点；在 $(2,1)$ 处判别式小于零，不是极值点。",
+    "module": "高等数学",
+    "topics": ["多元函数极值", "驻点", "二阶判别法"]
+  },
+  {
+    "question_number": 13,
+    "question_type": "填空题",
+    "question_text": "微分方程\n$$\ny'=\\frac1{(x+y)^2}\n$$\n满足初始条件 $y(1)=0$ 的解为 ______。",
+    "answer": "$\\arctan(x+y)=y+\\dfrac\\pi4$",
+    "explanation": "将方程改写为\n$$\n\\frac{dx}{dy}=(x+y)^2.\n$$\n令 $u=x+y$，则\n$$\n\\frac{dx}{dy}=\\frac{du}{dy}-1,\n$$\n从而\n$$\n\\frac{du}{dy}=u^2+1.\n$$\n积分得\n$$\n\\arctan u=y+C.\n$$\n代入初值 $(x,y)=(1,0)$ 得 $u=1$，故 $C=\\dfrac\\pi4$。于是\n$$\n\\arctan(x+y)=y+\\frac\\pi4.\n$$",
+    "module": "高等数学",
+    "topics": ["微分方程", "变量代换", "初值问题"]
+  },
+  {
+    "question_number": 14,
+    "question_type": "填空题",
+    "question_text": "已知函数 $f(x)=x^2(e^x+1)$，则 $f^{(5)}(1)=$ ______。",
+    "answer": "$31e$",
+    "explanation": "将 $f(x)$ 写成 $(e^x+1)x^2$，利用莱布尼茨公式求五阶导数：\n$$\nf^{(5)}(x)=e^x\\,x^2+5e^x\\cdot2x+\\binom52e^x\\cdot2.\n$$\n代入 $x=1$ 得\n$$\nf^{(5)}(1)=e+10e+20e=31e.\n$$",
+    "module": "高等数学",
+    "topics": ["高阶导数", "莱布尼茨公式"]
+  },
+  {
+    "question_number": 15,
+    "question_type": "填空题",
+    "question_text": "某物体以速度 $v(t)=t+k\\sin\\pi t$ 作直线运动，若它从 $t=0$ 到 $t=3$ 的时间段内平均速度是 $\\dfrac52$，则 $k=$ ______。",
+    "answer": "$\\dfrac{3\\pi}{2}$",
+    "explanation": "由平均速度定义，\n$$\n\\frac1{3}\\int_0^3\\bigl(t+k\\sin\\pi t\\bigr)dt=\\frac52.\n$$\n即\n$$\n\\int_0^3\\bigl(t+k\\sin\\pi t\\bigr)dt=\\frac{15}{2}.\n$$\n计算得\n$$\n\\frac92-\\frac{k}{\\pi}\\cos\\pi t\\Big|_0^3=\\frac{15}{2}.\n$$\n由 $\\cos3\\pi=-1,\\cos0=1$，得\n$$\n\\frac92+\\frac{2k}{\\pi}=\\frac{15}{2},\n$$\n所以 $k=\\dfrac{3\\pi}{2}$。",
+    "module": "高等数学",
+    "topics": ["定积分应用", "平均值", "三角函数积分"]
+  },
+  {
+    "question_number": 16,
+    "question_type": "填空题",
+    "question_text": "设向量\n$$\n\\alpha_1=\\begin{pmatrix}a\\\\1\\\\-1\\\\1\\end{pmatrix},\\quad\n\\alpha_2=\\begin{pmatrix}1\\\\1\\\\b\\\\a\\end{pmatrix},\\quad\n\\alpha_3=\\begin{pmatrix}1\\\\a\\\\-1\\\\1\\end{pmatrix},\n$$\n若 $\\alpha_1,\\alpha_2,\\alpha_3$ 线性相关，且其中任意两个向量均线性无关，则 $ab=$ ______。",
+    "answer": "$-4$",
+    "explanation": "将三向量组成矩阵\n$$\nA=(\\alpha_1,\\alpha_2,\\alpha_3)=\\begin{pmatrix}\na&1&1\\\\\n1&1&a\\\\\n-1&b&-1\\\\\n1&a&1\n\\end{pmatrix}.\n$$\n由三向量线性相关且任意两个线性无关，知秩为 $2$。对矩阵作初等变换可得约束条件\n$$\na+2=0,\\qquad -b(a+1)-2=0.\n$$\n解得 $a=-2,b=2$，故\n$$\nab=-4.\n$$",
+    "module": "线性代数",
+    "topics": ["向量组线性相关", "矩阵秩", "参数求解"]
+  },
+  {
+    "question_number": 17,
+    "question_type": "解答题",
+    "question_text": "设平面有界区域 $D$ 位于第一象限，由曲线 $xy=\\dfrac13$，$xy=3$ 与直线 $y=\\dfrac13x$，$y=3x$ 围成，计算\n$$\n\\iint_D(1+x-y)\\,dxdy.\n$$",
+    "answer": "$$\\frac{8}{3}\\ln 3$$",
+    "explanation": "作变量代换\n$$\nu=xy,\\qquad v=\\frac{y}{x}.\n$$\n则\n$$\nx=\\sqrt{\\frac{u}{v}},\\qquad y=\\sqrt{uv},\n$$\n雅可比行列式为\n$$\n\\left|\\frac{\\partial(x,y)}{\\partial(u,v)}\\right|=\\frac{1}{2v}.\n$$\n区域 $D$ 在 $(u,v)$ 平面上化为矩形\n$$\n\\frac13\\le u\\le 3,\\qquad \\frac13\\le v\\le3.\n$$\n因此\n$$\n\\iint_D(1+x-y)\\,dxdy=\n\\int_{1/3}^3du\\int_{1/3}^3\\left(1+\\sqrt{\\frac{u}{v}}-\\sqrt{uv}\\right)\\frac{1}{2v}\\,dv=\frac{8}{3}\\ln3.\n$$",
+    "module": "高等数学",
+    "topics": ["二重积分", "变量代换", "雅可比行列式"]
+  },
+  {
+    "question_number": 18,
+    "question_type": "解答题",
+    "question_text": "设 $y=y(x)$ 满足方程\n$$\nxy''+xy'-9y=0,\n$$\n且 $y\\big|_{x=1}=2$，$y'\\big|_{x=1}=6$。\n\n(1) 利用变换 $x=e^t$ 化方程，并求 $y(x)$ 的表达式；\n\n(2) 求\n$$\n\\int_1^2 y(x)\\sqrt{4-x^2}\\,dx.\n$$",
+    "answer": "（1）$$y(x)=2x^3.$$ \n（2）$$\\int_1^2 y(x)\\sqrt{4-x^2}\\,dx=\\frac{22\\sqrt3}{5}.$$",
+    "explanation": "令 $x=e^t$，则原方程化为常系数方程\n$$\n\\frac{d^2y}{dt^2}-9y=0.\n$$\n其通解为\n$$\ny=C_1e^{3t}+C_2e^{-3t}=C_1x^3+\\frac{C_2}{x^3}.\n$$\n由初值条件\n$$\ny(1)=C_1+C_2=2,\\qquad y'(1)=3C_1-3C_2=6,\n$$\n解得 $C_1=2,C_2=0$，故 $y(x)=2x^3$。\n\n于是\n$$\n\\int_1^2 y(x)\\sqrt{4-x^2}\\,dx=\\int_1^2 2x^3\\sqrt{4-x^2}\\,dx.\n$$\n令 $x=2\\sin t$，化为三角积分，计算得\n$$\n\\int_1^2 2x^3\\sqrt{4-x^2}\\,dx=\\frac{22\\sqrt3}{5}.\n$$",
+    "module": "高等数学",
+    "topics": ["欧拉型微分方程", "变量代换", "定积分计算"]
+  },
+  {
+    "question_number": 19,
+    "question_type": "解答题",
+    "question_text": "设 $t>0$，求由曲线 $y=\\sqrt{x}e^{-x}$ 与直线 $x=t$，$x=2t$ 及 $x$ 轴所围平面图形绕 $x$ 轴旋转所得旋转体的体积为 $V(t)$，求 $V(t)$ 的最大值。",
+    "answer": "$$V(t)=\\frac\\pi4\\Big[(2t+1)e^{-2t}-(4t+1)e^{-4t}\\Big],\\quad V_{\\max}=\\frac\\pi{16}\\ln2+\\frac{3\\pi}{64}.$$",
+    "explanation": "由旋转体体积公式\n$$\nV(t)=\\int_t^{2t}\\pi y^2\\,dx=\int_t^{2t}\\pi x e^{-2x}\\,dx.\n$$\n积分得\n$$\nV(t)=\\frac\\pi4\\Big[(2t+1)e^{-2t}-(4t+1)e^{-4t}\\Big].\n$$\n再求导：\n$$\nV'(t)=-\\frac\\pi4\\bigl(-16te^{-4t}+4te^{-2t}\\bigr).\n$$\n令 $V'(t)=0$，得\n$$\ne^{2t}=4\\quad\\Rightarrow\\quad t=\\ln2.\n$$\n并可验证此时取得最大值。代入可得\n$$\nV_{\\max}=V(\\ln2)=\\frac\\pi{16}\\ln2+\\frac{3\\pi}{64}.\n$$",
+    "module": "高等数学",
+    "topics": ["旋转体体积", "定积分应用", "最值问题"]
+  },
+  {
+    "question_number": 20,
+    "question_type": "解答题",
+    "question_text": "设 $f(u,v)$ 具有二阶连续偏导，函数 $g(x,y)=f(2x+y,3x-y)$ 满足\n$$\n\\frac{\\partial^2g}{\\partial x^2}+\\frac{\\partial^2g}{\\partial x\\partial y}-6\\frac{\\partial^2g}{\\partial y^2}=1.\n$$\n\n(1) 求 $\\dfrac{\\partial^2f}{\\partial u\\partial v}$；\n\n(2) 若 $\\dfrac{\\partial f(u,0)}{\\partial u}=ue^{-u}$，且 $f(0,v)=\\dfrac1{50}v^2-1$，求 $f(u,v)$ 的表达式。",
+    "answer": "（1）$$\\frac{\\partial^2f}{\\partial u\\partial v}=\\frac1{25}.$$ \n（2）$$f(u,v)=-(u+1)e^{-u}+\\frac1{25}uv+\\frac1{50}v^2.$$",
+    "explanation": "由链式法则，设 $u=2x+y,\\ v=3x-y$，则\n$$\ng_x=2f_u+3f_v,\\qquad g_y=f_u-f_v.\n$$\n进一步求二阶偏导并代入条件，可化简得\n$$\n25f_{uv}=1,\n$$\n故\n$$\nf_{uv}=\\frac1{25}.\n$$\n\n对 $v$ 积分得\n$$\nf_u=\\frac1{25}v+c_1(u).\n$$\n再由已知 $f_u(u,0)=ue^{-u}$，得\n$$\nc_1(u)=ue^{-u},\qquad f_u=ue^{-u}+\\frac1{25}v.\n$$\n对 $u$ 积分可得\n$$\nf(u,v)=-(u+1)e^{-u}+\\frac1{25}uv+c_2(v).\n$$\n由 $f(0,v)=\\dfrac1{50}v^2-1$，求得\n$$\nc_2(v)=\\frac1{50}v^2.\n$$\n故\n$$\nf(u,v)=-(u+1)e^{-u}+\\frac1{25}uv+\\frac1{50}v^2.\n$$",
+    "module": "高等数学",
+    "topics": ["二阶偏导", "链式法则", "偏微分方程式样积分"]
+  },
+  {
+    "question_number": 21,
+    "question_type": "证明题",
+    "question_text": "设函数 $f(x)$ 具有 2 阶导数，且 $f'(0)=f'(1)$，$|f''(x)|\\le1$。证明：\n\n(1) 当 $x\\in(0,1)$ 时，\n$$\n|f(x)-f(0)(1-x)-f(1)x|\\le\\frac{x(1-x)}{2};\n$$\n\n(2)\n$$\n\\left|\\int_0^1f(x)\\,dx-\\frac{f(0)+f(1)}2\\right|\\le\\frac1{12}.\n$$",
+    "answer": "见解析",
+    "explanation": "对任意 $x\\in(0,1)$，分别在 $0$ 与 $1$ 处对 $f(x)$ 作带拉格朗日余项的泰勒展开：\n$$\nf(x)=f(0)+f'(0)x+\\frac{f''(\\xi_1)}{2}x^2,\n$$\n$$\nf(x)=f(1)+f'(1)(x-1)+\\frac{f''(\\xi_2)}{2}(x-1)^2.\n$$\n将第一式乘以 $(1-x)$，第二式乘以 $x$ 后相加，并利用 $f'(0)=f'(1)$，得\n$$\nf(x)-f(0)(1-x)-f(1)x=\frac{f''(\\xi_1)}{2}x^2(1-x)+\\frac{f''(\\xi_2)}{2}(x-1)^2x.\n$$\n由 $|f''(x)|\\le1$，可得\n$$\n|f(x)-f(0)(1-x)-f(1)x|\\le\\frac12x^2(1-x)+\\frac12x(1-x)^2=\\frac{x(1-x)}2.\n$$\n这就证明了 (1)。\n\n再对上式在 $[0,1]$ 上积分，有\n$$\n\\left|\\int_0^1\\bigl[f(x)-f(0)(1-x)-f(1)x\\bigr]dx\\right|\\le\\int_0^1\\frac{x(1-x)}2dx=\\frac1{12}.\n$$\n而\n$$\n\\int_0^1[f(0)(1-x)+f(1)x]dx=\\frac{f(0)+f(1)}2,\n$$\n故\n$$\n\\left|\\int_0^1f(x)dx-\\frac{f(0)+f(1)}2\\right|\\le\\frac1{12}.\n$$",
+    "module": "高等数学",
+    "topics": ["泰勒公式", "不等式证明", "定积分估计"]
+  },
+  {
+    "question_number": 22,
+    "question_type": "解答题",
+    "question_text": "设矩阵\n$$\nA=\\begin{pmatrix}0&1&a\\\\1&0&1\\end{pmatrix},\\qquad B=\\begin{pmatrix}1&1\\\\1&1\\\\b&2\\end{pmatrix},\n$$\n二次型 $f(x_1,x_2,x_3)=x^TB Ax$。已知方程组 $Ax=0$ 的解均是 $B^Tx=0$ 的解，但两个方程组不同解。\n\n(1) 求 $a,b$ 的值；\n\n(2) 求正交变换 $x=Qy$ 将 $f(x_1,x_2,x_3)$ 化为标准形。",
+    "answer": "（1）$$a=1,\\ b=2.$$ \n（2）可取\n$$\nQ=\\begin{pmatrix}\n\\frac1{\\sqrt2} & \\frac1{\\sqrt3} & \\frac1{\\sqrt6}\\\\\n-\\frac1{\\sqrt2} & \\frac1{\\sqrt3} & \\frac1{\\sqrt6}\\\\\n0 & -\\frac1{\\sqrt3} & \\frac2{\\sqrt6}\n\\end{pmatrix},\n$$\n则\n$$\nf=6y_3^2.\n$$",
+    "explanation": "由题意知 $Ax=0$ 的解均是 $B^Tx=0$ 的解，故齐次方程组的解空间满足包含关系，从而\n$$\nr(A)=r\\begin{pmatrix}A\\\\B^T\\end{pmatrix}.\n$$\n又两方程组不同解，说明增广后秩不再退化到完全相同的方程组形式。将\n$$\n\\begin{pmatrix}A\\\\B^T\\end{pmatrix}=\n\\begin{pmatrix}\n0&1&a\\\\\n1&0&1\\\\\n1&1&b\\\\\n1&1&2\n\\end{pmatrix}\n$$\n作行变换并利用 $r(A)=2$，可解得\n$$\na=1,\\qquad b=2.\n$$\n此时\n$$\nBA=\\begin{pmatrix}1&1\\\\1&1\\\\2&2\\end{pmatrix}\n\\begin{pmatrix}0&1&1\\\\1&0&1\\end{pmatrix}\n=\n\\begin{pmatrix}1&1&2\\\\1&1&2\\\\2&2&4\\end{pmatrix}=C.\n$$\n故二次型矩阵为对称矩阵 $C$。由 $r(C)=1$ 且 $\\operatorname{tr}(C)=6$，知特征值为 $0,0,6$。可取对应线性无关特征向量\n$$\n\\xi_1=(1,-1,0)^T,\\quad \\xi_2=(1,1,-1)^T,\\quad \\xi_3=(1,1,2)^T,\n$$\n单位化后得到\n$$\n\\eta_1=\\frac1{\\sqrt2}(1,-1,0)^T,\\quad\n\\eta_2=\\frac1{\\sqrt3}(1,1,-1)^T,\\quad\n\\eta_3=\\frac1{\\sqrt6}(1,1,2)^T.\n$$\n令 $Q=(\\eta_1,\\eta_2,\\eta_3)$，则有正交变换 $x=Qy$，并使二次型化为\n$$\nf=x^TCx=6y_3^2.\n$$",
+    "module": "线性代数",
+    "topics": ["齐次方程组", "二次型标准形", "正交变换"]
+  }
+]

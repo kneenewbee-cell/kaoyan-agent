@@ -1,0 +1,39 @@
+{
+  "exam_id": "kaoyan_math2_1993",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 1993,
+  "source_files": {
+    "questions": "math2_1993_questions.md",
+    "answers": "math2_1993_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 18,
+  "explanation_count": 18,
+  "question_ids": [
+    "kaoyan_math2_1993_q001",
+    "kaoyan_math2_1993_q002",
+    "kaoyan_math2_1993_q003",
+    "kaoyan_math2_1993_q004",
+    "kaoyan_math2_1993_q005",
+    "kaoyan_math2_1993_q006",
+    "kaoyan_math2_1993_q007",
+    "kaoyan_math2_1993_q008",
+    "kaoyan_math2_1993_q009",
+    "kaoyan_math2_1993_q010",
+    "kaoyan_math2_1993_q011",
+    "kaoyan_math2_1993_q012",
+    "kaoyan_math2_1993_q013",
+    "kaoyan_math2_1993_q014",
+    "kaoyan_math2_1993_q015",
+    "kaoyan_math2_1993_q016",
+    "kaoyan_math2_1993_q017",
+    "kaoyan_math2_1993_q018"
+  ],
+  "generated_at": "2026-06-30T10:31:26.839404Z",
+  "paper_scope": "试卷 III only",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

@@ -1,0 +1,47 @@
+{
+  "exam_id": "kaoyan_math3_2003",
+  "exam_type": "math3",
+  "exam_label": "数学三",
+  "year": 2003,
+  "question_count": 22,
+  "explanation_count": 22,
+  "source_files": [
+    "math3_2003_questions.md",
+    "math3_2003_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "2003 年数学三题面、标准答案和解析已逐题整理，可直接展示。",
+    "题卡、questions.jsonl、总题面、总答案和 manifest 已同步。",
+    "公式已统一为可渲染的 LaTeX 形式。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available",
+  "question_ids": [
+    "kaoyan_math3_2003_q001",
+    "kaoyan_math3_2003_q002",
+    "kaoyan_math3_2003_q003",
+    "kaoyan_math3_2003_q004",
+    "kaoyan_math3_2003_q005",
+    "kaoyan_math3_2003_q006",
+    "kaoyan_math3_2003_q007",
+    "kaoyan_math3_2003_q008",
+    "kaoyan_math3_2003_q009",
+    "kaoyan_math3_2003_q010",
+    "kaoyan_math3_2003_q011",
+    "kaoyan_math3_2003_q012",
+    "kaoyan_math3_2003_q013",
+    "kaoyan_math3_2003_q014",
+    "kaoyan_math3_2003_q015",
+    "kaoyan_math3_2003_q016",
+    "kaoyan_math3_2003_q017",
+    "kaoyan_math3_2003_q018",
+    "kaoyan_math3_2003_q019",
+    "kaoyan_math3_2003_q020",
+    "kaoyan_math3_2003_q021",
+    "kaoyan_math3_2003_q022"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "exam_id": "kaoyan_math3_2023",
+  "exam_type": "math3",
+  "year": 2023,
+  "question_count": 22,
+  "source_files": [
+    "math3_2023_questions.md",
+    "math3_2023_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "needs_text_refinement",
+  "notes": [
+    "当前为 PDF 视觉落库版，避免使用乱码文本层。",
+    "题目以完整原卷页方式保留，答案解析页图已渲染入 images/answer_pages。",
+    "后续应逐题转写为纯文本 LaTeX 题干、答案和解析。"
+  ]
+}

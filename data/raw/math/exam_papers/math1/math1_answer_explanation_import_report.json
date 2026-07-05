@@ -1,0 +1,32 @@
+{
+  "exam_type": "math1",
+  "exam_label": "数学一",
+  "year_range": "1987-2025",
+  "updated_at": "2026-06-30T00:00:00+08:00",
+  "status": "completed",
+  "scope": {
+    "annual_answer_files": true,
+    "question_cards": true,
+    "questions_jsonl": true,
+    "paper_manifest": true
+  },
+  "validation": {
+    "all_years_passed": true,
+    "checks": [
+      "question numbers are sequential inside each year",
+      "answer and explanation are non-empty",
+      "review_status is reviewed",
+      "answer_status is available",
+      "explanation_status is available",
+      "question cards contain standard answer, explanation, and source sections",
+      "legacy placeholder markers are absent from answer and explanation fields",
+      "formulas are not wrapped in Markdown code fences",
+      "unbraced \\frac / \\dfrac patterns are absent from answer and explanation fields",
+      "control characters are absent from answer and explanation fields"
+    ]
+  },
+  "notes": [
+    "1987 has no matching answer-explanation PDF in the provided answer directory; its explanations were independently derived from the question text.",
+    "The source page images and historical extraction evidence files were left in place as provenance assets."
+  ]
+}

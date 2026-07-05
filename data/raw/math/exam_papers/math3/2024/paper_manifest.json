@@ -1,0 +1,16 @@
+{
+  "exam_id": "kaoyan_math3_2024",
+  "exam_type": "math3",
+  "year": 2024,
+  "question_count": 22,
+  "source_files": [
+    "math3_2024_questions.md",
+    "math3_2024_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "由 2024 考研数学三真题答案解析 PDF 文本层清洗生成。"
+  ]
+}

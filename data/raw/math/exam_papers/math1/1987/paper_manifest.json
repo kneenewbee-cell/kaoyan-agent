@@ -1,0 +1,42 @@
+{
+  "exam_id": "kaoyan_math1_1987",
+  "exam_type": "math1",
+  "exam_label": "数学一",
+  "year": 1987,
+  "source_files": {
+    "questions": "math1_1987_questions.md",
+    "answers": "math1_1987_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 21,
+  "explanation_count": 21,
+  "question_ids": [
+    "kaoyan_math1_1987_q001",
+    "kaoyan_math1_1987_q002",
+    "kaoyan_math1_1987_q003",
+    "kaoyan_math1_1987_q004",
+    "kaoyan_math1_1987_q005",
+    "kaoyan_math1_1987_q006",
+    "kaoyan_math1_1987_q007",
+    "kaoyan_math1_1987_q008",
+    "kaoyan_math1_1987_q009",
+    "kaoyan_math1_1987_q010",
+    "kaoyan_math1_1987_q011",
+    "kaoyan_math1_1987_q012",
+    "kaoyan_math1_1987_q013",
+    "kaoyan_math1_1987_q014",
+    "kaoyan_math1_1987_q015",
+    "kaoyan_math1_1987_q016",
+    "kaoyan_math1_1987_q017",
+    "kaoyan_math1_1987_q018",
+    "kaoyan_math1_1987_q019",
+    "kaoyan_math1_1987_q020",
+    "kaoyan_math1_1987_q021"
+  ],
+  "generated_at": "2026-06-30T08:58:59.338200+00:00",
+  "paper_scope": "试卷 I only",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

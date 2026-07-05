@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_2000",
+  "exam_type": "math3",
+  "year": 2000,
+  "question_count": 20,
+  "source_files": [
+    "math3_2000_questions.md",
+    "math3_2000_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "题干、标准答案和解析已与 2000 年数学三题卡同步，可直接展示给用户。",
+    "questions.jsonl、题卡、总题面与总答案文件已同步更新。",
+    "当前年份仍保留 difficulty=unknown 作为未标注元数据。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

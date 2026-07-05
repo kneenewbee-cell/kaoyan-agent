@@ -1,0 +1,82 @@
+{
+  "text": "[[page:1]]\n2018年（数一）真题答案解析\n一、选择题\n(1) D\n解\n对于D选项f（x）=cos「x「\nf(x)-f(0)\ncos√xT --1\n2\n由f'+（0)=lim\n=lim\nx→0+\nr\nx\nx\n2\n1\nf(x)-f(0)\ncos√x「-\n2\n1\nf'_（0)=lim\n=lim\nx\nx→0\nx\n可得f'+（O）≠f'_（0),因此f(x）在x=0处不可导.故应选D.\n(2）B\n解\n已知平面过点(1,0,0),(0,1,0）两点,可得同平面内一向量(1，－1,0),曲面z=x²+y²\n的切平面法向量为(2x,2y，-1).所以 2x－2y=0,即x=y.故应选B.\n(3)B\n1\n2\n解\n原式=(-1)\"\n+ ∑(-1)\"\n(2n)!\n(2n +1)!\n8\n(-1)\"\n,>(-1)\"\nx”\ncosx，\n=sin x.\n(2n)!\n(2n +1)!\nn=0\nn=0\n则原式=2sin1+cos1.故应选B.\n(4) C\n(1+x)²\n2.x\n解\n利用对称性可计算M\n1+x\n1+x\n(5) A\n解\n易知题中矩阵的特征值均为3重特征值1,若矩阵相似,则特征值对应的入E一A，\n/1\n1\n0\n即E－A秩必然相等,显然E一\n10\n1\n1\n的秩为2.\n0\n故应选 A.\nV (9)\n解\n对于B选项，若A\n则r（ABA）=2≠r（A）,排除B.\n0\n对于C选项，若A：\n则r(AB）=2≠max{r（A）,r（B)},排除C.\n0\n对于D选项,若A=\n,则r(AB)=2≠r(ATBT),排除D.\n0\n故应选A.\n\n[[page:2]]\n(7) A\n解\n由f(1+x)=f(1一x）可知,f(x）关于x=1对称,所以\nf(x)dx\nf(x)dx = 0.5.\nr2\n又已知，f(x)dx=0.6,则\nf(x）dx：\n(x)dx =0.3.\n所以,P{X<0}=\nf(x)dx =\nf(x)dx-\nf(x)dx =0.2.\n故应选A.\n(8) D\n解若显著性水平α=0.05 时可接受 H。,则检验统计量| Z|≤Uo.02s,则| Z|≤Uo.0o5·\n故应选 D.\n二、填空题\n(9)-2\n-tan x\ntanx\n+ tan x\n解\n原式=lime\nsin kx\n=e,则lim\n1\nx→0\nsin kx\n-2tan x\n-2x\n即lim\n=1,所以k=- 2.\n(1+ tan x)sin kx\nkx\n故应填一2.\n(10) 2(ln 2-1)\n解=f(x）过点(0,0),即f(x）=0,y=f(x）与=2²在点（1,2）相切→f（1）=2\n且 f'(1) =2ln 2.\nf\"(x)dx =xf'(x）\nf'(x)dx =f'(1)-(f(1)-f(0))=2ln 2-2=2(ln 2-1).\n故应填2(ln2一1).\n(11)i-k\ni\nj\nk\na\na\na\n解\nrotF:\n=(y，--,-x）↓(1,1,0)=(1,0,-1)=i-k.\ny\n[xy\n一\nyz\nxz\n故应填i一k.\n（12）-\nπ\n3\n解\n(x²+y²)|ds =Φ,(\nL\n则\n)ds=\nx+y+=0,\n故应填一\nπ\n3\n(13）-1\n解\n设A特征值为入,,对应的特征向量分别为α,α2,则Aα=入α,Aα=入2α2，\nA(α,+α2)=入α+入2α2.\nA²(a+α2) =A(入α, +^α2) =入²α +入²α=a +α,则入 =±1,入2 =±1,\n\n[[page:3]]\n又因为≠入,所以|A|=入2=-1.\n故应填－1.\n1\n(14)\n4\n解\nP(AC |AB U C) ·P(AB U C) =P(AC)\n1\n·P(C)\n4\n4\n2\n1\n1\n解得P（C）：\n一，故应填\n4\n4\n三、解答题\n（15）解\n2.x\narctan e - 1dx =\narctan√ez - 1 de2z\ne\n1\narctane -1\n2\n√e-1\n2\nder\ne*-1\nex-—1der\n2\n-(e* - 1) √e* - 1 + 2 ~ex - 1 + C,\n3\n1\n所以|e²z arctan √e- 1 dx\n2.r\narctan√e*-1\n-(er + 2) √e -1 + C.\n2\n6\n（16）解\n设圆的半径为x，正方形与正三角形的边长分别为和,则问题化为：函数\n√3\nf(x,y,)=πx²+y²+\n（0<0<0<x)=++\n4\n在最小值.\n√3\n令L(,,,）=π²+²+\n²+入(2πx+ 4y+ 3z--2),考虑方程组\nre\nL\n=2y + 4 =0,\nke\naL\n√3\n-+3> =0,\naz\n2\nL\n=2πx+ 4y+3x-2=0，\na\n1\n2\n2√3\n解得。=\nπ+4+3√3\nπ+4+3√3\nπ+4+3√3\n1\nf(x,）=\nπ+4+3√3\n\n[[page:4]]\n又当2π+4+3=2且y=0时，f（x，,）的最小值为\n2\n2√3\n4+3√3'4+3√3\n4+3√3\n所以三个图形的面积之和存在最小值,最小值为\n1\nf(x。,y,。)=\n（单位:m²).\nπ+4+3√3\n3y²+ 3x²=1,\n（17）解设∑，为平面x=0被\n所围部分的后侧，Ω2为与，所围的立体.\nx=0，\n根据高斯公式，\nxdydz +(y²+ 2)dzdx +²dx dy =\n(1 + 3y² + 3z²)dx dydz.\n+2\n设y=rcosθ，=rsinθ,则\n#\n2π\n(1 + 3y²+3z²)dxdydz =\n3\ndθ\n(1 + 3r²)rdx\nn\nr(1 + 3r²) ~1- 3r² dr.\n设~1-3r² =t,则\n2π\n2π\n\"r(1 + 3r²) √1-3r² dr :\n(2—t²)t²dt\n3\n14π\n45\n14π\nxdydz+(y²+ 2)dzdx+²dxdy =0,所以 I =\n45\n（l8）解（I）当f（x）=时,方程化为y'+=,其通解为\n+ xerdx\n=e-\"(C+xe²-e\")\n=Ce-\" +x - 1.\n（Ⅱ）方程'+y=f（x）的通解为\nf(t)dt)\ny=e\n即 y=e-=(C+|e'f(t)dt).\n由y(x)=eα(C+|e′f(t)dt),得\ny(x+T)-y(x)=\ne'f(t)dt-\ne*f(t)dt\n因为f（x）是周期为T的连续函数,所以\ne'f(t)dt\ne'f(t)dt +\ne'f(t)dt\n\n[[page:5]]\nf(t）dt\nf(u+T)du\ne'f(t)dt+\nef(t)dt.\n从而(+T）-(x）=\ne²f(t)dt\n所以，当且仅当C=\ne'f(t)dt 时,(x+T)-y(x)=0.\ner -1J\n故方程存在唯--的以T为周期的解.\n（19）解\n由于x；≠0,所以e²\nx1\n根据微分中值定理,存在∈（0,x）,使得\nx\n所以e²=e,故0<2<x.\n假设0<+1<x,则\nn+1—1\ne\n=e”(0<<n+1）,\nxn+1\n所以 0 <xn+2 <n+1·\n故{π，〉是单调减少的数列,且有下界，从而x，）收敛.\n设limx，=α,得αe²=e²－1.易知α=0为其解.\n令f(x)=xe-e+l,则 f'(x)=xe*.\n当x>0时，f'（x）>0,函数f（x）在[0，+∞）上单调增加,所以α=0是方程\nαe²=e²-1在[0，+∞）上的唯一的解，故limx，=0.\n（20）解\n（I）f（2,）=0当且仅当\n-+=0,\nx2+3=0,\n，+ax=0,\n对方程组的系数矩阵施以初等行变换得\n0\n2\n1\n1\n0\n0\nα一2\n当α≠2时,方程组只有零解,故f（x,2,x）=0的解为x=0，\n2\n当α=2时，方程组有无穷多解，通解为x=k\nk|-1\n,k为任意常数，\n2\n故f（,2,）=0的解是x=k\n,k为任意常数.\n\n[[page:6]]\n（Ⅱ）由（）知,当α≠2时,f（,）正定,f(,,）的规范形为²+²+²\n当α=2时，\nf(xx2)=2x²+2x²+6x²-2xx2+6x3\n1\n3\n3\n=2（\nx2+x)²\n2\n所以f(1,2,）的规范形为y²+y².\n（21）解（I）对矩阵A,B分别施以初等行变换得\n/1\n2\na\n/1\n0\n3a\n1\n3\n0\n0\n1\na\n2\n7\n0\n0\n0\n1\na\n2\n1\n0\nB\n0\n1\n1\n1\n1\n0\n由题设知α=2.\n（Ⅱ）由（I）知α=2,对矩阵（A「B）施以初等行变换得\n/1\n2\n211\n2\n2\n1\n0\n6.3\n4\n4\n(AB)=\n1\n3\n010\n1\n0\n1\n-21-1\n2\n7\n-2↓-1\n1\n1\no\n0\n010\n0\n记B=（β,β2,β3),由于\n6\n3\nA\n2\n1\n0\n0\n故AX=B的解为\n3—6k,\n4-6k2\n4-6k3\n-1+2k,\n，－1+2k2\n一1+2k3」,其中k，,k2,k，为任意常数.\nk\nk2\nk3\n由于|X|=k3－k2,所以满足AP=B的可逆矩阵为\n3-6k,\n4 -6k2\n4-6k3\n[—1+2k，--1+2k2-1+2k3|,其中 k2≠k3.\nk1\nk2\nk3\n（22）解（I）由题设可得\n1\n1\nEX=(-1）×\n+1×\n=0，\n2\n2\nE(XZ) =E(x'y) =EX² : EY =).\n所以 Cov(X,Z)=E(XZ)－EX·EZ=).\n（Ⅱ）Z的所有可能取值为全体整数值，且\nP{Z=0}=P{Y=0}=e-^;\n对于n=±1，±2,·…·,有\nP{Z=n}=P(xY=n}\n\n[[page:7]]\n7\nP{Y=|n|}\n1n/\n2.|n|!\n（23）解（I）设²，,，为样本观测值,似然函数为\n1\nL(o)=If(x;;a）=\n=1\n∑lx.l.\n则ln L(o)=-nln 2-nln (\ndln L(o)\nn\nlx=0,解得\ndo\n∑Ix,l.\n11x,l.\n所以=-\nni=1\n（ⅡI）由于E|x|=||x|f(x;o)dx\nxe“dx=,所以\nE =E|x,|=E|x|=α,\n又因为\nE|x|² =Ex2\nx^f(x ;o)dx\n°dx=2o²\nD(|x|) =E(|x|²) -(E|x|)² =o\n所以\nD(|x|)\n∑d(|x,1) =\nDo\nni=\nn\nn",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 81,
+      "avg_score": 0.9086,
+      "elapsed": [
+        2.2911103998776525,
+        0.6394758224487305,
+        5.4229795932769775
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 75,
+      "avg_score": 0.9202,
+      "elapsed": [
+        1.1803170999046415,
+        0.12625575065612793,
+        5.052398204803467
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 74,
+      "avg_score": 0.9174,
+      "elapsed": [
+        1.0807658999692649,
+        0.1396164894104004,
+        3.652604579925537
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 54,
+      "avg_score": 0.914,
+      "elapsed": [
+        1.0734928001184016,
+        0.10967063903808594,
+        4.261969089508057
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 48,
+      "avg_score": 0.8842,
+      "elapsed": [
+        1.0916673000901937,
+        0.47789859771728516,
+        4.976356506347656
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 109,
+      "avg_score": 0.9088,
+      "elapsed": [
+        1.1296343998983502,
+        0.4452524185180664,
+        5.530765533447266
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 33,
+      "avg_score": 0.832,
+      "elapsed": [
+        1.2068558000028133,
+        0.2474381923675537,
+        2.6276543140411377
+      ]
+    }
+  ]
+}

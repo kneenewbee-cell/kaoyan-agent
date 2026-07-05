@@ -1,0 +1,93 @@
+{
+  "text": "[[page:1]]\n2005年（数一）真题答案解析\n一、填空题\n1\n（1）y:\n2\n4\n解\n由lim\n=lim\nx\n及lim\nlim\n2x+1\n2\n2\n2(2x+1)\n1\n1\n可得斜渐近线方程为y=\n4\n1\n1\n（2）y\n3\n9\n解\n直接用一阶线性微分方程＇+P（x)y=Q（x）的通解公式\n再由初始条件确定任意常数即可.\n2\n即原方程等价为\n-y\n=lnx，\n于是通解为\ndx-\n²Inx dx +(\nIn.x\n3\n9\n由y（1)=\n得C=0,\n9\n1\n故所求解为：\nInx\n√3\n(3)\n3\ndu\n1\nne\n1\nne\n解\n3\nay\n(1,2,3)\n3\n(1,2,3)\n1\n1\n1\n由单位向量n知,cosα\ncosβ\n，所以\nCOSY\n√3\n√3\n√3\ndu\nne\ndu\ndu\ncosa\ncosβ+\nz(1,2,3)\ncOSY\nan\n(1,2,3)\nax\n(1,2,3)\nay\n1(1,2,3)\n3\n(4)(2-√2)πR²\n解\n由高斯公式\nx dydz + ydzdx + zdx dy =\n3dV=\nr²sinpdr =(2-√2)πR3.\nのp\nΩ\n\n[[page:2]]\n(5）2\n解\n由题意知\nB=[α,α2,αs]1\n2\n3=AC,其中\nC三\n2\n1\n4\n9\n1\n4\n等式两端同时取行列式得\n|B|=|A|·|C|,而|C|=2,所以|B|=2.\n13\n(6)\n48\n解\n本题涉及两次试验，想到用全概率公式，第一次试验的各种结果即为完备事件组\nP{Y=2}=P{X=1}P{Y=2|X=1}+P{X=2}P{Y=2|X=2}+PX=3}P{Y=\n13\n2 |X --3}+P{X=4}P{Y=2｜X=4}=\n2\n48\n二、选择题\n(7) C\n解\n先求f（x）的表达式.\nlim /1+|x|3 =lim (1 +|x|3n)=1°=1 (|x|< 1),\nlim ′/1+ |x| =lim(1 +1)=2°=1 (lx|=1),\nn→→+\nlim \"/1+|x|3 =|x |” lim (\n=|x|²(|x|>1).\n3n\nlx—≤1,\n因此,f（x）：\n|x|²，IxI> 1.\n由=f（x）的表达式及它的函数图形可知，f（x）在x=±1处不可导,其余点f（x）均可\n导,因此选C.\n(8) A\n解法一\n任一原函数可表示为\nF(x）=\nf(t)dt +C,且 F'(x)=f(x).\n当F（x）为偶函数时,有F（一）=F（x），\n于是F'（-x）·（-1)=F'（x），\n即-f（-x）=f(x)，t\n也即f（-x）=-f（x），\n可见f（x）为奇函数；\n反过来,若f（x）为奇函数,则\nf(t)dt为偶函数，从而F（x）=\nf(t)dt十C为偶函数，可\n见A为正确选项.\n解法二\n令f（x）=1,则取F（x）=x十1,排除B、C;\n令f（x）=x,则取F（x）：\n² ,排除 D;故应选 A.\n2\n\n[[page:3]]\n(9) B\ndu\n解\n因为\np'(x+y)+'(x-)+(+)-(-)\ndx\ndu\n'(x+)-'(-y)+(x+y)+(-)\nay\nd²u\n于是\n=p\"(x +y)+p\"(x-y)+'(x+y)-'(x-y)\ndx?\n²u\n(-),+(+),+(-x)-(+x)\nKere\n²u\np\"(x+y)+\"(x-y)+'(x+y)-'(x-y)\n3y2\nd²u __²u\n可见有\nx2\nay2.\n(10) D\n解\n令 F(x,y,z)=xy-zlny +er²-1,显然 F(0,l,1)=0.\naF\naF\naF\n且\ny+ze*²\n一lny+xe\"²在点（0,1,1）的某邻域内连续，\nce.\n=x-\n3x\nze,\n又 F'(0,1,1)=( +zer\")\n=2≠0,F'(0,1,1)=-1≠ 0,\n(0,1,1)\n据隐函数存在定理知,方程F（x，,）=0,可以确定具有连续偏导数的隐函数x=x（，z)\n和y=y（x,z）.因为F（0,1,1)=0,所以未必能确定隐函数=z（x,y）.故应选D.\n（11）B\n解令kα+k2A(α+α2）=0,则\nkα1+k2α+k22α2=0,\n(k+k2)a+k22α2=0.\n由于α1,α2线性无关,于是有\n[k,+k2=0,\nIk2入 2 ==0.\n当入2≠0时，显然有k，=0,k2=0，此时α，A（α+α2）线性无关；反过来,若α1，\nA（α，十α2）线性无关,则必然有入2≠0.否则,α，与A（α+α2）=入α，线性相关.\n(12) C\n解\n设交换A的第1行和第2行的初等矩阵为P，则B=PA.\n' + 4-= I-d-4 I 4 I-= -(4d) I 4d I= (-aI a =\n从而A*P=-B*\n即交换A*的第1列与第2列得－B*.\n(13） D\n{[=+x}·{0=X}d={=+x‘0=x}d甲\n或 P{X+Y=1}=P{X+Y=1｜X=0}\n可知:a+6=α+0.1,而α+6=0.5,故α=0.4,6=0.1.\n\n[[page:4]]\n(14) D\n解\n因为X²～x²(1)，≥x²～x²（n-1）且两者独立,所以\ni=2\nX²/1\n(n -1)X²\n~F(l,n -1).\n'x〖\ni=2\n三、解答题\n（15）解法一\nxy[1 +x²+y²]dxdy\n2\nde\n+ ]oso gus e\nD\n/2\nsinθ cos0 dθ\nr²[1+r²]dr\n0\nC4/2\n3\n2rd\n8\n解法二\n记D,={(x,y) 丨 x²+y²<1,x ≥ 0,y≥0},\nD2={(x,y)|1≤x²+y²≤√2,x≥0,y≥0},\n则有[1+x²+²］=l,(,）∈D，\n[1+x²+y²]=2,(x,y) ∈ D2.\n于是\ny[1 +x²+y²]dxdy = |xydxdy +\n2xydxdy\nD\nD2\nsinθ cos0 dr 十\ndo\n2r\" sin0 cos0 dr\n(16）解\n因为\n(n +1)(2n+1)+1\nn(2n-1)\nlim\n(n+1)(2n+1)\nn(2n-1)+1\n→0\n所以当x²<1时，原级数绝对收敛，\n当x²>1时,原级数发散,因此原级数的收敛半径为1,收敛区间为(一1,1).\n(—1)-1\n记S（x）=\nM\n2n\nx ∈ (-1,1),\n2n(2n-1)\n2\n则S'(x）=≥\n(-1)~-1\n2n\nx ∈(-1,1),\n2n-1\nn =1\nS\"(x) =>(- 1)\"-1\nx ∈ (-1,1).\nn =1\n1+3\n由于  S(0)=0,S'(0)=0,\nS\"(t)dt\n1\n所以S'（x）=\ndt=arctanx\nS(x）=\nS'(t)dt =\narctantdt=xarctanx\nIn(1+x²).\n2\n\n[[page:5]]\n又∑(-1)\"-x\n2n\n从而\nf(x)=2S(x）+\n=2xarctanx - ln(1+x²)+\nx∈(-1,1).\n1+x\n1+x\n3\n（17）解\n(x²+x)f\"(x)dx =(x²+x)f\"(x)\n(2x+1)f\"(x)dx\n(2x+1)f\"(x)dx\n=-(2x+1)f'（x)\n'（x）dz\n=-[7 ×(-2)-2]+2|f'(x)dx\n=16 +2f(x)\n=16+4 =20.\n（18）证（I）令g(x）=f(x）+x-1,\n则g（x）在[0,1]上连续,且\ng(0)=-1<0,g(1)=1>0,\n所以存在∈（0,1）,使得\ng(ε)=f(ε)+-1=0，\n即f(ε)=1-.\n（Ⅱ）根据拉格朗日中值定理,存在∈（0,），∈（，1）,使得\nE\n1-(1-)\n1-\n1-\n1-\n1-\n从而f'(n)f'()=\n1-\nR\nM\n0\n（19）（I）证\n王如上图所示，设C是半平面x>0内的任一分段光滑简单闭曲线，在C上任意取\n定两点M,N，作围绕原点的闭曲线MQNRM，同时得到另一围绕在原点的闭曲线\nMQNPM.\n根据题设可知\np(y)dx +2xydy\n2x²+ y4\n2x² + y4\nMQNRM\nMQNPM\n\n[[page:6]]\n根据第二类曲线积分的性质，利用上式可得\n(y)dx +2xydy\np(y)dx +2xydy\np(y)dx+2xydy\n2x²+y4\n2x²+y4\n2x²+y4\nNRM\nMPN\np(y)dx +2xydy\np(y)dx +2xydy\n2x² + y4\n2x²+ y4\nNRM\nNPM\np(y)dx +2xydy\np(y)dx +2xydy\n2x² +y4\n2x² + y4\nMQNRM\nWINON\n=0.\n()\n2xy\n（Ⅱ）解设P=\n4，Q：\n,P，Q在单连通区域x>0内具有一阶连续偏导数.\n2x²+\n2x²+\n3Q\nap\n由(1)知,曲线积分\n2x² + y\nay\nQ\n2y(2x²+)-4x·2xy\n-4x²+2y5\n①\nxe\n(2x²+y4)2\n(2x²+y)2\nap\np'(y)(2x²+y)--4p(y)y²\n2x²'(y)+'()y-4p(y)y3\n②\nay\n(2x²+y)2\n(2x²+y)²\n比较①、②两式的右端，得\n(p'(y)=-2y,\n③\n(p'(y)y- 4p(y)y²=2y5\n④\n由③得(y)=-y²+C,\n将（y）代人④得2--4Cy”=2y5\n所以C=0,从而（y）=-y².\n1+a\n（20）解\n（I）由于二次型f的秩为2,对应的矩阵A=\n1+a l-a\n0丨的秩为2,所以有\n0\n0\n2\n1-a\n1+a\n-4a=0,得a=0.\n1+a\n1\n1\n0\n（Ⅱ）当α=O时,A=\n1\n1\n0\n0\n0\n2\n0\nIxE-Al=\n-1\n入-1\n0\n=(入 -2)²x,\n0\n0\n入-2\n可知A 的特征值为入，=入2=2，入=0.\nA的属于入，=2的线性无关的特征向量为\nn =(1,1,0)T,n2 =(0,0,1)T ;\nA的属于入=0的线性无关的特征向量为\nN3 =(-1,1,0)T.\n易见n1,2,n3两两正交.\n将,2,单位化得\n\n[[page:7]]\n(1,1,0)T,e2=(0,0,1)T,e3=\n(-1,1,0)T,\n√2\n√2\n取Q=[e1,é2,é3］,则Q 为正交矩阵.\n令 X=QY，得\nf(x1,2,)=y²+2y²+3²=2²+ 2y².\n（Ⅲ）解法一\n在正交变换X=QY下,f（x,2,）=0化成2y²+2y²=0,解之得y=\ny2=0,从而\n= x\n=[e1,e2,e3]\n0\n=y3e3=k(-1,1,0)T,\ny3]\ny3\n其中k 为任意常数.\n解法二由于\nf(x1,x2,x3) =x²+x²+2x²+ 2xx2=(x +x2)²+ 2x²=0,\nx1+x2=0,\n所以\nlx3=0，\n其通解为X=k（-1,1,0)T,其中k 为任意常数.\n(21）解由于AB=0,故r(A)+r(B)≤3,\n又由α,b,c不全为零,可知r（A）≥1.\n当k≠9时,r（B）=2,于是r（A）=1;\n当k=9时,r（B）=1，\n于是r（A）=1或r（A）=2.\n对于k≠9，由AB=0可得\n[1]\n[3\nA2=0和A\n6\n=0.\n[3]\n[k]\n‘（9)=（)=甲\n于是AX =0 的通解为\nX=c1+c22,\n其中c1,c2为任意常数.\n对于k=9,分别就r（A）=2和r（A）=1进行讨论.\n如果r（A）=2,则AX=0的基础解系由一个向量构成.又因为A|2|=0,所以AX=0的通解\n[3]\n为X=c（1,2,3)T,其中c为任意常数.\n如果r（A）=1,则AX=0的基础解系由两个向量构成.又因为A的第一行为（α,b,c）且\n‘(09-)=0≠0 =x+x9+x0=x9\nn2=（-c,O,α）T是 AX=0 的两个线性无关的解,故 AX=0 的通解为 X=c+c22,其\n中c1,c2为任意常数.\n\n[[page:8]]\n（22）解（I）当0<x<1时，\n2x\nfx(x）=\nf(x,y)dy =\ndy =2x;\n当x≤0或x≥1时,fx(x)=0.\nj2x，0<x<1,\n即fx（x）=\nlo，\n其他.\n当<<２时，\nfy(y）=\nf(x,y)dx\n当y≤0或≥1时，f(y)=0.\n<<2,\n即f（y）=\n0，\n其他.\n（Ⅱ）解法一\n当≤0时,Fz（z）=0;\n当0<≈<2时，\nFz(z)=P{2X-Y≤}=\nf(x,y)dxdy =x\n2x-y≤2\n当z≥2时,Fz(z)=1.\nZ\n<<2,\n所以f2（z）=\n2\n其他.\n解法二\nfz(π）=\nf(x,2.r-x)dx，\n1，\n‘>>0`>>\n其中f（x,2x－）=\n10，\n其他.\n当z≤0或z≥2时，fz(z)=0;\n当0<z<2时，fz(z):\ndx=1-\n2\nZ\n<<2,\n即\nfz(z)=\n0，\n其他.\n（23）解\n（I） DY;=D(X,-X)=\n=1,2,...,n.\nn\nu\n(-\"X)(X)=(\"\"()=（\")（)\n=E(X,X,)+E(X²) -E(X,X) -E(X,X)\n∑e(x,x,)--\n-E(X,²)\n∑E(x,x,)\nn\nn\n=2\nn\nn\ni=1",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 91,
+      "avg_score": 0.9171,
+      "elapsed": [
+        2.0380631999578327,
+        0.6210906505584717,
+        4.198152303695679
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 59,
+      "avg_score": 0.9217,
+      "elapsed": [
+        1.356019799830392,
+        0.10386013984680176,
+        6.632824182510376
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 60,
+      "avg_score": 0.8466,
+      "elapsed": [
+        1.3000041998457164,
+        0.13536906242370605,
+        7.057035207748413
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 74,
+      "avg_score": 0.8928,
+      "elapsed": [
+        1.1331540001556277,
+        0.14774870872497559,
+        4.84008526802063
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 46,
+      "avg_score": 0.9032,
+      "elapsed": [
+        1.1462026999797672,
+        0.11897110939025879,
+        4.837718725204468
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 94,
+      "avg_score": 0.905,
+      "elapsed": [
+        1.0957547000143677,
+        0.2650022506713867,
+        5.641952276229858
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 48,
+      "avg_score": 0.8855,
+      "elapsed": [
+        1.515637599863112,
+        0.05942201614379883,
+        6.506978511810303
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-8.png",
+      "line_count": 64,
+      "avg_score": 0.8819,
+      "elapsed": [
+        1.1325204998720437,
+        0.11966919898986816,
+        4.568232774734497
+      ]
+    }
+  ]
+}

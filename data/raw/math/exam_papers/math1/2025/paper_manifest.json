@@ -1,0 +1,42 @@
+{
+  "exam_id": "kaoyan_math1_2025",
+  "exam_type": "math1",
+  "exam_label": "数学一",
+  "year": 2025,
+  "source_files": {
+    "questions": "math1_2025_questions.md",
+    "answers": "math1_2025_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 22,
+  "explanation_count": 22,
+  "question_ids": [
+    "kaoyan_math1_2025_q001",
+    "kaoyan_math1_2025_q002",
+    "kaoyan_math1_2025_q003",
+    "kaoyan_math1_2025_q004",
+    "kaoyan_math1_2025_q005",
+    "kaoyan_math1_2025_q006",
+    "kaoyan_math1_2025_q007",
+    "kaoyan_math1_2025_q008",
+    "kaoyan_math1_2025_q009",
+    "kaoyan_math1_2025_q010",
+    "kaoyan_math1_2025_q011",
+    "kaoyan_math1_2025_q012",
+    "kaoyan_math1_2025_q013",
+    "kaoyan_math1_2025_q014",
+    "kaoyan_math1_2025_q015",
+    "kaoyan_math1_2025_q016",
+    "kaoyan_math1_2025_q017",
+    "kaoyan_math1_2025_q018",
+    "kaoyan_math1_2025_q019",
+    "kaoyan_math1_2025_q020",
+    "kaoyan_math1_2025_q021",
+    "kaoyan_math1_2025_q022"
+  ],
+  "generated_at": "2026-06-30T08:36:16.384771+00:00",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

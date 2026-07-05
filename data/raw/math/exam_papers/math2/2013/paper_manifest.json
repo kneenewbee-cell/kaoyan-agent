@@ -1,0 +1,43 @@
+{
+  "exam_id": "kaoyan_math2_2013",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 2013,
+  "source_files": {
+    "questions": "math2_2013_questions.md",
+    "answers": "math2_2013_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 23,
+  "explanation_count": 23,
+  "question_ids": [
+    "kaoyan_math2_2013_q001",
+    "kaoyan_math2_2013_q002",
+    "kaoyan_math2_2013_q003",
+    "kaoyan_math2_2013_q004",
+    "kaoyan_math2_2013_q005",
+    "kaoyan_math2_2013_q006",
+    "kaoyan_math2_2013_q007",
+    "kaoyan_math2_2013_q008",
+    "kaoyan_math2_2013_q009",
+    "kaoyan_math2_2013_q010",
+    "kaoyan_math2_2013_q011",
+    "kaoyan_math2_2013_q012",
+    "kaoyan_math2_2013_q013",
+    "kaoyan_math2_2013_q014",
+    "kaoyan_math2_2013_q015",
+    "kaoyan_math2_2013_q016",
+    "kaoyan_math2_2013_q017",
+    "kaoyan_math2_2013_q018",
+    "kaoyan_math2_2013_q019",
+    "kaoyan_math2_2013_q020",
+    "kaoyan_math2_2013_q021",
+    "kaoyan_math2_2013_q022",
+    "kaoyan_math2_2013_q023"
+  ],
+  "generated_at": "2026-07-02T03:50:09.429881+00:00",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

@@ -1,0 +1,93 @@
+{
+  "text": "[[page:1]]\n2012年（数一）真题答案解析\n一、选择题\n(1) C\n解\n函数y\n的间断点为=±1\nx²—1\nx²+x\n由limy =lim\n∞0，故x=1是垂直渐近线.\nx→1 (x+ 1)(x -1)\nx(x+1)\n1\n又lim y = lim\n-,故x=一1不是渐近线.\n→-1(x+1)(x-1)\n2\n考察→∞时函数的极限\n1\n+1\n由limy = lim\nx\n=1,故y=1是水平渐近线.\n1\nx²+x\n因为lim\ny\nlim\n=0，故无斜渐近线.\n8x\nx=∞x(x² -1)\n故应选C,有2条渐近线.\n(2）A\n解\nf'(x) =e(e²x -2)(e3 ——3).·.(e\" -n)+(e* ——1)(2e²x)(e3x -3)...(enz —n)+··\n+(e —1)(e² —2)(e3 -3).…·(nenx)\n当x=0时e*－1=0故\nf'(0)=1·（1－2)(1-3)·…(1-n）=（-1)\"-1(n-1)！故应选A.\n(3）B\nf(x,y)\n解\nA项用枚举法:设f（x，y）=|x|+|y|\n则lim\n存在，\nx|+lyl\nr0\n但f（0,0),f,（0,0）都不存在即f（x，y）在（0,0）处不可微．A错误\nf(x,y)\nB项.由lim\n=A（存在）,则limf（x,y）=0，\nx²+y²\n0-x\nr→0\ny→0\n又f（α，y）在点（0,0）处连续,故f（0,0）=0;\n→0\n且\n时f（，y）是²+y²的高阶无穷小\n0←\nf(x,y)-f(0,0)\nf(x,y)\n:. lim\n=lim\n=0．B正确.\n→0\n√x²+y²\nx-→0\n√x²+y²\nf(x,y)\nf(x,y)\nC、D项用枚举法.f（x，y）=x满足条件,但lim\n与lim\n均不存在.故 C、D\nx|+|yl\n0←x\nx²+y2\ny→→0\ny→0\n错误.故应选 B.\n(4) D\n2π\n2π\n解\nI2=\nsinxdx+\nsinx dx =I +\nsinx dx\n又π<x<2π时e²sin<0\n\n[[page:2]]\n故\nsinxdx<0故I<I\n3π\n2π\n3π\nsinx\nsinxdx\nsinx dx =I2+\ne\nsinr\ndx\n2π\n2π\n又2π<x<3π时e²sinx>0\n3π\n故\nsinx dr >0\n故I<I3.\n2π\n3π\n3元\nsinr\nsin.z\nd.z\nsin.x dx =I+\n²sinx dx\n3π\n2π\nsinx\nsinx\ndx\nsinx dx\n2π\n2π\n2π\ndr\n2(2+7)\nsin(t+π)d(t+π)\n2π\n2元\n（x+π）\n- e(x+x)² ]sin.x dx > 0\nsinx\nsinrdx\n:1 > I\n综上I>I>I.故应选 D.\n(5)C\n0\n1\n解\nlα1,α3,α4∣=\nC,\nC3\nC\n故α1,α3,α线性相关.故应选C.\n(6)B\n0\n0\n解\nQ=(α+α2,α2,α）=(α,α2,α3)\n0\n0\n0\n0\n0\n0\n0\nQ-AQ\n1\n0\nP-'AP\n1\n0\n0\n0\n0\n故应选 B.\n(7) A\n(4e-4， y>0,\nf（\n0，x≤o.\n‘\n由X,Y相互独立,故\n4e\n（.x+4y)\nαo,o,\nf(x,y)=fx(x）·f(y):\n其他.\nP{X<Y}=\n[f(x,y)dx dy =\n4e-(x+4y) dx dy\n故应选A.\n5\nDxy\n(8) D\n解\n设两段木棒的长度为，\n则x+=1→=-x+ 1\n由定理:若=αx +b则|pxy|=l,\n若①α<0则pxr=-l,\n②a > 0 则pxy = 1.\n故 pxy =－1.故应选 D.\n\n[[page:3]]\n二、填空题\n(9) ez\n解\n0=()(),+()()-x()=()+()\n得f'（x）-3f(x）=-2er\n>[f'（x）-3f(x)］e-3z=-2e-2z（两边同乘e-3z）\nre+ x=()+ r-=(x)x--=,[()r-]\n代人f\"(x）+f(x）=2er\n验证得C=0:f（x）=er.\n(10)\nπ\n2\n2\n解\nx √2x -x²dx =\nx√1--(x - 1)²dx\n(t + 1) 1-t² dt\n+P-\n+ 0=P2-L\n元\n2\n2\n奇函数\n半圆的面积\n(ll)i+j+k\n解\n令u=y+\n则\ny\ndu\ndu\nau\ngrad\n=grad u\n=i+j+k.\n(2,1,1)\n(2,1,1)\n'az\ny\n(2,1,1)\n√3\n(12)\n12\n√3\n解\ndx dy =√3\ndxdy=√3\n12\nDxy\nDxy\n(13）2\na1\n解\n由题意α=\na2\n且a²+a²+a²=1\na3]\na²\na1\naa2\na1a3\n(a1,a2a）=\na2\na2\na2a1\na2a3\n且r(αα）=1\na3\na?\nasa1\na3a2\n入E-αα|=入²-（a²+α²+α²)入²=入-入²>αα的特征值\n0,0,1\n..E一A的特征值\n0,1,1:.r(E -ααT) =2.\n3\n(14)\n4\n1\nP(AB)-P(ABC)\nP(AB)\n2\n3\n解\nP(C)\n1 -P(C)\n1-P(C)\n1\n3\n三、解答题\n(15）证\n令F(x）=xln\n,(一1<x<1),又因\nF（x）=F（一x）,即\n1-x\n2\nF（x）是偶函数，故只需考虑x≥0的情形.\nf'(x)=f(x)\n\n[[page:4]]\n2\n=ln\n+x\nsinr—r\n1一x\n1-x\n1+x\n2x\nsinx\n一x\n(1+x)(1-x)\n1+x\n1\n1\nsinx\nx ∈ (0,1)\n1+x\n1\n1\n1\n1\ncosx-1\nx∈ (0,1)\n1+x\n(1-x)²\n(1+x)²\n1\n1\n2\n2\nf\"(x)=\n+ sinr\nx ∈ (0,1)\n(1+x)²\n十\n(1-x)²\n(1\n-x)3\n(1+x)3\n1\n1\n1\n1\n因为0<x<1时，\n>0,sinx >0,\n(1-x)²\n‘+)\n(1-x)3\n(1+x)3\n故\nf\"(x)>0.\n又因为f'（x）在[0,1）是连续的,故f'（x）在[0,1）上是单调增加的，\nf'(x) > f'(0)=2 >0\n同理,f（x）在[0,1）上也是单调增加的,f（x）>f（0）=0,\n故F（x）在[0,1）上是单调增加的,F（x）>F（0）=0;\n又因为F（x）是偶函数,则F（x）>0,x∈（一1,1),x≠0.\n又因为F（0）=0,故F（x）≥0,即原不等式成立,证毕.\n（16）解\n先求出驻点\naf\nx²+y²\nx²+y2\nA-+\n+xe\n·(-.x）=(1-x²)e\nx\ne\nf\n21y2\n²-+y2\n（-y）=-ye\nre\naf\n0，\nax\n由\n可得驻点（1,0）和(一1,0)\naf\n[ay\n然后再求驻点处的二阶偏导数\n²f\nx²+y²\nx²+y2\n2+y2\nr²+y2\n·（-x）-2x·e\n·（-x）=(x²-3x)e\nx?\ne\n2\n²f\nx²+y²\nx²+y2\n+x²\n=(x²-1)ye\ndxay\nye\n²f\n2+y²\n2+y2\n=x(y²-1)e\ny2\nxe\nxy\ne\na²f\na²f\na2\n在驻点（1,0）处,A\n=0,C:\nx2\nxy I(1,0)\n（1,0）\nay2\n(1,0)\n由于AC－B²=2e-＇>0,且 A<0,故(1,0）为极大值点,f(1,0）－e-为极大值.\n在驻点（一1,0）处，\na²f 1\na²f\na² f\n=2e-， B=\nA：\n=0，\nx²|(-1,0)\nx(-1,0)\nC\nay²\n(-1,0)\n=-)-)=2-\n\n[[page:5]]\n4n²+4n+3\n①记u,(x）=\n²n,则由\n（17）解\n2n+1\nUn+1(x）\n4(n+1)²+4(n+1)+3\n4n²+ 4n +3\nlim\nlim\n2(n+1)\nx\nun(x)\n2(n+1)+1\n2n+1\n4(n + 1)²+ 4(n +1)+3 2n + 1\n4n²+4n+3\n2n+3\n当x²<1,即|x｜<1时幂级数收敛；当x²>1,即|x|>1时,幂级数发散,故收敛半径R\n=1,则收敛区间为（一1,1）,又由于x=士1时，一般项为无穷大量,幂级数发散,故收敛域为\n(-1,1).\n4n²+4n +3\n②记S（x）为幂级数≥\n²”的和函数,则\n2n +1\nn=0\nS(x)=≥\n4n²+4n +3\n(2n+1)²+2\n2\n2n\n>\n∑(2n + 1)x²n + ≥\n2n\n2n+1\n2n +1\n2n +1x\nn=0\nn=0\nn=0\nn=0\nS(x)=∑\n8\n2\n记S,(x)=∑(2n +1)x²n,\n2n\n2n+1\nn=0\n0=u\n由幂级数和函数的性质可得\n1+x²\nS(x)=∑(x²n+1)'=(\n(>x²\n(1-x²)2’ x ∈ (-1,1)\nn=0\nx\n、2n+1\n由于xS（x）=2≥\n,故由幂级数和函数的性质可得：\n2n+1\n2\n[xS2(x)]'=(\n2n\n\"=P,[(2)²S]|= (x)²SY\n2\nu =zp(\n1-+2dt\n1+x\n1+x\n1+x\n故S2（x）=\nx∈（-1,1)且x≠0\nx\nr\n又 S(0)=1,S2(0)=2.\n1 +-x2\n+x\nIn\nx∈（一1,1),且x≠0,\n故S（）=S（）+S（x）=\n（1-\n3\n，x=0.\n时,曲线L在切点A 的切线斜\n(18)解\n①设曲线L的切点为A（f（t),cost）,则当0≤t<\n2\ndy\n率为\nsint\nk\ndx\nf'(t)\nx\nsint\n故切线方程为y=cost-\n[x-f(t)]\nf'(t)\n令=0,则可得切线与轴的交点B的坐标(f(t)+\ncost·f'(t)\nsint\ncost\n故A和B的距离为\nd=\nf'²(t) + cos²t\nsin²t\nf′²(t)·cos²t\n由题意可知：d=\n+cos²t =1\nsin²t\n\n[[page:6]]\nsin²t\n化简可得：f'（t）=\ncost\n两端积分可得：\nsin\"\nsin²x-1+1\nf(t)=f(0)+\nP\ndsinr\ncos²x\ncOsC\nsin²x-1+1\nCt\nsinx=-\n-sint\n1 — sin²r\nsin\n1\n-sint\ndsinx\nsinx\n1-sinx\n1\n1+ sint\n(1+ sint)2\nsint\nIn\n--sint\n-sint + In(sect + tant).\n2\n1 — sint\n2\ncos²t\n可表示为=g（）,∈\n(y=cost\n[0，十∞）如右图所示，\nπ\n-7原\n0时,x→+∞0\n2\ny=g(x)\n当x=f（t）时，g（x）=cost,故令S为所求区域面积.\n8+J\nQ\nS\ng(x)dx\ncost d f(t)\nsin²t\ncost·f'(t)dt=\ndt\n(由①可得)\ncost\ncost\nsin²tdt:\n4\n（19）解\n利用格林公式\n记J\nPdx十Qdy，曲线I如右图所示.\nP(x,y)=3x²y,Q(x,y) =x\"+x --2y,\nap\nD\n3Q\n并且\n=3x²+1-3x²=1\ndx\nay\n由于曲线L不封闭，故添加辅助线L1:沿轴由点B（0,2）到点\n0(0,0)\nPdx + Qdy = |. Q(0,y)dy = |,(- 2y)dy =]\n则\n2ydy ==4\nL1\n然后在L与L围成的区域D上用格林公式(边界取正向),则：\naQ\ndP\n1\n1\nPdx + Qdy =\nL+L1\nax\n?\n2\nD\nD\n故J\nPdx + Qdy =\nPdx + Qdy -\nPdx + Qdy\nπ\nL+L1\nL1\n2\n（20）解\n（I）按第一列展开，可得\n1\na\n0\nQ\n|A|=1·|0\n1\na\n+(—- 1)4+1\n0\n0\n1\n0\n1\na\n（Ⅱ）当|A|=0时,方程组Ax=β可能有无穷多解，由（I）可得，α=1,或α=-1.\n\n[[page:7]]\n1\n1\n0\n0\n1\n1\n0\n0\n1\n0\n1\n1\n0\n1\n0\n1\n1\n0\n1\n（1）当α=1时,(A:β）=\n0\n0\n1\n1\n0\n0\n0\n1\n1\n0\n1\n0\n0\n1\n0\n0\n0\n0\n0\n2\n因为r（A）=3,r（A:β）=4,故方程组无解.即当α=1时不合题意，舍去.\n（2）当α=-1时，\n1\n-1\n0\n0\n1\n[1\n0\n0\n1\n0\n0\n1\n-1\n0\n1\n0\n1\n0\n一\n1\n一\n1\n(A:β)=\n0\n0\n1\n-1\n0\n0\n0\n1\n1\n0\n1\n0\n0\n1\n0\n0\n0\n0\n0\n0\n因为r（A）=r（A：β）=3,故方程组有无穷多解.选x：为自由变量,则方程组的通解为：\nk(1,1,1,1)T+(0，一1,0,0)T(k 为任意常数).\n1\n0\n1\n1\n0\n1\n7\n0\n1\n[1\n0\n0\n1\n1\n0\n1\n1\n0\n1\n1\n（21）解\n（I）ATA=\n0\n1\n0\n1\n0\na\n1\n0\na\n1\n0\na\n1\n1\n0\na\n0\na\n0\n2\n0\n1-\na\n0\n1+a²\n1-a\n1—\n1-a\n3+a²\na\n2\n0\n因为ATA中有2阶子式\n2（1+α²）≠0,故若二次型f的秩为2,则|ATA|=0，\n0\n故 |ATA|=(α +1)²(α²+3)=0,a =-1.\n[2\n0\n27\n（Ⅱ）当α=-1时,ATA=\n0\n2\n2\n为实对称矩阵.\n2\n2\n4\n入一2\n0\n-2\n|AE-ATA|=\n0入-2\n-2\n=入(-2)(-6)\n-2\n-2\n入-4\n故矩阵ATA的特征值分别为0,2,6.\n当入=0时，（OE一ATA)x=0的基础解系为（-1，一1,1)T，\n当入=2时，（2E一ATA)x=0的基础解系为（一1,1,0)T，\n当入=6 时,(6E－ATA)x=0的基础解系为(1,1,2)T.\n由于实对称矩阵不同特征值对应的特征向量相互正交，故只需单位化.\n1\n(-1,1,0)T， 3=\n1\n-1,-1,1)T,\n(1,1,2)T,\nY2\n√2\n√6\n√3\n1\n1\n1\n√3\n√2\n6\nx1\n1\ny1\n1\n1\n则 xT(ATA)x = yTAy =2y² + 6y²\nX2\n√3\n√2\n√6\ny2\nx3\nLy3\n1\n2\n0\n√3\n√6\n\n[[page:8]]\n(22）解（I）P{X=2Y}=P{X=0,Y=0}+P{X=2,Y=1}\nFo\n4\n（Ⅱ）由题设可知\n0\n1\n2\n0\n1\n2\n0\n1\n4\nX\n1\n1\n1\n1\n1\n1\nXY\n7\n1\n1\n2\n3\n6\n3\n3\n3\n12\n3\n12\n1\n2\n则EX=0×\n2\n6\n3\n1\nEY=0X\n3\n3\n3\n1\n1\n1\n5\nEY² =0 x\n+1×\n3\n3\n3\n3\n7\n1\n1\n2\nEXY =0 x\nX\n4\n12\n3\n12\n3\n5\n又因为 DY=EY²－（EY)²\n3\n故 Cov(X -Y,Y) =Cov(X,Y) - Cov(Y,Y) =Cov(X,Y) - DY\n2\n2\n2\n2\n=EXY-EXEY-DY:\nX1\n3\n3\n3\n3\n（23）解\n（I）由题设条件可知Z服从正态分布，且\n= = X=(X)=Z\nDZ =D(X -Y)=DX + DY=α² + 2α² =3o²\n故Z～N（0,3o²）,则Z的概率密度为\n1\n(20）²\n1\nf(z;o²）=\n8∧∧十8.\n√2π.√32\n6π0\n（Ⅱ）由题设条件可知，似然函数为\nL(²)=IIf(o²)=\n/6π0\n=1\n1\n=1\n6g2\n-∞<;<+∞0,i=1,2,\",n\n(6π)nαn\n两边取对数,可得1nL（o²）：\nn\n1n(6π)\nn\n-Ino2\n2\n2\n6o\n==1\nalnL(²)\nn\n(o²)\n2\n6o\n1\n解得\n3n\n=1\n故α²的最大似然估计量为²=\n>z\n3n=1\nE(Z)\n1\nnEZ2\n3n=1\ni=1\n3n\n-[DZ+(EZ)²]=\n1\n(3²+0)=²\n3\n3\n故E²=α²,则²是α²的无偏估计量.",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 88,
+      "avg_score": 0.9062,
+      "elapsed": [
+        1.9359732000157237,
+        0.36528539657592773,
+        5.8653175830841064
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 102,
+      "avg_score": 0.8897,
+      "elapsed": [
+        1.095477000111714,
+        0.40593719482421875,
+        4.239173650741577
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 98,
+      "avg_score": 0.8981,
+      "elapsed": [
+        1.1292222999036312,
+        0.3112967014312744,
+        4.976816654205322
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 129,
+      "avg_score": 0.8685,
+      "elapsed": [
+        1.0969795000273734,
+        0.5077848434448242,
+        5.965343952178955
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 110,
+      "avg_score": 0.9055,
+      "elapsed": [
+        1.167646899819374,
+        0.3966398239135742,
+        5.746665954589844
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 110,
+      "avg_score": 0.901,
+      "elapsed": [
+        1.1693038002122194,
+        0.6113898754119873,
+        4.813218116760254
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 204,
+      "avg_score": 0.9283,
+      "elapsed": [
+        1.2404712999705225,
+        0.5463404655456543,
+        7.28949236869812
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-8.png",
+      "line_count": 133,
+      "avg_score": 0.9412,
+      "elapsed": [
+        1.283436099998653,
+        0.4810197353363037,
+        5.3369140625
+      ]
+    }
+  ]
+}

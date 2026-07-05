@@ -1,0 +1,93 @@
+{
+  "text": "[[page:1]]\n2011年（数一）真题答案解析\n一、选择题\n(1) C\n令u=(x-1)(x-2)²,=(x-3)²(x-4),\n则 y =uv,y' =u'v + uu',y\"=u\"v + 2u'v' + uu\",y\nm2n+,n&+ne+αmn=m\n由于已知函数y（x）具有任意阶导数,因此在拐点处必有\"（x）=0,而y\"（1）≠0,y\"（2）≠0，\ny\"（3）=0,y\"（4)=0,于是可排除A、B,即点（3,0）与（4,0）是拐点的可疑点.\n而y\"（3）=36>0,即y\"（x）在=3的小邻域内单调增加,由\"（3）=0知\"（x）在x=3\n左、右两侧符号由负变为正,即曲线y（x）在点（3,0）两侧凹凸性相反,由定义知点（3,0）为\n拐点；而y\"（x）在x=4两侧符号相同，则（4,0）不是拐点.故应选C.\n(2) C\n解\n已知幂级数≥α,(x－1)”的收敛域必关于x=1对称(端点除外),据此可排除选项A、B;\n将x=0代人得级数>（-1)\"α，,因为{α,）单调减少且lima，=0,由莱布尼茨审敛法知级数\nn =1\n∑(-1)\"a，收敛.\n将π=2代人得级数≥α，,其前n项和数列为:S，=αk，由条件知极限limS，不存在,故\n级数α，发散，\nn=1\n综上知:幂级数≥α,(x－1)”的收敛域为[0,2).\nn=1\n(3)A\naz\n解\n=f'(x)Inf(y)\nf(x).f'(y)\n3x\nre.\nf(y)\n²z\n²z\nf'(x).f′(y)\nx?\nf(y)'\n²z\nf\"()f(y）-[f'()]²\nf(x）\nay2\nf²(y)\n若函数=f（x）lnf（y）在（0,0）处取得极小值,则\n(az\n=f'(o)lnf(0) =0,\nax\n(0,0)\naz\n=f(0) . f'(0)\n=0，\n(0,0)\nf(0)\n²z\n²z\n且B²-AC=\n(xyI(0,0)\nx2\n(0,0)\ny²\n(0,0)\n[f'(0)]4\nV\nf²(0)\nf²(0)\n²z\nA=\n=f\"(o)1nf(0) > 0,\nx2 (0.0)\n\n[[page:2]]\n由①、②、③式得f(0)>1,f\"(0)>0,故应选A.\n(4)B\n解\n>r>O\nπ\n由定积分性质得\nIn(sinx)dx\nIn(cosx)dx\nIn(cotx)dx,\n即I<K<J.故应选B.\n(5）D\n解\n因为 AP=B,P2B=E,所以 B=P=P2，\n故AP=P2,于是A=P2P11,故应选D.\n(6) D\n解\n因为Ax=0的基础解系含一个线性无关的解向量,所以r（A）=3,于是r（A*）=1,\n故A*x=0的基础解系含3个线性无关的解向量，排除选项A,B.\n=x=（)=\n因为（1,0,1,0)T是方程组Ax=0的基础解系,所以α+α3=0，\n故α1,α2,α4或α2,α3,α4线性无关,显然D正确.\n(7) D\n解\n:f(x)F2(x)+f2(x)F(x)≥0,\n而\nf(x)F(x)dx +\nf2(x)F,(x)dx\n8+\nF2(x)dF,(x）+\nF,(x)dF2()\n=F(x)F2(x）\nF,（x)dF(x）\nF,(x)dF2(x）=1,\n.f（x）F2（x）+f2（x)F,（x）满足概率密度的两条性质.故应选D.\n(8) B\n(XY，\n当X≥Y时，\n解\n因为UV=\nYX，\n当X<Y时，\n所以UV=XY,于是E(UV）=E（XY）=EX·EY.故应选B.\n二、填空题\n(9) In(1+√2)\n解\n因为y'（x）=tanx.\n所以s：\n√1 +['(x)]²dx\n√1+tan²x dx\nu + roas | u= rp xas\n=ln(1 +√2).\n（l0）e-sinx\n解\n=（=（）甲\nQ(x )eJP(x)d dx + C)\n[e-x cosx eJid dx + C)\ncosx dx + C\ne-r(sinx +C),\n由y(0）=0得C=0,因此所求特解为\ny =e-r sinx.\n\n[[page:3]]\n(11) 4\n因为F（，）=\nsint\n解\n1+2d,所以\naF\nsin(xy)\nysin(xy)\n3x\n1+(xy)·y\n1+x²y2,\na²F\nx2\n(1+x²²)²\na²F\n于是\ndx2\n（12）π\n解\n由题设条件知 P=,Q=,R=\n2\n根据斯托克斯公式得\naR\nQQ\nap\naR\nxzdx + xdy +\ndydz\ndx dz\n2\naz\nax\nL\ny - 0)dydz+ (x - 0)dx dz+ (1- 0)dx dy\nydydz + x dxdz + dx dy,\n其中是位于柱面x²+y²=1内的平面=十y,取上侧，且\n2p<p\nxdxdz=0,\ndxdy\n1·dx dy =π,\nDry:x2+y2≤1\n其中Dy是∑在xOy平面上的投影.\n因此Φxdx +xdy +\ndz=π.\n2\nL\n(13）1\n解\nA=\n,f=xTAx,\na\n1\nZ\n因为二次型经过正交变换化为y²+4²=4,所以A的特征值为入，=0,入2=1,入=4，\n再由|A|=一（α一1)²=入入2入3=0,得α=1.\n(14)μo²+μ3\n解：因为(X,Y）～N(μ,μ;α²,²;0),\n所以X～N（μ,o²),Y～N（μ,o²）且X,Y相互独立.\n则 E(XY²)=EX·E(Y²)=EX·[DY+(EY)²]=μ(μ² +o²)=μo²+μ3.\n三、解答题\nln(1+x)\n（15）解\n令y\n则当x>0时，\nx\n1\nln（1+x\nln(ln(1 +x))-lnx\nIny\ne²-1\ne -1\n2011年数学（一）第9页（共14页）\n\n[[page:4]]\nln(ln(1 +x))-lnx\nln(ln(1+x))-lnx\n而\nlim （lny）=lim\nlim\nx→0+\ne² -1\nx→→0+\n→0+\nx\n1\n1\n1\nIn(l+x)'1+x\nr\n-(1+x）·ln(1+x)\nlim\nlim\n1\nx(1+x）·ln(l+x)\n－(1+x）·ln(1+x)\n1-ln(l+x）-1\nlim\nlim\nx(1+x）·\n2x(1+x)+x²\n0+\n0+\n1\n1+x\n1\nlim\n→→0+\n2+6x\n2\nln[-ln(1+x)]-ln(-x)\n当x<0时，lny：\n，同样可得\ne²-1\n1\nlim Iny =\n2\n0←x\n故\nln(1+\nlim\nx→0\nx\n（16）解\n由题设条件得g'（1）=0,g（1）=1.\naz\n则\ny·f'+yg'(x)·f²,\ndx\n²z\nf+xyf\"+yf\"2[g(x)+xg'(x)]+g'(x)·f²+y·g(x)·g'(x)·f22,\nxdy\n将=1,=1,g'（1）=0,g(1)=1代人上式得\n²z\n=f\"(1,1)+ f\",(1,1)+ f\"2(1,1).\nxdy1\n（17）解\n令f（x）=karctan.x\"x,则\nk\nk-1-x\"\nf'（x）=\n1+x2\n1+x²\n≤0，因此，f（x）单调减少，\n1+x?\n===（（)\n‘=²=0=（),甲<（\n当x∈（－∞o，－√k-1）时,f'（x）<0，因此,f(x）单调减少;\n当x∈（-√k-I,k-1）时,f'（x）>0，因此,f(x）单调增加;\n当x∈（k-I,+∞）时,f'（x）<0，因此,f(x）单调减少，\n所以x1=一√k－1是极小值点，2=√k一1是极大值点；\n由于f（0）=0，则f（x）的极大值f（√k-1）>0，f（x）的极小值f（一√k-1）<0.\n又 lim f(x)=+∞,lim f(x)=-∞o,f(0)=0,\n综上知：f（x）在k>1时在3个不同的零点且分别\n（x)=karctanx-x\n位于（-∞，一√k1)，（-k1，k）及\n（√k－1,十∞）内,此时函数f（x）的草图如右图所\nQ\n/k-1\n示，即原方程在k>1时有三个不同的实根.\n\n[[page:5]]\n（18）（I）证\n利用拉格朗日微分中值定理\n令f（x）=ln(1+x）,则f（x）在闭区间\n上满足拉格朗日中值定理的条件，于是有\n>>0)·(),=(0)f-\nu(+1)=[u[-\n1\n1\nV\"Vo.\n<1,\n1\n1+\nn\n1+\nn\n则\n+n\nn(1+)\n1\n故有\n1+n\n（Ⅱ）由（I）的结论知ln（1\n因此有ln（n+1）－Inn\nn\n令n=1,2,3,…,n得\nln2 -lnl < 1,\nln3—ln2<\n2\n1\nln4-ln3<\n3\nIn(n +1)-lnn\n将上述各不等式两端分别相加得\nIn(n+1)<1\n于是αn+1=1 +\n1\n-ln(n+1)>\nn\nn+1\nn+1\n即数列{αn〉有下界.\n又因为α，-α+1\n+ ln(n + 1) - lnn = In(1 +\n>0(由(I）的结论)\nn+1\nn+1\n即数列{αn）是单调下降的.\n综上知数列{α，〉单调下降且有界.\n根据极限存在准则知liman存在且有限，故数列{a，）收敛.\n（19）解由题设条件知积分区域D可表示为:D={（π，）」0≤≤1,0≤≤1)，\n于是有\nI =xyf\" (x ,y)dx dy\nD\n]xpx{=p(<x)f\nrdr\n[].ydf'(x,y)\n\n[[page:6]]\n[(yf(x,y))|-{f(x,y)dy]\n(x,1)-↓f(x,y)dy]\nxf'(x,1)dx -\nxdxf'(x,y)dy\nxdf(x,1)-\ndy|xf'(x,y)dx\n=(xf(x,1))\n-[f(x ,1)dx -)\ndyJxdf(x,y)\nxdf(x,y） (:f(x,1)=0)\n[(xf(x,y))|。-Jf(x,y)dx\nf(x,y)dx | dy\nf(x,y)dx (:f(1,y)=0)\nf(x,y)dxdy =a,\n故\nxyfy (x,y)dx dy =a.\nD\n1\n0\n（20）解（I）因为|α1,α2,α|=\n=1≠0，\n1\n3\n1\n5\n而α,α2,α3不能由β,β2,β：线性表示,故β,β2,β的秩小于α,α2,α3的秩,从而\n1\n1\n3\nIβ,P2,β3 I=\n1\n2\n4|=α-5=0,\n1\n3\na\n解得α=5.\n（Ⅱ）解设(β,β,β3）=（α,α2,α)C,\n1\n则 C=(α1,α2,α3)-1(β,β2,β3)=\n3\n2\n1\n5\n1\n3\n2\n1\n2\n1\n5\n3\n4\n4\n2\n10\n0\n2\n2\n1\n5\n从而\n(β,β2,β3)=(α1,α2,α3)\n4\n2\n10\n1\n0\n-2\n=(2α+ 4α2-α,α+2α,5α+10α2-2α),\n(β=2α1 +4α2-α3,\n即\nβ2=α1+2α2,\nβ3=5α1 +10α2 -2α3.\n\n[[page:7]]\n（21）解（I）记α1=\n，由题设条件知Aα1=一α1,Aα2=α2.\n所以,A 有特征值入=一1,入2=1,α1,α2为其对应的特征向量.\n又秩（A）=2,故丨A|=0,从而，另一特征值入3=0，\nα3=\n：0\n设入=0对应的特征向量α=（1，2,）T,由于A为实对称矩阵,则\nαα3=0,\n1-3=0,\n即\nx1+x=0.\nO\n解得α3=\n从而A的特征值分别为－1,1,0,其对应的特征向量分别为kα,k2α2,kα（其中k；≠0，\ni=1,2,3).\n（Ⅱ）由于不同特征值的特征向量正交,则只需将α1,α2,α：单位化,得\n1\n(1\n√2\n√2\n0\n0\n1\n1\n√2\n2\n1\n1\n0\n√2\n√2\n令Q：\n0\n0\n1\n，则QTAQ=\n1\n1\n0\n√2\n√2\n1\n1\no\n√2\n√2\n√2\n√2\n所以\nA=Q\n0\n0\n1\n1\n0\n1\n1\n√2\n√2\n0\n√2\n√2\n0\n1\n0\n1\n1\n1\n1\n0\n0\n√2\n√2\n√2\n√2\no\n0\n0\n0\n0\n1\n1\n0\n0\n√2\n0\n1\n1\n1\n0\n0\n√2\n√2\n0\n1\n0\n（22）解\n（I）由 P{X²=Y²}=1 可知 P{X²≠Y²}=0,\n于是\n‘0={0=\"[=X}d={-=‘0=X>d={=‘0=X>d\n1\n则\n{[-=X‘O=X)d-{-=X}d={-=X'[=X>d\n3\n1\n同理\nP{X =1,Y=1}=P(X =0,Y=0}=\n即概率分布如下\n\n[[page:8]]\nY\nX\n-1\n0\n1\n1\n0\n0\n0\n3\n1\n1\n1\n0\n3\n3\n（Ⅱ）Z=XY的可能取值为－1,0,1.\nP{xY=-1} =P(X =1,Y=-1)\n3\n1\nP{xY=1}=P{X=1,Y=1}:\n1\n1\n1\nP{XY=0}=1\n3\n3\n3\n故Z的分布律为\nZ\n-1\n0\n1\n1\n1\n1\nP\n3\n3\n3\n2\n（Ⅲ）EX=\nEY =0,E(XY) =0,\n故\nCov(X,Y) =E(XY) - EX ·EY =0,\nCov(X ,Y)\n则\nP xY\n=0.\n√DX √DY\n（23）解\n（I）设1,2，\",r，为样本观测值,则似然函数为\n>（r:p）2\nL(o²)=IIf(x;)=\n（√2π）\"\"\ni=1\n∑(x:-μo)2\n则\nInL(α²) =-nln~2π -\n2\n2α2\n∑(x;-μ。)²\ndlnL(o²)\n令\nn\n十\ni=1\n=0，\ndo2\n2α2\n20 4\nα²的极大似然估计为2\n∑(x; -μo)².\n得\nn\ni=1\n（Ⅱ）因为\n∑(X; -μ。)²～X²(n),\n所以\n∑(x;-μ。)²\n∑(x:-μ。)²\nF\n=2n\n于是E（²）：\nF\n(X;-μo)2\nn\n∑(x:-μ。)²\n2\nD(²)\nn",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 66,
+      "avg_score": 0.8602,
+      "elapsed": [
+        1.9972990001551807,
+        0.18247294425964355,
+        6.358921766281128
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 60,
+      "avg_score": 0.8983,
+      "elapsed": [
+        1.1373064999934286,
+        0.23506426811218262,
+        5.6255738735198975
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 72,
+      "avg_score": 0.8936,
+      "elapsed": [
+        1.1033316999673843,
+        0.48154544830322266,
+        4.861534595489502
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 85,
+      "avg_score": 0.8703,
+      "elapsed": [
+        1.1811277999076992,
+        0.11970329284667969,
+        7.050283908843994
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 56,
+      "avg_score": 0.9227,
+      "elapsed": [
+        1.0597527001518756,
+        0.4013183116912842,
+        4.4029881954193115
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 74,
+      "avg_score": 0.9461,
+      "elapsed": [
+        1.034440299961716,
+        0.17686772346496582,
+        4.477599859237671
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 108,
+      "avg_score": 0.9204,
+      "elapsed": [
+        1.1319856999907643,
+        0.18154287338256836,
+        5.139349699020386
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-8.png",
+      "line_count": 91,
+      "avg_score": 0.9199,
+      "elapsed": [
+        1.1515178999397904,
+        0.39162302017211914,
+        3.875215768814087
+      ]
+    }
+  ]
+}

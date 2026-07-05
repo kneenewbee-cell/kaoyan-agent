@@ -1,0 +1,82 @@
+{
+  "text": "[[page:1]]\n2016年（数一）真题答案解析\n一、选择题\n(1) C\ndx\n解\n取α=0,若\n1\nlim\n收敛，\n(1+x)\n1-\n-→+\n(1+x)-1\n只需6>1即可.说明α<1可以使原反常积分收敛,排除B,D.\n再取α=-1,6=2.\nx\n1\ndx\ndx=ln(1+x\n8\n(1+x)\n(1+x)²\n发散,说明满足α<1且b>1,原反常积分发散,排除A.\n(2) D\n解\n当x<1时,F（x）=\n[2(x - 1)dx =x² - 2x + C;\n²+-ru=rru=()[<\n且limF(x) =lim(x²-2x +C)=C, - 1; limF(x) =lim(xlnx -x +C2)=C2- 1.\nx→→1\nr→1\n→1+\n+[~x\n又F（x）在x=1处连续,因此有limF（x）=limF（x）=F（1）,即C－1=C2－1，\nx~→1\nx²-2x +℃，x <1,\n所以C，=C2=C.故原函数为F（x）：\nIxInx -x +C， x ≥ 1.\n当C=1时,对应的原函数为 D.\n(3) A\n解\n因为y(x)=(1+x²)²-√1+x²和2(x)=(1+x²)²+√1+x²为y'+p(x)y=q(x)\n的两个解,所以,y2（x）-y（x）=2√1+x²为y'+p（x)y=0的解.\n2x\n代人该齐次方程，得\n+p(x）·21+x²=0,故p(x）=\n√1+x2\n1.+x\n再将（x）=（1+²)²+√1+x²代人原方程,可得\n4x（1+x²）+\nx\n[(1+x²)²+/1+x²]=q(x),\n√1+x²\n1+x²\n解得q(x）=3x（1+x²).\n(4) D\n解\n因为 limf（x）=limx=0,limf（x）=lim\n=0,可得f(0--0)=f(0+0)=f(0)，\nx→0\"\nx→0\"\nx→o+\n所以f（x）在x=0处连续.又\n1\nf(x)-f(0)\nx-0\nf(x)-f(0)\nf\"(0)=lim\n=lim\n=1，f(0)=lim\n=lim\nn\nx-0\n0-r\n_0←2\nr-→0\nx-→0+\nx-0\nx→0+x—0\n1\n可得1<\nn\n且当x → 0+ 时n → ∞.\nn\nnr\nn\nn+1\nn+1\n所以lim1=1,lim\n=lim\n→o+\nn\nu\n\n[[page:2]]\n由夹逼准则lim\n1\n=1,即f-（0)=f（0)=1.故f（x）在x=0处可导.\nx→o+ n\n(5) C\n解\nP-AP=B,有(P-'AP)T=BT,即有 PTAT(PT)-1=BT,即 A正确;\n(P-AP)-=B-1,有 P-A-'P =B-,即 B 正确,而 D 正确．故应选 C.\n(6) B\n1\n2\n2\n解\n二次型的矩阵为A=\n2\n1\n2\n，|入E一A|=（入十1)²（入—5）,特征值为一1，一1,5.\n2\n2\n1\n二次型的标准形为-y²-y²+ 5y²\n故应选B.\n(7） B\n解=P{≤μ+²}=P\nΦ(o).\n因为Φ（x）单调增加,所以p随。的增加而增加.\n故应选B.\n(8) A\n解\n（X,Y）的联合分布为：\nX\n0\n1\n2\nY\n1\n2\n0\n9\n9\n9\n2\n2\n1\n0\n9\n9\n1\n2\n0\n0\n9\n4\n4\n1\n2\n2\n由此可得EX=0×\n+1X\nf\n同理，EY\n9\n9\n9\n3\n4\n4\n1\n8\nEx² =0 x\n8\n+1²\n×\n+\n22\n×\n同理EY²\n9\n9\n9\n9\n9\n2\n,所以,Cov(X,Y) =EXY -EXEY =\n2\n又 EXY=\n9\n9\n又 DX =EX² -(EX)²\n4\n,同理,DY\n4\n，故\n9\n9\nCov(X,Y)\nE(XY)-EX·EY\n1\nPxY=\n故应选A.\n√DX·√DY\n√DX·√DY\n2\n二、填空题\n1\n(9)\n2\ntln(1+tsin t)dt\ntln(1+tsin t)dt\nrln(1+xsin x)\n解\nlim\n=lim\n=lim\nx→0\n1- cos x\n1\n2.x3\nx→→0\n2\n·sin\n1\n=lim\n0+\n2x²\n2\n\n[[page:3]]\n(10）j+(y-1)k\n解\n由旋度定义公式，得\ni\nj\nk\na\na\n3\naR\nap\nrotA=\n3x\nK\nP\nQ\nR\n=0·i+1·j+(y-1)·k=j+(y-l)k.\n(11)－dx +2dy\n解等式(x+1)-²=x²f(x-,y）两边分别关于,求导，\n得+(x+1)'=2xf(x,y)+x²f(x-,y）·（1-);\n(x+1)z'-2y =x²[f(x -,y)·(-z') + f2(x -,y)].\n再将x=0,y=1代人原式,可得=1.\n将x=0,y=l,x=1 代人上述两式，得z=-1,z=2.\n故 dz I (o,1) = z' dx + z' dy = - dx + 2dy.\n1\n(12)\n2\n1\n解\n∑(- 1)\"x²n,则\n1+x\nn=0\n1\n(—1)\"x2n+1\narctanx\n(-1)^x²dx =\n1+3\n2n+1\n0\nx\n1\n(-ax²)\"=x(l-ax²+\n1+ax\n1+(ax²)\nn=0\n所以f(x）=arctan x\nY\n十\n1\n又f(x)=f(0)+f'(0).x +\n(0)x²\n\"(0)x”+……·\n2!\n31\n因此\nf\"（0）=\n1\n+α,又f\"(0)=1,故α=\n1\n31\n3\n2\n(13)入+²+2入²+3 + 4\n解\n按最后一行展开，得\n1\n0\n入\n0\n0\n(- 1)4+1 × 4\n入\n一\n1\n0\n+(--1)4+² × 3\n0\n一\n1\n0\n0\n1\n0\n入\n1\n入\n1\n入\n一\n1\n0\n(-1)4+3 × 2\n0\n入\n0\n+(—1)4+4(a + 1)\n0\n入\n0\n0\n0\n0\n入\n=入4 +入²+ 2入² + 3入 + 4.\n(14)(8.2,10.8)\nS\n解μ的置信区间为(－tα(n－1)\n,x+tα(n- 1)\n√n\n已知=9.5，置信上限为10.8，\n\n[[page:4]]\n则ta(n-1)\n=1.3，所以置信下限为8.2.\n2\n√n\n故应填(8.2,10.8).\n三、解答题\n2(1+cosθ）\n（15）解\nr² cos0 dr\ndo\nD\n16\n[(1 + cosθ)² - 1]cosθ d0\n16\n32\n(3cos²θ+3cosθ + cosθ)dθ\n+5π.\n3\n（16）解（I）微分方程y\"+2y'+ky=0的特征方程为入²+2入+k=0.\n解得入=-1+√1-,2=-1-√1-.\n因为0<k<1,所以入<0,入2<0,从而\ndx 收敛.\n由于入，≠入2,所以y（x）=C,e^1²+C2e^²²,其中 C，与C2是任意常数.\n综上可知,反常积分\ny(x)dx 收敛.\n（Ⅱ）由（I）知,，<0,入2<0,所以\nlim y(x) =lim (C,e^ + C2e²) =0,\n+←-x\nlim y'(x) =lim(CAe1 + C2^2e2#) =0.\n又y(0)=1,y'（0)=1,所以\n+\n-+\ny(x)dx\n（\"(x）+2y'（x）)|dx\n('(x）+2y(x))\nk\nk\n因为f(x,y)\n（17）解\n=（2x+1)e²x-,所以\nax\naf(x,y)\nf(x,y)\nax\n将f(0,y)=y+1代人上式,得C(y)=y+1.\n所以 f(x,y) =xe²z- + y + 1.\n从而\naf(x,y)\nθf(x,y)\nI(t)：\n-dx+\n-dy = f(1,t) - f(0,0) =e²-\" +t.\nJL\nre\nay\nI'(t)=- e²-\"+ 1.令 I'(t)=0 得 t = 2.\n由于当t<2时,I'(t）<0,I(t）单调减少;当t>2时,I'(t）>0,I(t）单调增加,所以I(2)=3\n是I(t）在（一∞，+∞）上的最小值.\n（18）解\n根据高斯公式得\n(2x +1)dx dydz .\nn\n1\n因为\ndx dydz\n2×1×\n3\n2\nn\n2(1\nxdxdydz：\ndx\ndx\n)d\n\n[[page:5]]\nc(1-x)²dx：\n12\n所以I=2×\n12\n3\n（19）解\n（I）因为+1=f（，）,所以\n|xn+1一n|=|f(x,）－f(xπ-1)|=|f'(∈)(，一xn-1)|,其中介于x，与xn-1 之间.\n1\n,所以|+1一x，|≤\n1\n>(x)J>0x\nxn-xn-1|≤··≤\nIx2-x+l.\n由于级数\n|2一x；|收敛,所以级数≥（x+1一,）绝对收敛.\nn == 1\n（Ⅱ）设∑(xn+1\n一x，）的前n项和为Sn,则S，=n+1一1.\n=1\n由（I）知,limS，存在，即lim（xn+1一）存在,所以limx，存在.\n设limx，=c,由xn+1=f（x,）及f（x）连续,得c=f（c），\n即c是g（x）=一f（x）的零点.\n‘(0)0<(),-=[(0)()]=()=()--=(0)\n（回（）（）=（）\n于是0<c<2,即0<limx，<2.\n（20）解\n对矩阵（A「B）施以初等行变换\n1\n-1\n-1\n2\n2\n2\n2\nAB=\n2\na\n1\n1\na\na+2\n3\n1\n1\na\n0\n0\na-1\n：\n1-a\n0\n当α≠1且α≠一2时,由于\n3a\n0\n1\n/1\n一\n1\n2\n2\na+2\n0\nα+2\n3\n3\na\n4\n0\n0\n0\no\n0\n1\n1\n0\nα+2\n0\n0\n1\n1\n0\n所以AX=B有唯一解，且\n3a\n1\na+2\nX=\na-\n4\n0\na+2\n0\n当α=1时,由于\n2\n2\n/1\n0\n0\nC=\n0\n3\n3\no\n0\n0\n0\n所以AX=B有无穷多解，且\n1\n1\n0\n0\nk1\nk2\n其中-k1,k2为任意常数.\n0\nk\n一\n\n[[page:6]]\n当α=-2时,由于\n1\n2\n2\n2\n2\n0\n0\n3\n0\n0\n1\n0\n0\n0\n一\n3\n3\n0\n0\n0\n0\n0\n所以AX=B无解.\n（21）解（I）因为\n入\n1\n入E -A|=\n-2入+3\n0\n=入(a +1)( +2)，\n0\n0\n入\n所以A的特征值为入1=一1,入2=一2,入=0.\n当入=-1时,解方程组（一E一A)x=0,得特征向量=（1,1,0)T；\n当入2=－2时,解方程组（一2E－A)x=0,得特征向量2=（1,2,0);\n当入3=0时,解方程组Ax=0,得特征向量3=（3,2,2)T.\n/1\n1\n3\n-1\n0\n0\n令P=（1,2,）=\n1\n2\n2\n，令P-AP=\n0\n-2\n0\no\n0\n2\n0\n0\n0\n所以\n1)99\n0\n0\nA°=P\n0\n(—2)99\n0\n0\n0\n0\n2\n-1\n-2\n1\n1\n3\n1)99\n0\n0\n1\n1\n1\n1\n2\n2\n0\n(—2)9\n0\n2\no\n0\n2\n0\n0\n0\n1\n0\n0\n2\n299\n-2\n1—299\n2-298\n2100 ——2 1— 2100\n2—299\n0\n0\n0\n（Ⅱ）因为B²=BA，所以\nB10° =BB²=BA=BB²A=BA²=.·· =BA 99\n/299\n-2\n1—299\n2-298\n即(β,β2,β)=(α,α2,α3)(\n2100——2\n1 — 2100\n2-299\n0\n0\n0\n[β =(2”9 - 2)a +(2100 -- 2)a2,\n所以<β2=(1-2)α+(1-210)α2,\nβ3=(2- 298)α1 +(2- 2\")α2.\n（22）解（I）（X,Y）的概率密度为\n/3，（,y)∈D,\nf(x,y)=\nlo，其他.\n（Ⅱ）对于0<t<1,\n\n[[page:7]]\nP{U≤0,X≤t}=P{X >Y,X≤t} :\n1\nP{U≤O}=P(X >Y} =\n2\n√\nP{X≤t}=\nd.x\n3dy = 2t²\n由于P{U≤0,X≤t}≠P{U≤0}P{X≤t},所以U与X不相互独立.\n（Ⅲ）当<0时,F(z）=0;当0≤<1时，\nF(z)=P(Z≤}=P{U+X≤}\n=P{U=0,X≤}=P{X >Y,X≤z}=\n2\n当1≤z<2时,F(z)=P{U+X≤z)\n=P{U=0,X≤z}+P{U=1,X≤- 1}\n1\n3\n3\n+2(z-1)\n2\n(z-1)²;\n2\n2\n当≥2时,F(z)=P{U+X≤z}=l.\n(0,\n^o,\n3\n‘>\n2\n所以F（z）=\n1\n3\n+2(z-1)\n(-1)²，1≤<2,\n2\n2\n[1,\nx≥2.\n（23）解（I）总体X的分布函数为\n0,\nx<o,\nx\nF（x）=\n‘θ>r\nθ3\n1,\nx≥0.\n从而T 的分布函数为\n(0,\n<o,\n9\nF(z)=[F(z)]\nZ\n‘>\n09,\n1,\nx≥θ.\n所以T的概率密度为\n928\n‘θ>>\nf(z)={θ\n[0,\n其他.\n9\n（Ⅱ）E（T）=\n0，从而E（aT）=\nzfr(z）dz\ndz\naθ\nθ9\n10\n10\n10\n令E(aT)=θ,得α=\n10\n所以当α\n时，aT为θ的无偏估计.\n9",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 93,
+      "avg_score": 0.8879,
+      "elapsed": [
+        1.9218026001472026,
+        0.4606764316558838,
+        7.020376443862915
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 127,
+      "avg_score": 0.9481,
+      "elapsed": [
+        1.471735900035128,
+        0.41618895530700684,
+        5.394416809082031
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 111,
+      "avg_score": 0.9143,
+      "elapsed": [
+        1.341090700123459,
+        0.31746768951416016,
+        5.963430166244507
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 74,
+      "avg_score": 0.8888,
+      "elapsed": [
+        1.1417891001328826,
+        0.3506045341491699,
+        5.671589136123657
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 117,
+      "avg_score": 0.8997,
+      "elapsed": [
+        1.2130799998994917,
+        0.4142730236053467,
+        5.78242826461792
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 128,
+      "avg_score": 0.9207,
+      "elapsed": [
+        1.1470749999862164,
+        0.32261204719543457,
+        5.570053815841675
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 78,
+      "avg_score": 0.879,
+      "elapsed": [
+        1.1495743999257684,
+        0.23431611061096191,
+        4.144559860229492
+      ]
+    }
+  ]
+}

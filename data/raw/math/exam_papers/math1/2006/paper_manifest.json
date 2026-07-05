@@ -1,0 +1,40 @@
+{
+  "exam_id": "kaoyan_math1_2006",
+  "exam_type": "math1",
+  "exam_label": "数学一",
+  "year": 2006,
+  "source_files": {
+    "questions": "math1_2006_questions.md",
+    "answers": "math1_2006_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 23,
+  "explanation_count": 23,
+  "question_ids": [
+    "kaoyan_math1_2006_q001",
+    "kaoyan_math1_2006_q002",
+    "kaoyan_math1_2006_q003",
+    "kaoyan_math1_2006_q004",
+    "kaoyan_math1_2006_q005",
+    "kaoyan_math1_2006_q006",
+    "kaoyan_math1_2006_q007",
+    "kaoyan_math1_2006_q008",
+    "kaoyan_math1_2006_q009",
+    "kaoyan_math1_2006_q010",
+    "kaoyan_math1_2006_q011",
+    "kaoyan_math1_2006_q012",
+    "kaoyan_math1_2006_q013",
+    "kaoyan_math1_2006_q014",
+    "kaoyan_math1_2006_q015",
+    "kaoyan_math1_2006_q016",
+    "kaoyan_math1_2006_q017",
+    "kaoyan_math1_2006_q018",
+    "kaoyan_math1_2006_q019",
+    "kaoyan_math1_2006_q020",
+    "kaoyan_math1_2006_q021",
+    "kaoyan_math1_2006_q022",
+    "kaoyan_math1_2006_q023"
+  ],
+  "generated_at": "2026-06-30T06:42:54.865294+00:00"
+}

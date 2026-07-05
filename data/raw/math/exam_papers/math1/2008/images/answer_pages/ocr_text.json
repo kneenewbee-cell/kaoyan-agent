@@ -1,0 +1,93 @@
+{
+  "text": "[[page:1]]\n2008年（数一）真题答案解析\n一、选择题\n(1)B\n解f'（x)=ln(2+x²）·2x=2xln(2+x²）,\n又因为ln（2+x²）≠0，\n所以f'（x)只有一个零点.\n(2)A\n1\n1\n解由f'=\ny\ny\nv2，得 f(0,1)=\nx\n2\n+\ny\n2\n由f’\n得f′(0,1)=0.\n所以 gradf(0,1)=1×i+0×j=i.\n(3） D\n解由y=C,e²+C2cos2x十C3sin2x可知其特征根为入,=1,入2.3=±2i.\n故对应的特征方程为\n(-1)(a+2i)(a-2i)=(-1)(a²+4)，\n即入²－入²+4-4=0，\n所以所求微分方程为\n-y\"+4y'-4y=0.\n(4） B\n解若{xn）单调,则由f（x)在（－∞，十∞）内单调有界知，{f(x,）)单调有界,因此\n{f(x,）}收敛.\n(5) C\n解\n(E-A)(E+A+A²)=E-A²=E,\n(E+A)(E-A+A²)=E+A²=E,\n所以E一A，E十A均可逆.\n(6) B\n解此二次曲面为旋转双叶双曲面,此曲面的标准方程为\n=1,所以A的正特征\n值个数为1.\n(7） A\n解设Z的分布函数为Fz（x）,则\nFz(x)=P(Z≤x)=P(max(X,Y)≤x}=P(X≤x,Y≤x).\n\n[[page:2]]\n由于X与Y独立同分布，于是有\nFz(x)=P(X≤x)P(Y≤x)=F²(x).\n(8) D\n解用排除法.\n设Y=aX+b,由 pxy=l 知 X,Y 相关,得α>0,排除 A、C;\n由X～N(0,1),Y～N(1,4)得\nEX=0,EY=1,\nE(Y)=E(aX+b)=aEX+b,\n1=a×0+6,6=1.排除B.故应选D.\n二、填空题\n1\n（9)\nr\ndy\ndy\n解\n由\n，即\ndx\nx\ny\n积分得－ln|y|=ln|x|+C，\n1\n所以\n= IxI+C.\n[yl\n1\n又y(1)=1,所以y=\n（10）y=x+1\n解设F(x,y)=sin(xy)+ln(y-x）-,斜率\n-1\nycos(xy)+-\nF\ny-x\nF\n1\nxcos(xy)+\ny-.x\n在(0,1)处,k=1,所以切线方程为y-1=x,即y=x+1.\n(11)(1,5]\n解由题意知∑α,（x+2)”的收敛域为（－4,0］,则α，x”的收敛域为（－2,2］.\nn=0\nn=0\n所以≥α,（x一3)”的收敛域为(1,5].\nn=0\n（12）4π\n解\nxydydz+xdzdx +x²dx dy\nxydydz +xdzdx +x²dxdy+\n∑+D\nD上\nydxdydz+\nx²dxdy\nD上\nc²+y²)dxdy\n0\nDE\n\n[[page:3]]\n=4π.\n(13）1\n解 A[α,α2]=[Aα,Aα2]=[0,2α,+α]=[α1,α2]\n0\n记P=[α，α2］,P可逆，故\nro\n2]\nP-AP=\n=B.\n0\n1\nA有B相同的特征值\n入\n-2\n|入E-B|=\n=入(-1),\n0\n入-1\n入1.2-=0,1,\n所以非零的特征值为1.\n1\n(14)\n2e\n解\n因为 DX=EX²－（EX)²,所以 EX²=2,X 服从参数为1的泊松分布，\n1\n1\n所以P{X=2}：\n2\n2e\n三、解答题\n[sin x-sin(sin x)]sin x\n（15）解\nlim\nx→0\nsin x-sin(sin x)\n=lim\nx-→0\nx\ncos x-cos(sin x)cos x\n3x²\n1-cos(sin x)\nlim\nx-→0\n3.x2\n1\n-sin²\n2\n=lim\n3x²\n1\n6\n（16）解法一\nsin 2xdx+2(x²-1)ydy\n[sin 2x+2(x²-1)sin x·cosx］dx\n²sin 2xdx\ncos2x\nxcos 2xdx\n2\n\n[[page:4]]\nsin 2xdx\n2\n2\n解法二取L，为x轴上从点(π,0)到点(0,0)的一段,D是由L与L围成的区域.\nsin 2xdx +2(x²-1)ydy\nsin 2.x d.c + 2(x²-1) ydy\nsin 2xdx +2(x²-1)ydy\nL+L\n4xyd.rdy\nsin 2xdx\nD\nsin 2\n1\nd.r\n4xydy\ncos2x\n2xsin² xdx\nx(1-cos2x)dx\nsin 2xdx\n2\n2\n(17）解点(x,y,)到xOy面的距离为lzl,故求C上距离xOy面最远点和最近点的坐标,等\n价于求函数H=z²在条件x²+y²-2²=0与x十y+3z=5下的最大值点和最小值点.\n令 L(x,y,,,μ)=x²+入(x²+y²-2x²)+μ(x+y+3-5),\n由\nL'=2入x+μ=0,\nL′=2y+μ=0，\nL＇=2z-4入z+3μ=0，\nx²+y²-2z²=0,\nx+y+3=5,\n得=,从而\n[2x²-2x²=0,\n2x+3z=5，\n解得\nx=-5，\n(x=1,\n=-5,或<=1，\nz=5，\nz=1.\n根据几何意义,曲线C上存在距离xOy面最远的点和最近的点,故所求点依次为(一5，一5,5)\n和(1,1,1).\n\n[[page:5]]\n（18）（I）证对任意的x，由于f是连续函数,所以\nF(x+△x)-F(x)\nlim\n△x\n△x→0\n{x+△x\nf(t)dt-\nP()\n-lim\n△x→0\n△x\nx +△x\nf(t)dt\nlim\n△x-→0\n△x\nf()△c\n=lim\n△x→0\n△x\n=limf(),\n△x→0\n其中介于与十△之间.\n由limf(E)=f(x),可知函数F(x)在x处可导,且F'（x)=f(x).\n△x0\n（Ⅱ）证法一要证明G(x）以2为周期,即要证明对任意的,都有G(x十2)=G（x）.\n记H(x)=G(x+2)-G(x),则\nx+2\nH'(x)=\nf(t)dt-(x+2)|f(t)dt)'-(2|\n\"f(t)dt-x」f(t)dt)\n=2f(x+2)-\nf(t)dt-2f(x)+|f(t)dt\n=0,\n又因为\nH(0)=G(2)-G(0)=(2|\"f(t)dt-2|f(t)dt)-0=0,\n所以\nH(x)=0,即G(x+2) =G(x).\n证法二由于f是以2 为周期的连续函数,所以对任意的,有\nx+2\nG(x+2)-G(x)=2\nf(t)dt-(x+2)|\n[f(t)dt-2\nf(t)dt+x\nf(t)dt\nx+2\n+P(2)\np(2)f-P(2)f,{-P(2)f\nf(u+2)du—|f(t)dt\n[f(t+2)-f(t)]dt\n=0,\n即G(x)是以2为周期的周期函数.\n(19）解由于\n2\n2π\n(1-x²)dx=2-\nπ\n3\n2\n(1-x²)cos nxdx\nπ\n\n[[page:6]]\n,n=1,2,...\n所以\nf(x)=\n2\nn=1\n2\nπ\n(-1)+1\n-- 4\ncos nx，O≤x≤π.\n3\n= 1\n令x=0,有\n1)n+1\nf(0)=1-\n3\nn=\nn\n2\n又 f(0)=1,所以\n(—1)~-1\nπ?\n12'\nn == 1\n(20）证（I）r(A)=r(ααT+βT)\n≤r(ααT)+r(ββT)\n()+(∞)\n≤2.\n（Ⅱ）由于α,β线性相关,不妨设α=,于是\nr(A)=r(ααT+ββT)\n=r((1+k²)βT)\n>(\n（21）（I）证记\n2a\n1\na\n2\n2a\n1\n2a\nD,=|A| =\nQ?\n2a\n2\na\n2\n2a\n以下用数学归纳法证明D，=（n十1)a”.\n当n=1时,D=2α，结论成立.\n2a\n1\n当n=2时,D2=\n=3a²，结论成立.\na\n2\n2a\n假设结论对小于n的情况成立.将D，按第1行展开，得\na2\n1\n0\n2a\na\n2\n2a\n1\nD， =2aDn-1\n2a\na\n2an--]\n\n[[page:7]]\n=2aDn-1-a²Dn-2\n=2anan---a²(n-1)an-2\n=(n+1)a”,\n故|A|=（n+1)a”.\n（Ⅱ）解当α≠0时,方程组系数行列式D，≠0,故方程组有唯一解.由克莱姆法则,将D,\n的第1列换成6，得行列式为\n1\n1\n2a\n0\n2a\n1\n2a\n2a\n=Dn-1 =na\n2a\n2a\n2\n2a丨n-1\n2a\nDn-1\n所以\nn\nx1=\nDn\n(n+1)a\n（Ⅲ）解当α==0时,方程组为\n0\n0\nx2\n0\n0\n此时方程组系数矩阵的秩和增广矩阵的秩均为n一1,所以方程组有无穷多解,其通解为\nx=(0,1,0,...,0)T+k(1,0,0,.….,0)T,\n其中k 为任意常数.\nx=0,2≤\n（22）解（I）P\nP{X=0}\n{x=0,Y≤\nP{X=0}\n(Ⅱ）Fz()=P{Z≤}=P{X+Y≤}\n=P{X+Y≤z,X=-1)+P(X+Y≤,X=0}+P{X+Y≤z,X=1}\n=P{Y≤z+1,X=-1}+P{Y≤z,X=0}+P{Y≤z-1,X=1}\n=P{Y≤z+1}P(X=-1>+P{Y<}P{X=0}+P{Y≤-1}P{X=1}\n1\n[P{Y≤z+1}+P{Y≤z}+P{Y≤-1}]\n3\n1\nF(z+1)+F(z)+Fy(z-1)],\n3\n\n[[page:8]]\nfz(z)=F(z)\n1\n[fx(z+1)+f(z)+f(z-1)]\n3\n-1≤x<2,\n0，\n其他.\n（23）（I）证因为\nET =E(x2.\nn\n1\n=EX2.\n—ES2\nu\n= (EX)²+Dx-\n—ES2\nn\nu\nn\n=μ²,所以T是μ²的无偏估计量.\n（Ⅱ）解 当μ=0,=1时,有\nDT =D(x2.\nS²)(注意X与S²独立)\nn\n1\nn\n1\nD(√n x)²+\nn\nn\n1\n1\n2+\n·2(n-1)\n(n-1)²\nn\nn\nn\n2\nn(n-1)",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 43,
+      "avg_score": 0.9082,
+      "elapsed": [
+        1.873034300049767,
+        0.11462712287902832,
+        5.476504802703857
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 57,
+      "avg_score": 0.911,
+      "elapsed": [
+        1.18218640005216,
+        0.07411956787109375,
+        4.38774561882019
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 59,
+      "avg_score": 0.9083,
+      "elapsed": [
+        1.1924363998696208,
+        0.12230372428894043,
+        3.6136538982391357
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 41,
+      "avg_score": 0.918,
+      "elapsed": [
+        1.1147209000773728,
+        0.2711043357849121,
+        4.197171211242676
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 61,
+      "avg_score": 0.8881,
+      "elapsed": [
+        1.0828943001106381,
+        0.35231614112854004,
+        3.9198720455169678
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 69,
+      "avg_score": 0.913,
+      "elapsed": [
+        1.1494148999918252,
+        0.1354668140411377,
+        3.5677788257598877
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 50,
+      "avg_score": 0.9085,
+      "elapsed": [
+        1.2107201998587698,
+        0.07815003395080566,
+        4.358185529708862
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-8.png",
+      "line_count": 40,
+      "avg_score": 0.9246,
+      "elapsed": [
+        1.1142827000003308,
+        0.05624675750732422,
+        2.1392359733581543
+      ]
+    }
+  ]
+}

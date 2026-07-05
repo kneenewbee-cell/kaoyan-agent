@@ -1,0 +1,93 @@
+{
+  "text": "[[page:1]]\n2010年（数一）真题答案解析\n一、选择题\n(1) C\n解法\n用求幂指数型极限的一般方法。求I=lim e*ln=a+6)\n归结为求\nW = limx ln\nx\nlimx\n(x-a)(x+b)\n(x-a)(x+b)\nx2\n(a-b)x+ab\n=limx\nlim(x\n=a-b.\n(x-a)(x+b)\n(x-a)(x+b))\n因此I=e-.故应选C.\n(2）B\n解\n因为=（,）由方程F（\n=0确定,则对 F\n求偏导数得\nF=F（\nF'=F.1\n·“=\nx\nF(-)\n+F2(-\naz\nF'\nyF' + zF2\n所以\nF'\nxF2\n1\nF3\nF\nF'\nx\nF\nF\nF\nF\nx\naz\naz\nyF' + zF2\n则x\nyF\nx\nF'2\nF\n(3) D\n/In²(1 -x)\n解\n显然广义积分\ndx有两个瑕点x=0与x=1，则\n/x\n\"/In²(1 -x)\n\"/In²(1 -x)\n1\n\"/In²(1 --x)\ndr\ndx十\ndx,\nNx\n\"/In²(1—x)\n对于\n-dx,瑕点为x=0，\n[ln²(1-x)]\n设n >1, lim\n=0,由于0<\n1\n<1,故收敛.\n-→0+\nx\nn\n[In²(1-x)]\n设n=1,m=1,2,lim\n存在，故此时不是反常积分.\n=\nx\n[In²(1-x)]\nx1-存在,又0<1－\n2\n设n=1,m>2,lim\n<1,故收敛.\n→0+\nx\nu\n\n[[page:2]]\n(1 \"/In²(1 -x)\n[ln²(1-x)]*\ndx,瑕点为x=1,当m为正整数时，lim\n·(1-x)=0,\n\"x\n1\nx\n故收敛.\n所以，不论m,n取何正整数，反常积分都收敛.故选D.\n(4) D\nlim>\n解\nu\n=lim\nn\n(n+i)(n²+j²)\n= 1 j = 1\n= lim\n1\n1\ni=1j=1\nn\nn\n(5）A\n解\n由于A为m×n矩阵,B为n×m矩阵,故r(A)≤m,r(B)≤m.\n又AB=E,于是m =r(AB)≤r(A)≤m,m =r(AB)≤r(B)≤m,\n所以r（A）=m,r（B）=m.\n(6）D\n解\n设入是A的特征值.由于A²十A=0,\n所以入²+入=0,即（+1)入=0，\n故A的特征值为一1或0.又A为实对称矩阵,所以A可相似于对角阵A.\n且r（A）=r（A）=3,\n-1\n于是=\n(7) C\n解\nP{X=1}=P{X≤ 1)-P{X <1}=F(1)-F(1 -0)=1-e\n(8) A\n解\n由于f（x）=\n√2π\n1\n‘ε>\nf2(x）={\n[0,\n其他.\nro\n故\nf(x）dx:==a\nf,(x)dx+b\nf2(x)dx=aX\n-6=1.可得\n2\n2\n4\n2a+36=4,故应选A.\n二、填空题\n(9)0\n解\n由题设条件x'（t）=一e,y'（t）=ln（l+t²)，\ny'(t)\n则\n-ln(1+t²)e²,\ndr\nx\n'(t)\n\n[[page:3]]\n2t\n-e'ln(l +t\")-e'·\n)(-e')\ndr\n2te2r\n2t\n= e²1n(1 +t²) +\n2t\nIn(1 +t²)+\n1+t²\n[²+ L\nd²y\n从而\n=0,故应填0.\nd.x 2\n（10）-4π\n解\n√x cos √xdx\n令t=√x\ntcost·2tdt=2\nt\"costdt：\nsint·2tdt\nt·sintdt=4\n(t·cost)\ncostdt|=4(—π-0)- 4sint\n一4π\n0\n(11)0\n解\n利用格林公式如右图所示，由题设条件知.\nB(0,1)\nL =AB + BC.\n记L，=CA,则L十L为闭曲线且所围区域记为D，\naQ\n=2xy\nap\n此时,P(,y)=xy,Q(x,y)=x²,且\nA(-1,0)\nC(1,0)\n3x\nx\n由格林公式知\nap\nxydx +x²dy\nxdxdy=0（由对称性），\nax\n（L+L1）\nD\n则\n.xydx +x²dy =\nxydx +x²dy\nxydx +x²dy +\nxydx +x²dy\nL+L1\nL\nxydx+x²dy\n(x·0+x².0)dx=0.\n2\n(12)\n3\nAP\n解由题设所求坐标为=\nz=x²+y²\n$2\n其中积分区域Ω如右图所示用平面=(0≤≤1）截积分区\nD(z):\nx²+y²≤z\n域Ω得截面D(z）且D(z）是一圆域:x²+y²≤z.\n于是\nzdV =-\ndz\nzdx dy=\nzdz\ndx dy\nΩ\nD(z)\n儿\ndx dy =\n儿\nπzdz：\n2\nn\nD（）\n\n[[page:4]]\n即：\nπ\n故应址\n3\n3\n(13) 6\n解由于α,α2,α；生成的向量空间的维数为2,所以r(α,α2,α）=2.\n对矩阵（α1,α2,α）进行初等行变换：\n1\n1\n2\n(1\n1\n2\n(1\n1\n2\n2\n1\n1\n0\n一\n1\n一\n3\n0\n1\n3\n(α1,α2,α3.）=\n1\n0\n1\n0\n1\n3\n0\n0\n6\n0\n2\na\no\n2\na\n0\n0\n0\n所以α=6.故应填6.\n（14）2\n解\n因为∑P=1,故\nk=0\n∑P=\nc>\nCe= 1\ne）\nk!\nk!\nk!\nk=0\n即得C=e-.所以\ne~l\nP{X=k}=\n,k=0,1,2,·.\nk\n(k－1)+1\n则 EX² =\n2.\nk!\n(k -1)!\n(k -1)!\nk=1\n三、解答题\n（15）解\n由题设知,齐次方程对应的特征方程为r²－3r十2=0，\n解得特征根为:r，=1,r2=2.\n于是齐次方程y\"－3y＇+2y=0的通解是：\nY=Ce+C2e²\",(C,C2是任意常数).\n由条件知原方程的一个特解可设为:y；=x（ax+6)e²，(其中α,b为待定系数).\n则 y'=[ax² +(2a +b)·x +b]e,\"=[ax² +(4a +b)x + 2a + 2b]e.\n将,,\"代人原方程并整理得\ny\"-- 3y'+ 2y1 =(2a - b - 2ax)e =2xe\n比较等式两端x同次幂的系数得\n(-2a =2\n2a-b=0\nb=-2\n于是特解y1=一x（x+2)e².\n故原方程通解为\ny =Y+y1 =Ce²+C2e²－x(x+ 2)e²(其中 C,C2是任意常数).\nx2\n(x² —t)e-²²dt =x²\nx2\n（16）解由f（x）=\nte-r²dt,\nx2\n=(x)-·（2x)-+\nx2\n则f'（x）=2x\n2\nx2\nf\"(x)=2\nt² dt + 4x²e-x4\n令f'（x）=0，得x=0，=±l.\n\n[[page:5]]\n则f\"(0)=2|\n2 e-\"² dt < 0， f\"(± 1) =4e-1 > 0,\n1\n所以f（0）=\n-（1－e-1）是极大值，f（±1）=0是极小值.\n2\n由于当x>1时,f'（x）>0;0<x<1时,f'（x）<0;-1<α<0时,f'（x）>0;\nx<-1时，f'（x）<0.\n故f(x）的单调递减区间为(－∞，－1）U（0,1),\nf（x）的单调递增区间为（一1,0）U（1，十∞).\n（17）解（I）当0≤x≤1时,0≤ln(1+x）≤x,\n故当0≤t≤1时,[ln(1+t)]”≤t\",所以｜lnt|[ln(1+t)]”≤t\"｜lnt｜.\n所以\n|lnt| [ln(1+t)]\"dt≤\nt\"I lnt I dt.\n0\n1\n1\n（Ⅱ）由（I）知0≤u,≤」|lnt丨t\"dt=\n(1+n)2'\n1\n1\n1\n=Pu|zu[\nt²lntdt=\nInt\nn+1\n62(I+u)\n1\n又由于lim\n0，\n(1+n)2\n根据夹逼准则知,limu，=0.\n(-1)=-1\n（18）解\n①记u,(x)\n2n-1\nun+1(x)\n(—1)nx2n+2\n2n-1\n因为lim\nlim\nun(x)\n2n +1\n(-1)-1·x\n2n\n所以由比值法知,当x²<1即｜x｜<1时,级数收敛；当x²>1即｜α｜>1时,级数发散.\n于是可知幂级数的收敛半径R=1,即收敛区间为(一1,1)；\n(—1)=-1\n当x=±1时,级数≥\n-为交错级数，由莱布尼茨定理知级数收敛，\n2n-1\nn=\n(—1)-1\n故幂级数\n2n 的收敛域为[-1,1].\n2n-1\nn=1\n(—1)n-1\n②记S(x）为级数≥\n“x²”的和函数,则\n2n-1\nn=\n(--1)n-1\n(-1)~-1\nS(x）：\n>\n2n-1 =·S()\n2n-1\n2n-1\nn=1\n(-1)-1\n其中S（x）=\n2n-1,x ∈ [- 1,1]\n2n-1\n由幂级数和函数的性质得\n(-1)n--1\nS’(x）：\n2n-1\n=1 -x² +x-x+··+(- 1)\"-1x\n2n-2\n1\n1+xa,x E [-1,1].\n所以S（x）=\nS'(t)dt + S,(0) =\ndt + 0=arctant\narctanx.\n1+t²\n\n[[page:6]]\n故  S(x)=xS,(x)=xarctanx,x ∈[-1,1].\n（19）解①令F(,,）=²+y²+z²－y-1,则F(x,y,）=0为椭球面S的方程，\n设点P的坐标为(，y，x)，由题设条件知曲面S在点P处的切平面法向量为：\nn={F',F′,F'}={2x,2y --z,2x--y},\n又xOy平面的法向量为:n2={0,0,1},由于点P处的切平面垂直于xOy平面，于是\nn ⊥n2n·n2=0,即y=2z.\n又因为点P在曲面S上,所以点P的坐标（x，,）满足曲面S的方程:²+y²+²－y=\n1,从而知动点P的轨迹C的方程为\n(x² +y²+ x² - yz =1\n(y=2z\n(x+√3）|-2｜\n②根据题设条件知，曲面积分\ndS 中积分曲面是椭球面S位于平面\n√4+y²+x²4yx\n=2上方的部分,因此在上:≤2,于是｜－2z|=2-y，即\nf(x+√3) 1 y- 2z｜\n(x+√3)(2z-y)\nds\n-ds\n4+y²+x²-4yx\n√4+y²+x²-4yx\n在曲面的方程:x²+²+²-y=1两端分别对、y求偏导数（此时,=（,））得\n2x+2x·x\n2x\n=0，即\ny --2x\naz\naz\naz\n2y一x\n=0，即\nKe\nay\ny --2x\n将曲面向xOy面投影，得投影域为：\n3\nDzy :x~\n4\n又因为 dS =.\ndx dy\n√4x²+5y² +5x²--8yz\n-dx dy\n2x---y\n2x-y\n√4+y²+x²-4yx\n-dx dy\n（因x²+y²+²-y=1)\n2z-y\n(x+√3)(2z-y)\n所以I\nds\n√4+y²+x²--4yx\n2x-y\nx dxdy +√3 | dxdy =0+ √3π · 1,\n2\nx+√3)dxdy = |\n=2π.\n√3\nD.xy\nDxy\nDxy\n（20）解\n（I）已知Ax=b有2个不同的解，所以r（A）=r（A:b）<3.\n入\n1\n1\n又丨A|=0,即丨A丨=|O 入-1\n0\n0=(入--1)²(入+1）=0,知入=1或--1.\n1\n1\n入\n当入=1时,r（A）=1≠r（A:b）=2,此时Ax=b无解，故入=--1.\n\n[[page:7]]\n又由r（A）=r（A:b）得α=-2.\n3\n1\n2\n（Ⅱ）因（Ab）=\n0\n-2\n0\n1\n0\n2\n1\n1\n0\n0\n3\n十3\nx1\n2\n则原方程组的等价方程组为\n,其中x3为自由未知量.\n1\n2\n3\n2\n令x3=0,得方程组特解uo\n1\n2\n0\n又方程组对应的齐次方程组的等价方程组为\nx2=0\n令x3=1,得齐次方程组Ax=0的基础解系α=\n3\n2\n所以Ax=b的通解为x=k\n1\n,其中k为任意常数.\n2\n0\n（21）解\n（I）由于二次型在正交变换x=Qy下的标准形为²+²，所以A的特征值为\n入1=入2=1,入3=0.\n√2\n√2\n√2\n由于Q的第3列为\n,所以A对应于入=O的特征向量为α=\n，0，\n由于A是实对称矩阵,所以对应于不同特征值的特征向量是相互正交的,设属于入1=入2=1\n√2\nx1+\n3=0,取\n2\n2\nα=(0,1,0)T,α2=(-1,0,1)T,\n则α1,α2与α是正交的，即为对应于入，=入2=1的特征向量.\n由于α1,α2是相互正交的,所以只需单位化：\nα1\na2\n=(0,1,0)T,β2=-\n1\nβ=\n(-1,0,1)T,\nlα1ll\nlα211\n√2\n1\n1\n0\n√2\n√2\n取Q=（β,β2,α3）=\n1\n0\n0\n，则QTAQ=A=\n1\n1\n0\n√2\n√2\n\n[[page:8]]\n0\n2\n2\n从而 A=QAQT=\n0\n1\n0\n1\n1\n0\n2\n2\n（Ⅱ）由于A的特征值为1,1,0,所以A十E的特征值为2,2,1,则A+E的特征值全大于零，\n故A+E是正定矩阵.\n(22） 解  因为 f(x,y)=Ae-2x²+2xy-y²=Ae-(x-y)2\n1\n(x-y）²\n1\n2()\n=Aπ\n√2元\n1\n√2\n由概率密度的性质得到\nco-+J\n(x-y)²\n1\nf(x,y)dxdy=Aπ\nxp()\ne 2()²dy=Aπ\n/2π\n√2\n1\n故\nA\n1\n从而\nf(x,y)\n12r²+2ri(18<α<+8,18<<+8),\n光\n1\n(x-y)²\n1\n又\nfx(x)=\nf(x,y)\n（)\nd\n1\n√2\nf(x,y)\n所以\nfvx(ylx)=\ni^<18α<+8,18<+8)\nfx(x)\n√π\n√π\n（23）解\n因为 N,～B(n,1-0),N2～B(n,θ-θ²),N3～B(n,0²),\n所以\nET=E\na;N;)=a,EN, +a2EN2+aEN3\n=an(1-θ)+α2n(θ-θ²)+anθ²\n=na +n(a2--a)θ +n(a3-a2)θ²\n由T是日的无偏估计量，可知ET=0，\n[a1=0,\n[na, =0,\n1\n则\n{n(a2--a）=1，即↓a2=\nn\n(n(a3--a2)=0,\n1\nu\n1\n故\nT=0×N,+.\nXN,+\nXN，=\n(N2+N）=\n(n - N).\nn\nn\nn\nn\n1\n1\nDT =D\n-u)\nn·(1-0)·θ=-0(1-0).\nn\nn\nn",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 92,
+      "avg_score": 0.8733,
+      "elapsed": [
+        2.1134508000686765,
+        0.5207438468933105,
+        4.2124457359313965
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 68,
+      "avg_score": 0.9098,
+      "elapsed": [
+        1.3136890998575836,
+        0.2717554569244385,
+        4.478544235229492
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 83,
+      "avg_score": 0.8915,
+      "elapsed": [
+        1.352197099942714,
+        0.3002808094024658,
+        4.317856788635254
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 103,
+      "avg_score": 0.9187,
+      "elapsed": [
+        1.158908300101757,
+        0.4436836242675781,
+        6.33183741569519
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 88,
+      "avg_score": 0.8953,
+      "elapsed": [
+        1.2107410000171512,
+        0.1976947784423828,
+        6.55701470375061
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 73,
+      "avg_score": 0.8684,
+      "elapsed": [
+        1.3175016001332551,
+        0.32155585289001465,
+        7.740715026855469
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 81,
+      "avg_score": 0.9206,
+      "elapsed": [
+        1.215525999898091,
+        0.35845160484313965,
+        5.3674890995025635
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-8.png",
+      "line_count": 93,
+      "avg_score": 0.9108,
+      "elapsed": [
+        1.2057721000164747,
+        0.3331596851348877,
+        5.610046863555908
+      ]
+    }
+  ]
+}

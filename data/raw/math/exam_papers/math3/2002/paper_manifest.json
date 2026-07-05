@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_2002",
+  "exam_type": "math3",
+  "year": 2002,
+  "question_count": 20,
+  "source_files": [
+    "math3_2002_questions.md",
+    "math3_2002_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "2002 年数学三 20 题已逐题校对，可直接用于题库展示。",
+    "题干以 TeX 源转写为准，标准答案与解析已整理为可渲染的 Markdown/LaTeX。",
+    "后续如需继续修订，请以 questions/qXXX.md 作为单题事实来源。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

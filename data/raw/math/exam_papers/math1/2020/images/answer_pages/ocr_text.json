@@ -1,0 +1,82 @@
+{
+  "text": "[[page:1]]\n2020年考研数学一真题解析\n一、选择题\n（1)【答案】\n【解析】（方法一)\n利用结论:若f（x）和g（x）在=0某邻域内连续，且当→0时，f(x）～\ng(x），则\nf(t)dt\ng(t)dt.\nA\n²-1)dt\n（B)\n[In(1 +√t)dt ~\ntd\nrsinr\n(C)\nsint²dt ~\nt²dt\n(D)\n/sin?tdt\n故应选(D).\n（方法二）\n设f(x）和(x)在=0某邻域内连续，且当→0时，f（x）和(x)分别是的\nm阶和n阶无穷小,则\nf(t)dt是→0时的n(m+1）阶无穷小.\n²-1)dt,m = 2,n = 1,则n(m+1) = 3.\n[In(1 + √)dt,m\n3\n(B)\n,n= 1,则n(m+ 1) =\n5\n2\n2\n'sinr\nsint²dt,m =2,n=1,则n(m+1) = 3.\n3\n(D\n√sintdt,m\n故应选(D).\n（2)【答案】C\n【解析】（方法一）直接法\n若f（x）在x=0处可导,则f（x）在=0处连续，且f（O）=limf（x）=0.\nf'(0) = lim\nf(x)\n0\nx-0\nx-+0\nr\nf(x)\nlim\nlim\nf(x)\nx\n=f'(0)·0=0\nr-→0\n√xl\n0=-r\nx\nx\n故应选(C).\n(方法二)\n排除法\nx”，x≠0\n取f（x）=\n,则limf（x）=0，且\nx=0\nf(x)\nlim\nlim\n0,lim f(x)\n√x\n0\n√xl\nr-→0\nx²\n但f(x）在=O处不可导,因为f(x）在x=O处不连续,则排除选项（A),(B).\n若取f（x）=x,则limf（x）=0,且J（x）在x=0处可导,但\n·5\n\n[[page:2]]\n∫(r)\nlim\nlim\n￥0\nr-0\nx-→0x\n排除(D）,故应选(C).\n（3）【答案】A\n【解析】\n利用函数z=f（x，v）在（xo，yo）处可微的充要条件lim\n△x²+y²\n.y--0\n因为J（r,y）在（0,0）处可微，则\naf(0,0)\nJ(x,y) - af(0,0),\nax\ndy\ny\nlim\nr-=()\n√x²+y²\n而n·(x,y,f(x,y)) =\ndf(0,0)\nf(0,0)\n+x\ny - f(x,y).\nd.r\na.y\nn·(x,y,f(x,y))\n有lim\n=0,即lim\n→0\n√x²+y²\n√x²+y²\ny-=()\n正确答案选(A).\n（4)【答案】A\n【解析】\n由阿贝尔定理，当丨r|<R时，>\na,r”收敛，进而，级数>\na2nr²n收敛.\n所以,当∑α2,r²\" 发散时，|r I≥ R.答案选(A).\n【评注】\n解析中用到了原命题成立时，它的逆否命题一定成立.\n(5)【答案】B\n【解析】\n矩阵A经初等列变换得到B，故存在初等矩阵P（i=1,2，，t）使\nAPP···P,=B\n因P,均可逆，故有A=BP,.P'P',记P=P-!.·PP故应选（B).\n（6)【答案】C\nL,L2分别经过A（ag，b2，C2）,B(abs，Cg）两点.于是L,I2交于一-点\nα1:α2不平行\na1\na2\na-a2\n=— V?0 10|\nb\nb2\nb3——b2\n=|α,α2,α∣=0\nC1\nC？\nC3-C2\n于是α1,α2，α3线性相关且α,α2线性无关.\n从而α3必可由α1,αz线性表示.\n（7）【答案】D\n【解析】A,B.C中恰有－个事件发生即（AUBUC)－（ABUBCUAC).因为 P(AB）：\n）\nP((A U B U C)-(BC U AC)) = P(A) + P(B)+ P(C)-P(BC)-P(AC)-P(BC)-P(AC)\n1\n1\n1\n1\n5\n4\n12\n12\n12\n12\n12\n答案选(ID).\n（8）【答案】\nB\nX\n0\n1\n【解析】\nEX\n1\n,X，独立同分布，方差存在，根据中心极限定理\n1\n1\nP\n2\n2\n2\n\n[[page:3]]\n1(0\n>X;近似服从正态分布N（100×\n即N(50,25).\n100\n100\n∑x, - 50\nP{∑x: ≤55} = P<\n55-50\n55-50\nΦ\nΦ(1)\n√25\n√25\n√25\n答案选(B).\n二、填空题\n（9）【答案】\nIn(1 +x)-(e-1)\n【解析】\nlim\nln(1 +x）\nlim\ne-1\n(e-1)ln(1+x)\n.\nIn(1 +x)-e~ + 1\n1+x\nlim\nx²\n2x\nx-0\n1\n(1+x)²\nlim\nx0\n2\n（10）【答案】\n-√2\n【解析】\ndy\ny'(t)\n√1+t\ndx\nx'(t)\nL\n√1+t²\n=(-)=(-)\nV1+t2\nV1+t²\nt3\n=-√2.\nd.x²\n（11）【答案】n+αm\n【解析】\nf(x)dx =-[.[f\"(x) +af'(x)]dx =-f'(x)\naf（x）\n只需求出f'（+∞o）=limf'（x）及f（+∞o）=limf（x）即可.\n微分方程的特征方程为入²+a+1=0\n-a±√a²-4\n入1,2=\n2\n当α>2时，,2为两负实根，f（x）=Ce+C2e^2，\n当α= 2时,入=入2 =-1,f(x）=（C+C2x)e\"，\n√4-a²\n√4-a²\n当0<α<2时，入i.2=\nx+Csin\n2\n2\n不论如上哪种情形,均有f（十∞o）=limf（x）=0,f（+∞）=limf'（x）=0.因而\nf(x)dx =\n[f\"(x)+af'(x)]dx =-f'(x)\naf(x)\n= f'(o) +af(0) = n+ am.\n（12）【答案】\n4e\n² f\n【解析】\nray\ndydx\nf\nay\n\n[[page:4]]\n² f\nrere\na²f|\n所求\n·=4e.\naxayl(1.1)\ndydxI(1.1)\n(13)【答案】α²(α²－4)\n【解析】\n由行列式性质恒等变形，例如把2行加到1行,3行加到4行,再把1列的－1倍加到\n2列，4列的－1倍加到3列\na\n0\n一\n1\na\n0\n0\n0\n0\n0\nn\na\n0\nn\n1\n1\n0\na\n2\n1\n1\nn\n0\nn\n0\n2\na\n0\n1\n一\n0\na\n0\n0\na\na\n0\n0\n0\na\n2\n【评注】\n基本计算题，解法非常多，也可每列都加到第1列，再消0，··\n（14)【答案】\n2\nπ\n【解析】X～U（-\n),Y= sin X,EX = 0.\nCov(X,Y)=E(XY)-EX·EY=E(XY)=E(Xsin X) ：\nrsin rdr\n2\n（sinx—xcos）\n2\nπ\n三、解答题\n=3x²-y=0\n得驻点为(0,0),(，1).\n（15)【解】\n由\nf = 24y² -x = 0\n可计算 A = f\" = 6x,B = f\" =-1,C= f\" = 48y\n判别式△=AC-B²=288xy-1.\n在（0，0）点处，△=一1<0,不是极值点；\n（16)【分析】\n挖去奇点（0，の，用格林公式\n【解】\n取L:4x²+y²=ε²（e²足够小),方向为顺时针方向，\nC\n4x-,dx+\n4x-y,dx+\n则I：\ndy\nJL+L，4x²+y²\n4x²+\n4x²+y²\n4.x²+y\n4x-y\n令P\nr+y\n4x²\n4.r²+y²\naP\n-4x²—8xy+y²\n计算得\nKe\n(4x²+y²）²\n因而I=0\n(4x-y)dx+(+y)dy\n其中 D ={(x,y) | 4x²+y²≤e²}.\n所以I=\n2\n2\nXπX∈x\nE\n2\n(17)【分析】\n得到和函数的微分方程，解微分方程求出和函数。\n1\n+\n【解】\n(ln+1\n2\n由阿达玛公式o=lim\nlim\nn+1\n\n[[page:5]]\n幂级数≥\nax\"收敛.\nP\n令 S(x)=∑αnr\",则\nS'(x) =\n>\n(n+1)ag+ix\"+a1\nanx”+ 1\n\"+ 1 =x(≥an\n-∑anx\"+ 1\nn=1\n=\nS'(x)\n即 S'（x）=xS'（x)\n1\n1\n2\nlnI 1-x I+ ln C\nIn|S(x)+2|=\n2\nC\n±C\n|S(x)+2|:\n.S(x)+2=\n√1-x\n√1-x\nC\n亦是S（x）+2=\n由S（0）=0得C=2,所求和函数为S（x）：\n2\n-2.\n√1-x\n（18)【分析】\n利用投影轮换法.\n【解】\n曲面∑:=√x²+y²的法向量n={，\n√x²+y²√x²+y²\n{P,Q,R}·{-xx，-2,1}dxdy\ndrdy\n√x²+y²\n√x²+y²\n√x²+y²f(xy)- 2 √x²+y+zf(xy) +z]drdy\n/x²+y²dxdy(D:1 ≤x²+y²≤ 4)\nD\n14\n3\n【评注】\n本题只给出F(x）连续，因而不能采取补曲面高斯公式计算.\n（19)【证明】（l）设丨f（c）|=M.\n若c∈（0,1],由拉格朗日定理知存在∈（0,c）,使\nf(s) = f(c)-f(o)\nf(c)\nc-0\n从而有I f'(e) I= Lf(c)1 = M\n>M.\nC\n若c∈（1.2],同理存在∈（1,2),使\n2-c\n2-c\n从耐有| f'()|= ↓f(c)1\nM\n≥m.\n2-c\n2-\n综上所述,存在∈（0,2）,使得丨f'（）|≥M.\n（Ⅱ）若c∈[0,1),则\n\n[[page:6]]\nM =| f(c)|=| f(c)-f(O) |=| f'() 丨c≤ Mc\n由于0≤c<1,则M=0.\n同理，当c∈（1,2］时，也可得M=0.\n若c=1,且M>0\nM=|f(1）|=\nI f'(x) | dx< M\n矛盾，则M=0.原题得证.\n（20）【解】\n（I）二次型f经正交变换x=Qy 化为二次型g.记二次型f，g 的矩阵分别是A和\nB.即\n2\n2\nα+b=5,\n因A～B,于是αi=b，丨A|=|B|,即\nIab = 4.\n义因α≥h,故α=4，b=1.\n（Ⅱ）对二次型f =x²－ 4xx2+ 4x²和g = 4y²+ 4y;y2+ y2，\n[2][ []\nx=y2，\n只要令\n即\nx2\n0\n是正交矩阵合于所求.\n【评注】\n如求出A的特征向量并单位化构造正交矩阵Q\n√5l- 2\n经x=Qz得xTAx=5x².\n类似构造正交矩阵Q2使yBy=52²，即x=Qz,y=Q2z有z=Q2y，\n从而x = QQzy 而得Q = QQ2 亦可.\n(21)【解】\n（I）因α≠O且α不是A的特征向量.于是Aα≠kα，从而α与Aα不共线，即α，\nAα线性无关，故P=（α,Aα）可逆.\n或（反证法）若P不可逆，有\n|P|=| α,Aα|= 0\nα与Aα成比例，于是Aα=kα.义α≠O知α是A的特征向量与已知条件矛盾.\n（Ⅱ)(方法一)\n出A²α+Aα-6α=0有A²α=6α-Aα\nAP =A(α,Aα）=（Aα,A²α）=（Aα,6α-Aα)\n[o\n6\n（α,Aα）\n因P可逆，于是\nro\nP-AP\n一\n1\n0\n入\n6\n记B\n而|E-B|\nx²÷入一6特征值2，一3.\n入+1\n于是A有2个不同特征值从而A可相似对角化.\n（方法二）因A²+A-6E=（A－2E)（A+3E）=（A+3E)（A-2E)，\n由A²α+Aα-6α=0,即（A²+A-6E)α=0，\n于是（A-2E)（A+3E)α=0，\n即（A-2E)（Aα+3α）=0，\n10\n\n[[page:7]]\n由α不是特征向量，有Aα十3α≠0\n从而入=2是A的特征值，类似有入=一3是特征值.下略.\n（22)【解】（I）（X,,Y）的分布函数F(,y)\nF(x,y) = P{X, ≤x,Y≤y} = P{X, ≤x,XX, +(1 - X)X2≤y}\n= P{X = 0}P(X, ≤x,XX,+(1- X;)X2 ≤y| X = 0} +\nP{X; = 1}P{X, ≤,XX +(1 -X)X2 ≤y| X= 1}\nP(X, ≤,X, ≤yI Xs = 1}\n2\nP(X, ≤x,X2≤y)+P(x, ≤x,X ≤y}\n2\nP{X, ≤x}P(X2≤y}+\nP{X, ≤min(x,y)}\nΦ(min(x,y))\nΦ(x)Φ(y)+\n2\n2\n（Ⅱ)Y的分布函数\nF(y) =P(XX, +(1 -X)X2≤y}\n=P{X=0}P{XX,+(1-X)X2≤y| X= 0}+\nP(X, = 1}P(XX, + (1 -X)X2 ≤y| X = 1)\n1\nP{X≤y|X= 0}+\nP(x,≤|X= 1)\n2\nΦ(y) +\nΦ(y)=Φ(y)\n2\n2\nY~ N(0,1).\nm(\n-()\"，t≥0,\n（23）【解】\nF(t)\n0.\n‘>↓\n[0,\nt<0.\n（I)P{T>t}=\nf(t)dt=F(t)\n:F(+∞o)-F(t) =e-()\",t > 0.\n-（）\nP{T>s+t}\nP{T>s}\nP{T>s}\ne-(六)㎡\n=e-()\"+(）\"\n（）给定t，t2，\"\"·,t,，似然函数为\nL(0) =IIf(t,)= IIm(\n-（）”\n=m\"TT\nθ\nθm\n=1\nInL(θ) = nln m+\ndln L(0)\n1\n-m)t\"\n71\n0，\nd0\nA\n9m+1\nθ\nOnt-i\n解得9”：\n\"不难验证为最大值.\n》\n最大似然估计值θ=",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 77,
+      "avg_score": 0.8889,
+      "elapsed": [
+        1.7969115001615137,
+        0.22548437118530273,
+        5.376978158950806
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 96,
+      "avg_score": 0.8754,
+      "elapsed": [
+        1.001955599989742,
+        0.2539405822753906,
+        5.8581156730651855
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 82,
+      "avg_score": 0.8788,
+      "elapsed": [
+        1.0241730001289397,
+        0.20513701438903809,
+        4.624164819717407
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 116,
+      "avg_score": 0.9026,
+      "elapsed": [
+        1.1769181999843568,
+        0.3189723491668701,
+        5.791299343109131
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 66,
+      "avg_score": 0.8751,
+      "elapsed": [
+        1.0610686000436544,
+        0.11144518852233887,
+        4.696946144104004
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 60,
+      "avg_score": 0.8906,
+      "elapsed": [
+        1.0287518999539316,
+        0.1464543342590332,
+        6.82641339302063
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 68,
+      "avg_score": 0.8333,
+      "elapsed": [
+        1.009431199869141,
+        0.205949068069458,
+        4.933208703994751
+      ]
+    }
+  ]
+}

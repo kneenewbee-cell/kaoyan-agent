@@ -1,0 +1,42 @@
+{
+  "exam_id": "kaoyan_math2_1996",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 1996,
+  "source_files": {
+    "questions": "math2_1996_questions.md",
+    "answers": "math2_1996_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 21,
+  "explanation_count": 21,
+  "question_ids": [
+    "kaoyan_math2_1996_q001",
+    "kaoyan_math2_1996_q002",
+    "kaoyan_math2_1996_q003",
+    "kaoyan_math2_1996_q004",
+    "kaoyan_math2_1996_q005",
+    "kaoyan_math2_1996_q006",
+    "kaoyan_math2_1996_q007",
+    "kaoyan_math2_1996_q008",
+    "kaoyan_math2_1996_q009",
+    "kaoyan_math2_1996_q010",
+    "kaoyan_math2_1996_q011",
+    "kaoyan_math2_1996_q012",
+    "kaoyan_math2_1996_q013",
+    "kaoyan_math2_1996_q014",
+    "kaoyan_math2_1996_q015",
+    "kaoyan_math2_1996_q016",
+    "kaoyan_math2_1996_q017",
+    "kaoyan_math2_1996_q018",
+    "kaoyan_math2_1996_q019",
+    "kaoyan_math2_1996_q020",
+    "kaoyan_math2_1996_q021"
+  ],
+  "generated_at": "2026-07-02T02:05:05.099396+00:00",
+  "paper_scope": "试卷 III only",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

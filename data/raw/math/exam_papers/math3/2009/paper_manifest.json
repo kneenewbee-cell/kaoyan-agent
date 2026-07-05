@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_2009",
+  "exam_type": "math3",
+  "year": 2009,
+  "question_count": 23,
+  "source_files": [
+    "math3_2009_questions.md",
+    "math3_2009_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "23 题题面、答案、解析已逐题核对并统一为 UTF-8 Markdown。",
+    "questions.jsonl、questions 目录卡片、整体题目文件与整体答案文件已同步。",
+    "当前版本可直接作为系统资料库只读题目与解析素材使用。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

@@ -1,0 +1,159 @@
+{
+  "text": "[[page:1]]\n1999年全国硕士研究生入学统一考试数一试题解析\n一、填空题(本题共5个小题，每小题3分，满分15分.把正确答案填写在题中横线上.)\n1\n(1)【答案】\n3\n【分析】利用x→0的等价变换和洛必达法则求函数极限.\n【详解】\ntanx-x\ntan x-x\n方法1：lim\n=lim\n-tan x ~ x lim\n0←x\nx tan x\n0←x\n0←x\nSec^x-\ntan\n洛lim\nx\ntanx~\nx→0\n3x²\n3x\ncOSx\nsin x-xcos x\n方法2：lim\nlim\nx→→0\nx tan x\nxsin x\nx→0\nx² sin x\nsin x- xcos x\n洛lim\ncosx-cosx+xsinx\nsin x\nsinx ~xlim\nlim\n0←x\n3x²\nx-→0\n0←x\n3x\n十\n3\n(2)【答案】sinx²\n【分析】欲求\n(x,t)dt，唯一的办法是作变换，使含有 p(x,t)中的x“转移\"到之外\ndx\n【详解】令u=x-t，则dt=-du，所以有\np\nsin(x-t)²dt =-\nd\n-sin u²)du :\nsinu² du = sin x²\ndx Jo\nxp\ndx Jo\n(3)【答案】y=C,e-2x+\n2x,其中Ci,C2为任意常数.\n【分析】先求出对应齐次方程的通解，再求出原方程的一个特解.\n【详解】原方程对应齐次方程y\"-4y=0的特征方程为：²－4=0,解得=2,=-2，故\ny\"-4y=0的通解为y=Ce-2+C2e²x,\n由于非齐次项为f(x)=é²\",因此原方程的特解可设为y*=Axe²\"，代入原方程可求得\n故所求通解为y=y+y*=C,e\n4\n(4)【详解】因为\n\n[[page:2]]\n(-1\n-1\n-1\n-1\n-1\nE-A=\n(对应元素相减)\n-1\n-1\n两边取行列式，\n-1\nn-n\n-1\n-1\n-1\n把第2,...，n列-n-1\nE-A|=\n加到第1列\n-1\n-1\n入\n-1\nn-n\n-1\n2\n-1\n2行-1行\n-1\n-1\n提取第1列\n-1\n-1\n3行-1行\n0\n0\n（n-n）\n(-n)\n的公因子\n-1\n-1n行-1行\n0\n=An-(-n)\n令|E-A|=\"-(-n)=O，得=n(1重)，=O(n-1)重)，故矩阵A的n个特征值\n是n和0((n-1)重)\n(5)【答案】1/4\n【详解】根据加法公式有\nP(AU BUC)= P(A)+ P(B)+ P(C)- P(AC)- P(AB)-P(BC)+ P(ABC)\n因为 P(A)= P(B)= P(C)，设P(A)=P(B)= P(C)= p\n由于A,B,C两两相互独立，所以有\nP(AB) = P(A)P(B)= p× p = p²,\nP(AC)= P(A)P(C)= p× p = p^:\nP(BC)= P(B)P(C)= p× p = p² ,\n又由于ABC=，因此有P(ABC)=P(O)=O,\n所以\nP(AU BUC)= P(A)+ P(B)+ P(C)- P(AC)- P(AB)- P(BC)+ P(ABC)\n=p+p+p-p²-p²-p²+0=3p-3p²\n9\n9\n又P(AUBUC)=\n从而P(AUBUC)=3p-3p²:\n则有3p-3p\n16\n16\n16\n3\n3\n或p=\n1\n>p²-p+\n-=0，解得\np=\n16\n4\n4\n\n[[page:3]]\n1\n因 P(A)=P(B)=P(C)= p<\n，故p=\n即P(A)=\n2\n4\n4\n二、选择题\n(1)【答案】（A)\n【详解】应用函数定义判定函数的奇偶性、周期性和单调性.\nf(x)的原函数F(x)可以表示为F(x)= [f(t)dt+C,于是\nF(-x)= J~ f(t)dt+C= S f(-u)d (-u)+C.\n当f(x)为奇函数时，f(-u)=-f(u），从而有\nF(-x)= J f(u)du + C = J f(t)dt+C = F(x)\n即 F(x)为偶函数．故(A)为正确选项.\n(B)、(C)、(D)可分别举反例如下:\nf(x)=x²是偶函数，但其原函数F(x)=\n²+1不是奇函数，可排除(B);\n-Y\n3\n1\nf(x)= cos²x是周期函数，但其原函数F(x)=x+sin2x不是周期函数，可排除(C);\n2\n4\nf(x)=x在区间(-,+∞o)内是单调增函数，但其原函数F(x)=÷x²在区间(-∞o,+∞)内\n2\n非单调增函数，可排除(D).\n(2)【答案】（D)\n【详解】由于可导必连续，连续则极限必存在，可以从函数可导性入手.\nf(x)- f(0)\n1-cos x\n因为\nf'(0) = lim\nlim\nlim\n2\n+0←x\n0-x\n+0←x\nx√x\n+0←x\nx√x\nx²g(x)\n= lim xg(x) = 0,\nx→0\n0-x\n0←x\nx→0\n从而， f'(O)存在，且 f'(0)=0，故正确选项为(D).\n(3)【答案】（C)\n【详解】由题设知，应先将f(x)从[0,1)作偶延拓，使之成为区间[-1,1]上的偶函数，然后再作\n周期(周期2)延拓，进一步展开为傅里叶级数，\n5\nS(-=)\n)=S(-2-\nS（-\n\n[[page:4]]\n而x=÷\n是f(x)的间断点，按狄利克雷定理有,\n2\n+0)\n2\n2\n2\n4\n(4)【答案】B\n【详解】\n方法1：A是m×n矩阵，B是n×m矩阵，则AB是m阶方阵，因\nr(AB)≤min [r(A),r(B)]≤min (m,n) .\n当m>n时，有r(AB)≤min[r(A),r(B)]≤n<m.((AB)x=O的系数矩阵的秩小于未知\n数的个数)，故有行列式|AB|=O，故应选(B).\n方法2：B是n×m矩阵，当m>n时，则r(B)=n（系数矩阵的秩小于未知数的个数），方程\n组 Bx=0必有非零解，即存在x≠〇，使得 Bx。=0，两边左乘A，得 ABx=O，即\nABx=O有非零解，从而|AB|=O，故选(B).\n方法3：用排除法\n(A)m>n，取Am\nB\n=(0 0)，AB=\nAB=0，(A)不成立\nnxn\n0\nux\n0\n(C)n>m， 取Amxn =(1 0),B,\nAB=0，|AB|=0，(C)不成立\n(D)n>m, 取Amxn =(1 0),Bnm\nAB=1，AB|=1，(D)不成立，故选(B).\n(5）【答案】B\n【详解】\n根据正态分布的性质：服从正态分布的独立随机变量的线性组合仍服从正态分布.\n因X和Y相互独立，且X～N(0,1)，Y～N(1,1)，所以\nT = X+Y ~ N(u,o²), T2 = X -Y ~ N(u2,02²)\n其中u=E(X+Y)，o²=D(X+Y)，u2=E(X-Y)，o²=D(X-Y)\n‘=+0=+=(+)=()甲\n=-O= - =(-X)=()\n由独立随机变量方差的性质：D(T)=D(X+Y)=DX+DY=1+1=2\nD(T2) = D(X -Y)= DX + DY =1+1= 2\n\n[[page:5]]\n所以\nT = X+Y ~ N(1,2)， T = X-Y ~ N(-1,2)\n（一般来说遇到正态分布的小题，主要就考两点，标准化和对称性，考虑问题也是从这两点\n出发)\nA选项：P{X+Y≤0}\n因T =X+Y~ N(1,2)\n2\nX-u ~ N(0,1)\n由标准化的定义：若X～N(u,o²)，则\n所以，X+Y-1\n～N(0,1)，将其标准化有\n√2\nX+Y-1\nP{X+Y<0}=P<\n(保证变换过程中概率不变，所以不等号的左边怎么变，右边也同样的变化)\n又因为标准正态分布图像是关于y轴对称，所以\nX+Y-1\n[X+Y-1\n0>\n而P\n所以A错.\n2\nB选项：P{X+Y≤1}：\nX+Y-1\n将其标准化有：P\n(根据标准正态分布的对称性)\n√2\n2\n故B正确.\nC选项：P{X-Y≤0}\n2\nX-Y-(-1) _0-(-1)\nIX-Y+1\n将其标准化有：P\n故C错.\n√2\n2\nD选项：P{X-Y≤1}\n2\n[X -Y-(-1) _1-(-1)\n将其标准化有：P\n故D错.\n√2\n/2\n12\n三【详解】分别在z=xf(x+y)和F(x,y,z)=0的两端对x求导数，得\ndz\ndy\n'(x,y)\ndx\ndx\ndy\n+F'dz\n=0\ndx\ndx\n\n[[page:6]]\n-xf'(x,y)\nzp\n= f(x,y)+ xf'(x, y)\ndxdx\n整理后得\ndy\n+R\n-F\ndx\n² dx\n解此方程组，得\n-xf'\nf +xf\nF\ndz\n-F'\n(f + xf')F' -xfF'\n,(F' + xfF' ≠ 0)\ndx\n-xf'\n1\n+\nF'\nF'\n四【详解】\n方法1：凑成闭合曲线，应用格林公式.\n添加从点O(0,0)沿y=0到点A(2a,0)的有向直\n线段L，如图，则\nI=JL+,(e* sin y-b(x+ y)dx+(e cos y-ax)dy\n(e* sin y - b(x+ y))dx +(e* cos y - ax)dy\n0\nL1\n2a\n利用格林公式，前一积分\nQ\nOP\na²(b-a)\ndxdy = If (b - a)dxdy =\nax\nay\n2\nD\nD\n其中D为L,+L所围成的半圆域，后一积分选择x为参数，得L:\nx=xj\n(0≤x≤2a),\ny=0\n可直接积分\n[²(-bx)dx =-2a²b，故 I=I-I2\n12=1.\n方法2：将曲线积分分成两部分，其中一部分与路径无关，余下的积分利用曲线的参数方程计算.\nI = J,(e* sin y - b(x+ y)dx +(e* cos y- ax) dy\nJ,e* sin ydx + e* cos ydy - ↓,b(x + y)dx + axdy\n前一积分与路径无关，所以\n[(0,0)\n=0\n对后一积分，取L的参数方程\n\n[[page:7]]\nx=a+acost\n[dx =-asin tdt\n则\nt从0到π，得\ny=asint\ndy = acostdt\n[,b(x+ y)dx + axdy\nJ\"(-a²bsint -a²bsintcost -a²bsin² t + a² cost + a² cos t)dt\n-2a²b-\n2\n2\n从而\nI=0-(-2a²b-\n2\n2\n五【详解】如图，曲线y=y(x)上点 P(x,y)处的切线方程为Y-y(x)=y'(x)(X-x)\n所以切线与x轴的交点为\ny-y（x)\n由于y(x)>0,y(0)=1,因此y(x)>0 (x>0)\nP(x,y)\n于是\nS=\nX\n又S=J。y(t)dt,\n根据题设2S－S2=1，即 2\ny(t)dt=1,两边对x求导并化简得 y\"=(y)\ndp _dp.dy\n这是可降阶得二阶常微分方程，令 p=y',则y\"=\ndp\nxp<pxp\ndy\n则上述方程可化为 yp\ndp\ndy\npy\ndx\n从而有y=C,e+C2，根据\n===()=(0)\n故所求曲线得方程为y=e*\n六【详解】构造函数，利用函数的单调性，\n0=(Df(I-x)-xu(I-x)=(x)f:\n又 f'(x)=2xlnx-x+2--,f'(1)=0\nx\n1\nf\"(x)=2lnx+1+\n,f\"(1)=2>0\n\n[[page:8]]\n2(x² -1)\nf\"(x)=\n0>(x)uf)\n[f\"(x)>0\n可见，当0<x<1时，\n( f\"(x) /\n因此，f\"(1)=2为f\"(x)的最小值，即当0<x<+∞时，f\"(x)≥f\"(1)=2>0，所\n以f'(x)为单调增函数．又因为f'(1)=0，所以有\n0<x<1时f(x)<0；1<x<+∞o时f'(x)>0,\n所以利用函数单调性可知，f(1)为f(x)的最小值，即 f(x)≥f(1)=0\n所以有x>0时，(x²-1)Inx≥(x-1)².\n证法2：先对要证的不等式作适当变形，当x=1时，原不等式显然成立;\n当0<x<1时，原不等式等价于lnx≤-\nx-1\nx+1\nx-1\n当1<x<+∞o时，原不等式等价于lnx≥\nx+1\nx+1\nx²+1\n1\n2\n则\nf'(x)=-\n>0(x>0)\nx(x+1)²\nx(x+1)²\n又因为f(1)=0,利用函数单调性可知\nx-1\nx-1\n当0<x<1时，f(x)<0,即lnx<-\n;当1<x<+∞时，f(x)>0,即nx>\nx+1\nI+x\n综上所述，当x>0时，（x²-1)lnx≥(x-1)².\n七【详解】建立坐标轴如图所示，\n解法1：将抓起污泥的抓斗提升至井口需做功W=W,+W,+W，，其中W,是克服抓斗自重所作\n的功；W,是克服缆绳重力作的功；W,为提出污泥所作的功．由题意知\nW, = 400N ×30m = 12000J.\n将抓斗由x处提升到x+dx处，克服缆绳重力所作的功为\ndW,= 缆绳每米重×缆绳长x提升高度\n= 50(30-x)dx,\n从而\nW= J\n\"\"50(30-x)dx = 22500J.\n在时间间隔[t,t+dt]内提升污泥需做功为\n\n[[page:9]]\ndW=(原始污泥重－漏掉污泥重)×提升高度(3dt)\n= (2000 - 20t)3dt\n30m\n将污泥从井底提升至井口共需时间\n=10s,\n3m/s\n所以\nW, = ↓ 3(2000 - 20t)dt = 57000.J.\n因此，共需做功\nW = W, + W, + W, = (12000 + 22500 + 57000)J = 91500J\n解法2：将抓起污泥的抓斗提升至井口需做功记为W，当抓斗运动到x处时，作用力f(x)包括\n3\n20\n170\n即\nf(x)= 400+ 50(30-x)+ 2000 -\nx=3900-\nX\n3\n3\n30\n170\n85\n于是\nW=\n3900-\n|dx=3900x\n=117000-24500=91500J\nx\nX\n3\n3\n八【分析】先写出切平面方程，然后求p(x,y,z)，最后将曲面积分化成二重积分.\n【详解】点P(x,y,z)∈S，S在点 P处的法向量为n={x,y,2z}，设(X,Y,Z)为π上任意一\n点，则π的方程为\nx(X-x)+y(Y-y)+2z(Z-z)=0，化简得x+Y+zZ=1\n由点到平面的公式，O(0,0,0)到π的距离\nAx + By + Cz\nx\n2\np(x,y,z)=\n√A²+ B² + C2\n从而\np(x,y,z)\n用投影法计算此第一类曲面积分，将S投影到xOy平面，其投影域为 D={(x,y)|x²+y²2}\n由曲面方程知z\n(x,y)∈ D，于是\n2\nz0\n-x\noz\nOx\nX\n\n[[page:10]]\n因此\n故有\nSPZ+\np(x, y,z)\n4\n3π\n(4-x²-y²)do极坐标\n(4-r²)rdr :\n2\nD\n九【详解】（1）因为一(\np+\n4 tan\" x(1+ tan² x)dx =\n[4 tan\" xsec² xdx\nn\ntan x=t 1\ntan\" xd tan x =\n=1Pu1\n1\n0\nJo\nn(n+1)\nn\nn\n又由部分和数列\n=1-\nn+1\n有\nlim S, = 1,\nn→→00\n因此\n(a, +an+2 )= 1.\n(2）先估计α,的值，因为\n1p\ntan\"xdx，令t= tanx，则 dt =sec²xdx，即 dx=\n1+t2\n所以\ndt\nn+1\np\n1\n1\n所以\nn^(n+1)\n+1\nn\nn\n收敛，从而\n也收敛.\n由于+1>0，所以\n+1\nn=1\nn\nn=1\n十【详解】根据题设，A*有一个特征值 ，属于的一个特征向量为α=（-1,-1,1)”，根据\n特征值和特征向量的概念，有A\"α=α,\n把|A|=-1代入 AA*=|A|E 中,得 AA*=|A|E=-E,则 AAα=-Eα=-α. 把A*α=α\n代入，于是 AA*α= Aα=Aα，即-α=Aα\n\n[[page:11]]\n-1\n+[+-\n也即\n5\nb\n3\n-5-b+3\n1-c\n0\n-(1-c)-a\n-a+1+c\n常数乘以矩阵\n-5-b+3\n」，需用乘以矩阵的每一个元素\n-(1-c)-a\n+[+-\n(-a+1+c)\n-5-b+3\n二\n(-5-b+3)\n-(1-c)-a\nA[-(1-c)-a]\n矩阵相等，则矩阵的对应元素都相同，可得\n(-a+1+c)=1\n(1)\n(-5-b+3)=1\n(2)\nA(-1+c-a)=-1\n(3)\nA\n因|4|=-1≠0，A的特征值≠0，A*的特征值*=\n≠0，故≠0\n由(1),(3)两式得\n(-a+1+c)=-A(-1+c-a),\n两边同除，得-α+1+c=-(-1+c-α)\n整理得α=，代入(1)中，得=1．再把。=1代入(2)中得b=-3\n又由|A|=-1，b=-3以及α=c，有\nD\n-1\na\n-1\nD\nD\na-1\nD\nA|=\n5\n-3\n3行+1行|5\n5-3\n32\n2列+1列\n[5\n2\n3\n1-a\n0\nD-\n-1\n0\n0\n0\n按第3行展开(-1)+|\n(其中(-1)3+1的指数3，1分别是1的行数和列数)\n2\n3\n=3(a-1)-2a =a-3=-1\n故 α=c=2，因此α=2,b=-3,c=2,。=1.\n十一【详解】\n“必要性”．设BT AB 为正定矩阵，则由定义知，对任意的实n 维列向量x≠O，有\nx\"(B\"AB)x>O，即(Bx)A(Bx)>0,于是，Bx≠0，即对任意的实n维列向量x≠O，都有\nBx≠0.(若 Bx=0，则 A(Bx)= A0=0矛盾).因此，Bx=0只有零解，故有r(B)=n（Bx=0\n\n[[page:12]]\n有唯一零解的充要条件是r(B)=n).\n“充分性”.因A为m 阶实对称矩阵，则 A”= A，故(BTAB)= BTA\"B= BTAB,根据\n实对称矩阵的定义知 B\" AB 也为实对称矩阵.若r(B)=n，则线性方程组 Bx=O 只有零解,\n(Bx) A(Bx)=x\"(B\" AB)x>O，故B\"AB 为正定矩阵(对任意的实n 维列向量x≠O，有\nx(B\" AB)x> 0).\n十二【详解】离散型随机变量边缘分布律的定义：\n.\"=!d={<=x=x}d={x=x}=d\n\"=d={<=xx=x}={=x}d='d\n(通俗点说就是在求关于X的边缘分布时，就把对应x的所有y都加起来，同理求关于Y的边\n缘分布时，就把对应y的所有x都加起来)\n\"d={K=x=x}=d={=}\n{=x\"x=x}+{K=x=x}={K=}d\n8\n6824\n又根据X和Y相互独立，则有：\nP{X=x,Y=y,}=P{X=x}P{Y=y} 即p=PiP.j\n因P{X=x,Y=yi}=\n，P{Y=y}=\n{K=}d{x=X}={=\"x=X}d ‘\n24\n6\n1\nP{Y=y}\n1\n4\n6\n再由边缘分布的定义有\n{=x=x}d+{<=xx=x}d+{K=x=x}d={x=x}d\n所以\n{<=x=x}d-{=x=x}d-{x=x}={=xx=x}d\n\n[[page:13]]\n1\n1\n1\n4\n24\n8\n12\n{=}{x=X}={=x=X}甲\n1\nP{X = x,Y = y3\n所以\nP{Y=y3}=\n12\nP{X=x}\n1\n3\n4\n{=x=X}+=x=X}==}\n1\n所以\n{=xx=x}-{=}={=xx=x}\n3\n12\n4\n再由∑p=1，所以P{X=x2}=1-P{X=x}=1-\n1\n3\n4\n4\n{=x=X}+{=²x=X}d+{K=x=X}d={x=X}d\n故\n{<=x=X}-{K=x=x}-{²x=x}={<=x=x}\n3\n1\n1\n3\n4848\n{=}-{=}-={=}=\n632\n所以有：\nY\nP{X=x,}= pi\ny\ny2\ny3\nX\n1\n1\n1\n1\nx\n24\n8\n12\n-4\n1\n3\n1\n3\nx2\n8\n8\n4\n4\nP{Y=y}=P;\n1\n1\n1\n1\n6\n2\n3\n十三【详解】矩估计的实质在于用样本矩来估计相应的总体矩，此题中被估参数只有一个，故\n只需要用样本矩(样本均值)来估计总体的一阶原点矩(期望)\n(1）矩估计：由期望的定义：\nx9\nεx9\nE(X)= { xf(x)dx =\n6.x\n(0- x)dx =\nIdx\nθ3\n6c0\n60²6 04\n30\nx²dx-\nx²dx=\n=20-\n02Jo\nθ3 Jo\n0304\n2\n2\n\n[[page:14]]\n样本均值=-\nCX，，用样本均值估计期望有EX=X，\nni=1\nθ\nX，解得θ的矩估计量\nθ=2X\n即\n2\n(2）由随机变量方差的性质：D(cX)=c²D(X)，所以 D(θ)= D(2X)=4D(X)\n又由独立随机变量方差的性质：若X和Y 独立，则D(X+Y)=DX+DY\n因X,X2,··,X,是取自总体X 的简单随机样本，所以X,X2,··,X,独立且X,X2,··,X,\n与X服从同一分布，即DX，=DX\ni=1,2,...n\nD(x)=D(x)\nD(x)=D(-∑x)=\nD(∑x,)=-\n而\nni=1\nn\ni=1\ni=1\ni=1\n1=D(x)=D(x)\nD(X)∑\nn\ni=1\nn\nn\n方差的定义：D(X)=E(X²)-[E(X)}²，所以求方差只需要求出E(X²)和E(X)\n根据二阶原点矩的定义：E(X²)={x²f(x)dx\n0.6x3\n6.x4\n602\n故\n-(0-x)dx =\n20\nθ\n而E(X)=-\n，所以\n2\n602\nD(X)=E(x²)-[E(x)]² =\n20\n20\nθ2\n因此θ=2X 的方差为D(①)=D(2X)=4D(X)=D(X)=\n5n\nn",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-01.png",
+      "line_count": 68,
+      "avg_score": 0.9355,
+      "elapsed": [
+        2.2299306001514196,
+        0.17827415466308594,
+        5.142418146133423
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-02.png",
+      "line_count": 74,
+      "avg_score": 0.9538,
+      "elapsed": [
+        1.3394855000078678,
+        0.18447589874267578,
+        4.588360786437988
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-03.png",
+      "line_count": 56,
+      "avg_score": 0.9536,
+      "elapsed": [
+        1.3368438000325114,
+        0.15897846221923828,
+        4.639075756072998
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-04.png",
+      "line_count": 40,
+      "avg_score": 0.9332,
+      "elapsed": [
+        1.2544536998029798,
+        0.19121885299682617,
+        5.6194353103637695
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-05.png",
+      "line_count": 56,
+      "avg_score": 0.9496,
+      "elapsed": [
+        1.298870700178668,
+        0.16031932830810547,
+        4.524442434310913
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-06.png",
+      "line_count": 57,
+      "avg_score": 0.9267,
+      "elapsed": [
+        1.300996599951759,
+        0.25067925453186035,
+        4.52043890953064
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-07.png",
+      "line_count": 46,
+      "avg_score": 0.952,
+      "elapsed": [
+        1.232206700136885,
+        0.07724475860595703,
+        3.951099395751953
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-08.png",
+      "line_count": 46,
+      "avg_score": 0.9587,
+      "elapsed": [
+        1.2502192999236286,
+        0.04537773132324219,
+        5.572763442993164
+      ]
+    },
+    {
+      "page": 9,
+      "image": "images\\answer_pages\\page-09.png",
+      "line_count": 53,
+      "avg_score": 0.9365,
+      "elapsed": [
+        1.2319211000576615,
+        0.12228894233703613,
+        4.6497368812561035
+      ]
+    },
+    {
+      "page": 10,
+      "image": "images\\answer_pages\\page-10.png",
+      "line_count": 58,
+      "avg_score": 0.9406,
+      "elapsed": [
+        1.252902600215748,
+        0.10440921783447266,
+        4.502593517303467
+      ]
+    },
+    {
+      "page": 11,
+      "image": "images\\answer_pages\\page-11.png",
+      "line_count": 72,
+      "avg_score": 0.941,
+      "elapsed": [
+        1.5196235000621527,
+        0.2792637348175049,
+        5.042847156524658
+      ]
+    },
+    {
+      "page": 12,
+      "image": "images\\answer_pages\\page-12.png",
+      "line_count": 30,
+      "avg_score": 0.9303,
+      "elapsed": [
+        1.3110283000860363,
+        0.36385202407836914,
+        5.3242716789245605
+      ]
+    },
+    {
+      "page": 13,
+      "image": "images\\answer_pages\\page-13.png",
+      "line_count": 93,
+      "avg_score": 0.9322,
+      "elapsed": [
+        1.2734306000638753,
+        0.2801828384399414,
+        4.9363930225372314
+      ]
+    },
+    {
+      "page": 14,
+      "image": "images\\answer_pages\\page-14.png",
+      "line_count": 48,
+      "avg_score": 0.9275,
+      "elapsed": [
+        1.3644514998886734,
+        0.14410400390625,
+        3.797107219696045
+      ]
+    }
+  ]
+}

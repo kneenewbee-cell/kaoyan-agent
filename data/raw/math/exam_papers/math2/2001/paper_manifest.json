@@ -1,0 +1,41 @@
+{
+  "exam_id": "kaoyan_math2_2001",
+  "exam_type": "math2",
+  "exam_label": "数学二",
+  "year": 2001,
+  "source_files": {
+    "questions": "math2_2001_questions.md",
+    "answers": "math2_2001_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 20,
+  "explanation_count": 20,
+  "question_ids": [
+    "kaoyan_math2_2001_q001",
+    "kaoyan_math2_2001_q002",
+    "kaoyan_math2_2001_q003",
+    "kaoyan_math2_2001_q004",
+    "kaoyan_math2_2001_q005",
+    "kaoyan_math2_2001_q006",
+    "kaoyan_math2_2001_q007",
+    "kaoyan_math2_2001_q008",
+    "kaoyan_math2_2001_q009",
+    "kaoyan_math2_2001_q010",
+    "kaoyan_math2_2001_q011",
+    "kaoyan_math2_2001_q012",
+    "kaoyan_math2_2001_q013",
+    "kaoyan_math2_2001_q014",
+    "kaoyan_math2_2001_q015",
+    "kaoyan_math2_2001_q016",
+    "kaoyan_math2_2001_q017",
+    "kaoyan_math2_2001_q018",
+    "kaoyan_math2_2001_q019",
+    "kaoyan_math2_2001_q020"
+  ],
+  "generated_at": "2026-07-02T02:54:13.052727+00:00",
+  "paper_scope": "试卷 III only",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

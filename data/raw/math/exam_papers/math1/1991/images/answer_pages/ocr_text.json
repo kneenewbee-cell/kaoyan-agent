@@ -1,0 +1,144 @@
+{
+  "text": "[[page:1]]\n1991年全国硕士研究生入学统一考试数学一试题解析\n一、填空题（本题满分15分，每小题3分.）\nsint-tcost\n（1）【答案】\n【解析】这是个函数的参数方程,满足参数方程所确定函数的微分法，即\n[x=Φ(t)\n(4)(p\n如果\n则\ny =p(t)\n()中_xp\ndy\ndy _\ndt\n-sint\n所以\ndx\ndx\n2t\np\n再对x求导，由复合函数求导法则得\ndx\ndt\nip\n2t\n2t\n-2tcost+2sint 1\nsint-tcost\n4t2\n2t\n(2）【答案】dx-√2dy\n【解析】这是求隐函数在某点的全微分,这里点(1,0,-1)的含义是z=z(1,0)=-1.\n将方程两边求全微分，由一阶全微分形式不变性得\nd(xyz)+d(x²+y²+2²)\n2√x²+y²+z\n再由全微分四则运算法则得\nxdx + ydy + zdz\n(xy)dz +(ydx + xdy)z =\n√x²+y²+2²\nzp-xp\n令x=1,y=0,z=-1,得dy=\n,即dz = dx-√2dy.\n√2\n(3）【答案】x-3y+z+2=0\n【解析】所求平面Ⅱ过直线L，因而过L,上的点(1,2,3)；\n因为Ⅱ过L,平行于L2,于是Ⅱ平行于L,和L2的方向向量,即Ⅱ平行于向量=(1,0,-1)\n和向量72=(2,1,1),且两向量不共线,于是平面Ⅱ的方程\n\n[[page:2]]\nx-1y-2z-3\n1\n0\n-1\n二\n：0\n2\n1\n即x-3y+z+2=0.\n3\n（4）【答案】-\n2\n【解析】因为当x→0时，sinx～x,(1+x)”-1~\nn\n当x→0时ax²→0,所以有\n(1+ax²)3 -1-\nax²,cos x-1=-\n-sin²x\n3\n2\n1\n(1+ax²)3 -1\n一\nax\n3\n2\n所以\nlim\nlim\n0←x\ncos x-1\nx→0\n3\n2\n2\n因为当x→0时，(1+ax²)3-1与cosx-1是等价无穷小,所以-\na=1,故a：\n3\n2\n-2\n0\n0\n-2\n5\n0\n0\n1\n2\n(5）【答案】\n0\n0\n3\n3\n0\n0\n3\n【解析】为求矩阵的逆可有多种办法，可用伴随，可用初等行变换，也可用分块求逆.根据\n本题的特点,若知道分块求逆法,则可以简单解答.\n注意：\nD\n对于2阶矩阵的伴随矩阵有规律：A：\n则求A的伴随矩阵\n如果|4≠0,这样\n\n[[page:3]]\npp\n0\n再利用分块矩阵求逆的法则：\n易见\nB\n1\n-2\n0\n0\n-2\n5\n0\n0\n1\n2\n0\n0\n3\n3\n1\n1\n0\n0\n3\n3\n二、选择题(本题共5个小题，每小题3分，满分15分.)\n(1）【答案】(D)\n【解析】由于函数的定义域为x≠0，所以函数的间断点为x=0，\n1+e\nlim y = lim\nlim\n∞，所以x=0为铅直渐近线，\n0x\nx→01-e\n0←x\n-1\n1+e\nlim y = lim\nlim\n=1，所以y=1为水平渐近线.\nx→00\nx→00\nex² -1\n所以选(D).\n【相关知识点】铅直渐近线：如函数y=f(x)在其间断点x=x处有lim f(x)=∞o，则\n0x<x\nx=x是函数的一条铅直渐近线；\n水平渐近线：当lim f(x)=α,(a为常数），则y=α为函数的水平渐近线.\n(2）【答案】(B)\n【解析】令u=\n,则t=2u,dt=2du，所以\n2\nf(x)=J°\ndt +ln2 = [ 2.f(u)du + ln2 ,\nd[f(x)]\n=2dx.解\n两边对x求导，得f'(x)=2f(x)，这是一个变量可分离的微分方程,即\nf(x)\n之得f(x)=Ce²x,其中C是常数.\n又因为 f(0)= J2f(u)du+ln2=ln2 ,代入 f(x)=Ce²x,得f(0)= Ce°= ln2,得\n\n[[page:4]]\nC = ln2,即 f(x)=e²x.ln2.\n(3）【答案】(C)\n【解析】因为\n∑(-1)\"-a, = a, -a2 + a -a4 + ..·+ a2n- - a2n +\nn=1\n=(a-a2)+(a -a4)+..·+(a2n- -a2n)+..\n∑(α2n-1-a2n)=∑α2n--∑α2n（收敛级数的结合律与线性性质)，\nn=1\nn=1\nn=1\n所以\n∑a2n =∑a2n- -∑(-1)\"-a, =5-2=3 .\nn=1\nn=1\nn=1\n∑a, =(a,+a2)+(a +a4)+..+(a2n+ +a2n)+...\n而\nn=1\n∑(a2n-1 +a2n)=∑a2n-1 +∑\nα2n=5+3=8,\nn=1\nn=1\nn=1\n故应选(C).\n(4）【答案】(A)\n【解析】如图,将区域D分为D,D2,D3,D4四个子区域.\nD2\nD1\n显然,D,D2关于y轴对称,D3,D4关于x轴对称.\nD3\n4\n0\n=1/ xydxdy\ncos x sin ydxdy\nD\n由于xy对x及对y都是奇函数,所以\nff xydxdy = 0, Jf xydxdy = 0 .\nD+D2\nD+D4\n而cosxsin y对x是偶函数,对y是奇函数,故有\ncos xsin ydxdy = 0, ff\ncos x sin ydxdy = 2f cos xsin ydxdy ,\nD3+D4\nD,+D2\nD\n所以\nff (xy + cos xsin y)dxdy = I,+ I2 = 2{∫ cos xsin ydxdy ,\nD\nD\n故选(A).\n(5）【答案】(D)\n\n[[page:5]]\n【解析】矩阵的乘法公式没有交换律，只有一些特殊情况可以交换.\n由于A、B、C均为n阶矩阵,且ABC=E，对等式两边取行列式,据行列式乘法公式\n|AIIBC|=1,得到A≠O、B≠O、C|≠O,知A、B、C均可逆,那么,对于 ABC=E，\n先左乘A-'再右乘A有ABC=E→BC=A-→BCA=E，故应选(D).\n其实,对于ABC=E先右乘C-再左乘C,有 ABC=E→AB=C-→CAB=E.\n三、(本题满分15分,每小题5分.)\n（1）【解析】这是1”型未定式求极限.\nπ(cos√x-1)\nlim(cos x)x = lim(1 +(cos √x -1) cos√x-1\n+0←x\n+0<←x\n令cos√x-1=t,则x→0+时t→0,所以\nlim(1 +(cos √x -1)cosvx- = lim(1+t) = e ,\n0←x\nt→0\nπ(cos√x-1)\nπ(cos√x-1)\nlim π(cos√x-1)\n所以\nlim(1 +(cos √x -1)cos√x-1\nX\n=lim e\n0←x\n+0←x\n因为当x→0时，sinx～x,所以\n-2πsin\n-2π\n2\n2\nlim\nlim\n+0←x\nx\n0←x\nx\n0←x\nx\nlim π(cos√x-1)\n故\nlim(cos √x)x = ex-0+\n0←x\nOu\ndu\nOu\n(2）【解析】先求方向n的方向余弦，再求\n最后按方向导数的计算公式\nOx\noz\nOu\nOu\nOu\nOu\ncoSα+\ncosβ+\n-COSY求出方向导数.\nOn\nOx\noy\naz\n曲面2x²+3y²+z²=6在点 P(1,1,1)处的法向量为\n±{4x,6y,2z}|p= {4x,6y,2z}(1.1=±2 {2,3,1} ,\n在点P(1,1,1)处指向外侧,取正号,并单位化得\n\n[[page:6]]\n{2,3,1}= {cos α,cos β,cos y}.\n√22 + 32 +1\nOu\n6.x\nx9\nOx\n√14\nz√/6x²+8y²\nz√6x²+8y\n(1,1,1)\nne\n8y\n8y\n8\n又\noy\nz√6x²+8y2\nz√6x²+8y²\n√14\n(1,1,1)\nOu\n/6x² +8y2\n/6x²+8y2\n=-√14\noz\n(1,1,1)\n所以方向导数\ndu\nOu\ndu\nOu\ncoSα+\ncosβ+\n-COSy\nOn\nax\nOy\naz\n6\n2\n8\n3\n√14\n√14 √14 + √14 √14\n√14\n(3）【解析】由曲线\n[x=0\n于是，Ω是由旋转抛物面z：\n-(x²+y²）与平面z=4所围成.曲面与平面的交线是\n2\nZ\nx²+ y² =8,z =4.\n选用柱坐标变换,令x=rcosθ,y=rsinθ,z=z，于是\n2z-y²\nΩ:0≤0≤2π,0≤z≤4,0≤r≤√2z,\n因此\n{(x²+ y² +z)dV\n2\n2z\npu(z+)\nzp\n2\n256\n3\n四、 (本题满分6分)\n\n[[page:7]]\n【解析】曲线y=asinx，（x∈[O,π])，则dy=acos xdx,所以\nI = ↓,(1+ y)dx+(2x+y)dy\nJ[1 +(asin x)3 + (2x + asin x)·a cos x]dx\n-a²sin²x+2axcosx+\n-sin 2x|dx\n2\nD+=\n+ xpx soo x \"Jp7 + xpx us\nsin 2xdx\n= π + a²[\" (cos² x- 1)d cosx+ 2a\" xd sin x+\nD\nsin 2xd2x\nD+2：\ncos²x-cosx|+2a[xsin x+cosx]\" +α\n-[-cos 2x]\n3\nJo\n元\n4a\n对关于α的函数I=π+-\n3-4a两边对a求导数,其中α>0,并令I'=0,得\n3\nI'=4a²-4=0.\n[>>00>,I\n所以α=l，且\nI'>0,1<a<+∞\n4\na²－4α,(α>0)的极小值点,也是最小值点.故所求的曲线为\n故α=1为函数I=π+\n3\ny = sin x, (x e [O,π]).\n五、 (本题满分8分.)\n【解析】按傅式级数公式,先求f(x)的傅式系数α,与b,.因f(x)为偶函数,所以\nnπ\n(x)sin\n-xdx =0 (n =1,2,3,...),\n1\nnπ\nnπ\nx)cos\nxdx\n(x)cos\nxdx\n1\n1\n= 2{ (2 + x)cos nπxdx = 4f cos nπxdx + -\nnπ\n(n = 1,2,3,...),\nnπJo\nn²π2\n\n[[page:8]]\n(2+ x)dx =5.\n因为f(x)=2+|x|在区间(-1≤x≤1)上满足狄利克雷收敛定理的条件,所以\nf(x)=2+|x|=\nao\nnπ\nnπ\nx+b\nsin\n2\n1\n2(cos nπ -1)\ncOSnπX\nnπ\nn=\n4\n1\ncos(2n-1)πx（\n(-1≤x≤1).\n2\nπ\nn= (2n-1)²\n4\n令x=0,有f(0)=2+0=\n-cos0,所以，\n2\nπ\n(2n-1)²\n(2n-1)²\n8\n又\n(2n-1)2\n(2n)\n(2n -1)²+\n所以，\n即\n8\nn\n6\n六、 (本题满分7分.)\n【解析】由定积分中值定理可知,对于』f(x)dx,在区间(,1)上存在一点使得\n[f(x)dx=f(5)(1-)=f(5),\n即3[2 f(x)dx = f(5)= f(0).\n由罗尔定理可知,在区间(0,1)内存在一点c(0<c<<1)，使得f'(c)=0.\n七、 (本题满分8分)\n【解析】设xα+x2α2+xQ+x4α4=β，按分量写出,则有\nx+x+x+x4 =1\nx-xα+2x4 =1\n2x, +3x2+(a+2)x+4x4 =b+3\n3x+5x+x+(a+8)x4 =5\n\n[[page:9]]\n对方程组的增广矩阵作初等行变换：\n第一行分别乘以有(-2)、（-3)加到第三行和第四行上,再第二行乘以(-1)、（-2)加到第三\n行和第四行上,有\n1\n1\n1\n1\n1\n1\n0\n1\n-1\n2:\n1\n0\n1\n-1\n2:\n1\nA\n2\n3\na+2\n4:b+3\n0\n1\nD\n2.\nb+1\n3\n5\n1\n:8+D\n5\n0\n2\n-2\na+5:\n2\n1\n1\n1\n1\n1\n0\n1\n-1\n2\n：\n0\n0\n[+D\n0:\nb\n0\n0\n0\na+1:\n0\n所以,当α=-1,b≠0时，r(A)+1=r(A),方程组无解.即是不存在x,X2,X,x4使得\nxQ+x2Q+xQ+x4α4=β成立，β不能表示成α、α2、α、α4的线性组合;\n2b\na+b+1\nb\n当a≠-1时，r(A)=r(A)=4.方程组有唯一解\na+l’a+1'a+1\n2b\na+b+1\nb\n故β有唯一表达式，且β=-\n+o\nα2+\n-α3 + 0·α4 .\n[+D\nI+n\nI+D\n【相关知识点】非齐次线性方程组有解的判定定理：\n设A是m×n矩阵,线性方程组Ax=b有解的充分必要条件是系数矩阵的秩等于增广\n矩阵A=(A:b)的秩,即是r(A)=r(A)(或者说,b可由 A的列向量α,α2,·,α,线表出,\n亦等同于α,α2,·\",α,与α,Q2,·\",α,,b是等价向量组).\n设A是m×n矩阵，线性方程组Ax=b，则\n（1）有唯一解\nr(A)=r(A)=n.\n(2）有无穷多解\nr(A) =r(A)<n.\n(3）无解\nr(A)+1=r(A).\nb不能由A的列向量α,α2,\",α,线表出.\n八、 (本题满分6分)\n【解析】方法1：因为A为n阶正定阵,故存在正交矩阵Q，使\n\n[[page:10]]\n= v =0v,-0=0v 0\n其中>0(i=1,2,..n)，是A的特征值.\n+V=OO+OO=O(+H)O\n(++(+)++\n从而|A+E|>1.\n方法2：设A的n个特征值是,，.·,.由于A为n阶正定阵,故特征值全大于0.\n由为A的特征值可知,存在非零向量α使Aα=α，两端同时加上α，\n得(A+E)α=(+1)α.按特征值定义知+1是A+E的特征值.因为A+E的特征值是\n+1,A+1.,.,+1.它们全大于 1,根据|A|=,知|A+E=(,+1)>1.\n【相关知识点】阵特征值与特征向量的定义：设A是n阶矩阵,若存在数及非零的n维列\n向量X使得AX=X成立,则称是矩阵A的特征值,称非零向量X是矩阵A的特征向\n量.\n九、 (本题满分8分)\n【解析】曲线y=y(x)在点P(x,y)处的法线方程为\n1\nY-y=\n(X-x）(当y'≠0时),\nV\n它与x轴的交点是Q(x+yy',0)，从而\n|PQ｜=√(yy)²+y² =y(1+y²2)².\n当y'=0时,有Q(x,0),|PQ｜=y，上式仍然成立.\n因此，根据题意得微分方程\n(1+y)2\ny(1+y²)2\n即 yy\"=1+y'².这是可降阶的高阶微分方程,且当x=1时，y=l,y'=0.\n\n[[page:11]]\nPdP\ndy\n令y=P(y),则y\"=pP,\n-=1+P²，即-\ndy\ndy\n1+ P2\ny\n即y=C√1+P²，C为常数.\n因为当x=1时,y=1,P= y'=0,所以C=1,即y=√1+ P²=√1+y2\ndy\n所以y'=±√y²-1.分离变量得\n·xp=\nv²-1\n令y=sect,并积分,则上式左端变为\ndy\nsecttantdt\n= In |sect + tan t|+ C\ntan t\n=In|sect+√sec²t-1|+C=In|y+\n因曲线在上半平面,所以y+√y²-1>0,即ln(y+\nx\n故\ny+√y²-1 = Cetx\n当x=1时，y=l,\n当x前取+时，C=e-，y+√y²-1=é*-1\ny-√y²-1\ny-√\n/v²-1\nI-+ (I-<-)(-<+)\n当x前取-时,C=e，y+√y²-1=e\ny-√y²-1\n√y²-1=\nI-<+ (I--)(I-<+)\n所以\n2\n十、填空题(本题满分6分,每小题3分.)\n（1）【解析】一般说来,若计算正态分布随机变量在某一范围内取值的概率,应该已知分布的\n两个参数μ和o²，否则应先根据题设条件求出μ，o²，再计算有关事件的概率，本题可从\nΦ(²)=0.8,通过查Φ(x)表求出,但是注意到所求概率 P(x<0)即是Φ(=)与Φ(²)\n之间的关系,可以直接由Φ()的值计算出Φ(\n\n[[page:12]]\nX-2 ~ N(0,1),\n因为X～N(2,o²)，所以可标准化得\n由标准正态分布函数概率的计算公式，有\nP(2<x<4)=Φ(\n)=P(2<x<4)+Φ(0)=0.8 .\n0-2\n由正态分布函数的对称性可得到P(x<0)=Φ(\n=1-Φ()=0.2.\na\n4\n这是一个几何型概率的计算问题.由几何概率公式\nSp\n一,而S半圆\nP(A)=:\n来S\nD2\n2\nD\n圆\n2\n4\nA\n故\nP(A)= 2\n4\n1\n2\nπ\nπa\n2\n十一、 (本题满分6分)\n【解析】二维连续型随机变量的概率等于对应区域的二重积分，所以有\nF(z)=P{Z≤z}=P{X+2Y≤z}= {f f(x,y)dxdy .\nx+2y≤z\n当z≤0时,F(z)=0.\ny\n因为x+2y=z在直线x+2y=0的下方\n与x>0,y>0(即第一象限)没有公共区域,\nD\n所以F(z)=0.\nx+2y=0\n当z>0时，x+2y=z在直线x+2y=0\n的上方与第一象限相交成一个三角形区域D，此即为积分区间.\nF(z)=\n(e-x-e-\")dx =1-e-² -ze-²\n0,\n'0>z\n所以Z=X+2Y的分布函数F(z)=\n1-e-²-ze-², z≥0.\n\n[[page:13]]",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-01.png",
+      "line_count": 47,
+      "avg_score": 0.9607,
+      "elapsed": [
+        2.2391504000406712,
+        0.22239375114440918,
+        5.699052572250366
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-02.png",
+      "line_count": 63,
+      "avg_score": 0.9605,
+      "elapsed": [
+        1.4676010000985116,
+        0.14337444305419922,
+        4.215723037719727
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-03.png",
+      "line_count": 60,
+      "avg_score": 0.9552,
+      "elapsed": [
+        1.2613024001475424,
+        0.15494728088378906,
+        5.4696173667907715
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-04.png",
+      "line_count": 51,
+      "avg_score": 0.9434,
+      "elapsed": [
+        1.034729199949652,
+        0.17641878128051758,
+        4.044183254241943
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-05.png",
+      "line_count": 62,
+      "avg_score": 0.863,
+      "elapsed": [
+        1.0935523000080138,
+        0.3598508834838867,
+        6.4732255935668945
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-06.png",
+      "line_count": 65,
+      "avg_score": 0.8872,
+      "elapsed": [
+        1.2095814000349492,
+        0.23955702781677246,
+        3.0748114585876465
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-07.png",
+      "line_count": 50,
+      "avg_score": 0.8975,
+      "elapsed": [
+        1.2436971999704838,
+        0.13490915298461914,
+        4.916187763214111
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-08.png",
+      "line_count": 49,
+      "avg_score": 0.9341,
+      "elapsed": [
+        1.5065323000308126,
+        0.07670235633850098,
+        4.40829062461853
+      ]
+    },
+    {
+      "page": 9,
+      "image": "images\\answer_pages\\page-09.png",
+      "line_count": 90,
+      "avg_score": 0.9459,
+      "elapsed": [
+        1.3280686000362039,
+        0.2399451732635498,
+        5.639988899230957
+      ]
+    },
+    {
+      "page": 10,
+      "image": "images\\answer_pages\\page-10.png",
+      "line_count": 25,
+      "avg_score": 0.9123,
+      "elapsed": [
+        1.0332819998729974,
+        0.14154458045959473,
+        4.940764665603638
+      ]
+    },
+    {
+      "page": 11,
+      "image": "images\\answer_pages\\page-11.png",
+      "line_count": 41,
+      "avg_score": 0.92,
+      "elapsed": [
+        1.03025810001418,
+        0.26579880714416504,
+        4.909101247787476
+      ]
+    },
+    {
+      "page": 12,
+      "image": "images\\answer_pages\\page-12.png",
+      "line_count": 49,
+      "avg_score": 0.9322,
+      "elapsed": [
+        1.1241115001030266,
+        0.15628743171691895,
+        5.313013553619385
+      ]
+    },
+    {
+      "page": 13,
+      "image": "images\\answer_pages\\page-13.png",
+      "line_count": 0,
+      "avg_score": 0.0,
+      "elapsed": null
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "exam_id": "kaoyan_math3_2006",
+  "exam_type": "math3",
+  "exam_label": "数学三",
+  "year": 2006,
+  "source_files": {
+    "questions": "math3_2006_questions.md",
+    "answers": "math3_2006_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 23,
+  "explanation_count": 23,
+  "question_ids": [
+    "kaoyan_math3_2006_q001",
+    "kaoyan_math3_2006_q002",
+    "kaoyan_math3_2006_q003",
+    "kaoyan_math3_2006_q004",
+    "kaoyan_math3_2006_q005",
+    "kaoyan_math3_2006_q006",
+    "kaoyan_math3_2006_q007",
+    "kaoyan_math3_2006_q008",
+    "kaoyan_math3_2006_q009",
+    "kaoyan_math3_2006_q010",
+    "kaoyan_math3_2006_q011",
+    "kaoyan_math3_2006_q012",
+    "kaoyan_math3_2006_q013",
+    "kaoyan_math3_2006_q014",
+    "kaoyan_math3_2006_q015",
+    "kaoyan_math3_2006_q016",
+    "kaoyan_math3_2006_q017",
+    "kaoyan_math3_2006_q018",
+    "kaoyan_math3_2006_q019",
+    "kaoyan_math3_2006_q020",
+    "kaoyan_math3_2006_q021",
+    "kaoyan_math3_2006_q022",
+    "kaoyan_math3_2006_q023"
+  ],
+  "generated_at": "2026-07-03T07:21:31.564385+00:00",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available",
+  "status": "reviewed",
+  "notes": [
+    "已完成 2006 年数学三题面、标准答案与解析统一清洗。",
+    "所有题卡均可直接展示，已去除未标注式答案说明。",
+    "建议后续仍按原始试卷或答案页做抽样复核。"
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "text": "[[page:1]]\n1996 年全国硕士研究生入学统一考试数学一试题解析\n一、填空题（本题共5个小题，每小题3分，满分15分，把答案填在题中横线上.）\n（1）【答案】ln2\n【解析】这是1型未定式求极限.\n3a\nx-a3ax\n方法一：\nx+2a\nlim\n=lim(1 +\n3ax-\nx→∞x-a\nx→0\nD-x\n3a\n=t,则当x→oo时，t→0，\np-x\n3a\nx-a\n则\nlim(1 + -\n-) 3a = lim(1+ t)' = é,\nx→0\np-x\nt→0\n3ax\nlim\n3a\nlim\n即\nlim\nx-a\np-x\n由题设有e3a=8,得a=\nln8 =ln 2 .\n3\n2a\n2a\nlim\nx+2a\n方法二：lim\n=lim\nx\n=lim\nx\nx\nx→∞0\np-x\nx-→00\nD\nX\n由题设有e3a=8,得a=÷ln8=ln2.\n3\n(2）【答案】2x+2y-3z=0\n【解析】方法一：所求平面过原点O与M。(6,-3,2),其法向量n⊥OM。={6,-3,2};\n平面垂直于已知平面4x-y+2z=8，它们的法向量也互相垂直：n⊥ng={4,-1,2};\ni\nj\nk\n由此,\nn// OM。×n =6 -3 2=-4i-4j+6k .\n4\n-1\n2\n取n=2i+2j-3k，则所求的平面方程为2x+2y-3z=0.\n方法二：所求平面即为过原点，与两个不共线的向量(一个是从原点到点M。(6,-3,2)的向量\nOM。={6,-3,2},另一是平面4x-y+2z=8的法向量ng={4,-1,2})平行的平面,\n\n[[page:2]]\n即\n6-32=0,即\n2x+2y-3z=0.\n[4 -1 2]\n(3）【答案】e*(c,cosx+c2sinx+1)\nr²-2r+2=0,解之得r,2=1±i.故对应齐次微分方程的解为y=e\"(C,cosx+C, sinx).\n由于非齐次项e\"\",α=1不是特征根,设所给非齐次方程的特解为y(x)=αe，代入\n（x=（x）=x=+\n(+xs+xso )x= x+(xs+xso)=\n【相关知识点】\n①二阶线性非齐次方程解的结构：设y\"(x)是二阶线性非齐次方程\ny\"+ P(x)y'+Q(x)y= f(x)的一个特解.Y(x)是与之对应的齐次方程\n(x)+(x)=0=4(x)+,(x)+\n②二阶常系数线性齐次方程通解的求解方法：对于求解二阶常系数线性齐次方程的通解\nY(x)，可用特征方程法求解：即y\"+P(x)y'+Q(x)y=0中的P(x)、Q(x)均是常数,方程\n==++\n分三种情况：\n(1）两个不相等的实数根r,r，则通解为y=C,e\"+C2e\"\n(x+==()\n(3）一对共轭复根r,2=α±iβ,则通解为 y=eα*(C,cos βx+C2 sin βx).其中 C,C2\n为常数.\n③对于求解二阶线性非齐次方程y\"+P(x)y'+Q(x)y=f(x)的一个特解y*(x)，可用待\n定系数法，有结论如下：\n如果f(x)= Pm(x)e^x,则二阶常系数线性非齐次方程具有形如 y(x)=x^Qm(x)ex\n的特解,其中Ωm(x)是与P(x)相同次数的多项式,而k按不是特征方程的根、是特征方\n程的单根或是特征方程的重根依次取0、1或2.\n如果f(x)=e^*[P(x)cos cox+P,(x)sin cox]，则二阶常系数非齐次线性微分方程\n2\n\n[[page:3]]\ny\"+p(x)y'+q(x)y= f(x)的特解可设为\ny* = x*e^x[R (x)cos @x + R(2(x)sin @ox] ,\n其中 R(x)与R(2)(x)是m次多项式，m=max{l,n},而k按+io(或-io)不是特征\n方程的根、或是特征方程的单根依次取为0或1.\n1\n（4）【答案】\n2\n【分析】先求方向7的方向余弦和，\nze e  xe\ndu\ndu\nOu\nOu\ncOSα+\ncosβ+\ncOSY求出方向导数.\nal\nOx\noy\noz\n【解析】因为与 AB同向,为求的方向余弦,将 AB={3-1,-2-0,2-1}={2,-2,1}\nAB\n单位化，即得\ni\n{2,-2,1}= {cos α,cos β,cos y} .\nAB\n3\n将函数u=ln(x+√y²+z²)分别对x,y,z 求偏导数得\nne\n1\nOxA\nx+√y²+z\n2\n(1,0,1)\nne\ny\n=0,\noy\n(x+v\n²+z²)√y²+z²\n(1,0,1)\nOu\n0z\n(x+\n2\n(1,0,1)\nne\nOu\nOu\nne\n所以\ncosα+\ncos β+\nCOS\nal\nOxlA\ny\nze\n12\n2\n-)×0+=×-\n2°3\n3\n232\n(5）【答案】2\n0\n2\n【解析】因为B=\n0\n2\n0=10≠0,所以矩阵B可逆,故r(AB)=r(A)=2.\n-1\n0\n3\n【相关知识点】\nr(AB)≤min(r(A),r(B)).若A可逆,则\n\n[[page:4]]\nr(AB)≤r(B)=r(EB)=r[A-(AB)]≤r(AB) .\n从而r(AB)=r(B)，即可逆矩阵与矩阵相乘不改变矩阵的秩.\n二、选择题(本题共5个小题,每小题3分,满分15分.在每小题给出的四个选项中，只有一\n项符合题目要求，把所选项前的字母填在题后的括号内.）\n(1）【答案】(D)\nydy\n(x+y)²\n(x+y)²\n由可微与可偏导的关系，知\nOu\nAp+x\ndu\ny\nox\n(x+y)²’oy(x+y)²\n分别对y,x求偏导数,得\n0²u\na(x+ y)²-(x+ay)·2(x+ y) _(a-2)x-ay\nOxoy\n(x+y)4\n(x+ y)3\n0²u\n-2y\nOyox\nε(K+x)\n0²u\n0²u\n0²u\n0²u\n由于\n与\n连续,所以\n即\nOyox\nOxoy\nOyox\nOxoy\n(a-2)x-ay\n-2y\n→a=2,\n(x+ y)3\n(x+ y)3\n故应选(D).\n(2）【答案】(B)\n\"(x)\n【解析】因为f(x)有二阶连续导数,且 lim\n=1>0,所以由函数极限的局部保号性\n0←x\n|x|\n>0,即 f\"(x)>0,所以 f'(x)为单调递增.\n[x|\n又由f'(0)=0，f'(x)在x=0由负变正,由极值的第一充分条件，x=0是f(x)的极\n小值点,即f(0)是f(x)的极小值.应选(B).\n【相关知识点】\n极限的局部保号性：设limf(x)=A.若A>0(或A<0)→3>0,当\n0x<x\n\n[[page:5]]\n0<|x-x<8时,f(x)>0 (或f(x)<0).\n(3）【答案】(A)\n【解析】若正项级数\n收敛，则\n≥α2n也收敛,且当n→+oo时,有\nn=1\nn=1\n入\ntan\n入\nlim (ntan ) = lim\nn.A=n.\nn→→+00\nn→→+00\nn\nn\n用比较判别法的极限形式，有\n入\nntan-a2n\nlim\nn\n=>0.\nn1→>+00\nd2n\n因为≥α2,收敛,所以 lim ntanα2,也收敛,所以原级数绝对收敛,应选(A).\nn=1\nx→→+00\nn\n【相关知识点】\n正项级数比较判别法的极限形式：\n设u,和∑v,都是正项级数,且lim\nV\n=A,则\nn→∞u\nn=1\nn=1\n(1）当0<A<+∞时，≥u,和>v,同时收敛或同时发散;\nn=1\nn=1\n(2）当A=O时,若u,收敛,则∑v,收敛；若v,发散,则≥u,发散;\nn=1\nn=1\nn=1\nn=1\n(3）当A=+∞o 时,若∑v,收敛,则≥u,收敛；若≥u,发散,则≥v,发散.\nn=1\nn=1\nn=1\nn=1\n(4）【答案】(C)\n【解析】用洛必达法则.\np()f-p()fx=(x) 但甲\n对该积分上限函数求导数，得\nF'(x)= 2x{f(t)dt +x²f(x)-x²f(x)= 2x{~f(t)dt\nF'(x)\nf(t)dt\nf(t)dt\n所以\nlim\nlim\n= lim\nx→0\n0←x\nx\nx→0\n2 f(x)\n2 f'(x)\n洛lim\n洛lim\nx>0 (k-1)xk-2\n\n[[page:6]]\n2 f(x)\n因为F'(x)与x是同阶无穷小,且f'(0)≠0,所以lim\nF'(x)\n2 f'(x)\n有\nlim\n=lim\nx→0\n十\n故应选(C).\nα(x) =1,\n【相关知识点】设在同一个极限过程中，α(x),β(x)为无穷小且存在极限1\nlim-\nβ(x)\n(1）若l≠0,称α(x),β(x)在该极限过程中为同阶无穷小;\n(～()中())=()\n(3）若l=0,称在该极限过程中α(x)是β(x)的高阶无穷小,记为α(x)=o(β(x)).\nα(x)\n若lim\n不存在(不为∞),称α(x),β(x)不可比较.\nβ(x)\n(5）【答案】(D)\n【解析】可直接展开计算，\na2\nb2\n0\n0\na2\nb2\nD =ab\na3\n0\nb\n0\nb3\na3\n0\n0\na4l\n4\n0\n0\na2\nb2\nb2\nb,b\n(aa-bb)(aa -b,b4),\nb\ntp\na\n所以选(D).\n三、(本题共2小题,每小题5分,满分10分.)\n（1）【解析】由极坐标系下的弧微分公式得\nds = √r2(0)+ r2(0)d0 =a · √(1+ cos 0)² + sin² 0dθ\nθ\n= a· √2(1+ cos 0)d0= 2a cos dθ .\n2\n由于r=r(θ)=α(1+cosθ)以2π为周期,因而θ的范围是θ∈[0,2π].\n又由于r(θ)=r(-θ)，心形线关于极轴对称.由对称性,\nA\nS=2\nds=4a\nCOS\n-d0=8a\nsin\n8g\n2\n\n[[page:7]]\n(2）【解析】用单调有界准则.\n由题设显然有x,>0,数列{x,}有下界.\n证明x,单调减：用归纳法.x2=√6+x=√6+10=4<x；设x,<xn-1，则\nXn+1 = √6+xn<√6+xn-1 = xn.\n由此，x,单调减.由单调有界准则，lim x,存在.\nn→→+0\n设 limx,=α,(a≥0),在恒等式xn+1=√6+x，两边取极限,即\nn→→+00\nlim xn1 = lim\n√6+x, =a=√6+a ,\nn→→+00\n11→+00\n解之得a=3（a=-2舍去).\n【相关知识点】1.单调有界准则：单调有界数列必有极限.\n2．收敛数列的保号性推论：如果数列{x,}从某项起有x,≥0(或x,≤0),且limx，=α,那\n么a≥0(或a≤0).\n四、(本题共2小题,每小题6分,满分12分.)\n(1）【分析一】见下图所示，S在xOy平面与yOz平面上的投影均易求出,分别为\nDx :x²+y² ≤1;\nDy:-1≤y≤l,y²≤z≤1,或0≤z≤1,-√y≤√.\nD\nyZ\n图1\n求“↑zdxdy，自然投影到xOy 平面上.求[(2x+z)dydz时,若投影到xOy 平面上,被积函\nS\n数较简单且可利用对称性.\n【分析二】 令 P(x,y,z)= 2x+z,Q(x, y,z)=0,R(x,y,z)=z ,则 I ={{ Pdydz + Rdxdy .\nOP Q\nOR\n这里，\n-=2+1=3,若用高斯公式求曲面积分I，则较简单.因S不是封闭曲\nox\nOy\noz\n\n[[page:8]]\n面，故要添加辅助曲面.\n【解析】方法一：均投影到平面xOy上,则\nI=(2x+z)dydz+zdxdy =J∫ [(2x+z)(-)+(x²+y²)]dxdy ,\nOx\nDxy\n其中z=x²+y², D:x²+y²≤1.\n=2x代入，得\n把\nOx\n<pxp(<+ x) +<pxp(<+ x)xz -<pxpx- = 1\nDxy\nDxv\nDx\n由对称性得\n<pxp(<+x) {[z= <pxpx+  ^0=<pxp(<+x)xz J]\nDxy\nDxy\nDxy\n所以\nI =-J{(x² + y²)dxdy .\nDxy\n利用极坐标变换有\n方法二：分别投影到yOz平面与xOy平面.\n投影到yOz平面时S要分为前半部分S:x=√z-y²与后半部分S:x=-√z-y2\n(见图1)，则\nI = Jf (2x+z)dydz+J (2x+ z)dydz+ J∫zdxdy\nS\nS2\nS\n由题设,对S法向量与x轴成钝角,而对S2法向量与x轴成锐角.将I化成二重积分得\nI=-{{(2√z-y²+z)dydz+ (-2√z-y²+z)dydz+ {{(x²+y²)dxdy\nDy\nDyz\nDxy\n= -4 Jf √z- y²dydz+ J∫ (x² + y²)dxdy.\nDy\nDx\n\n[[page:9]]\nS√z-y²dydz={dy{√z-y²dz={(z-y²)\n4\n(1- y²)²dy y= sint\ncos+tdt\n3Jo\n43π_π\n34.224'\n(）=<-=(-\n或\nDy:\n（这里\nJ√z-y²dy是半径为√的圆面积的一半.)\n2\nDxy\nππ\n因此,\nI =-4.\nπ\n4\n2\n方法三：添加辅助面S,:z=1(x²+y²≤1),法方向朝下,则\n- = <pxp1∫{-= <pxp { = <pxpz + zp<p(z +xz) {j\nS\nS\n其中 D是S,在平面 xy 的投影区域：x²+y²≤1.\nS与S,即z=x²+y²与z=1围成区域Ω，S与S,的法向量指向Ω 内部,所以在Ω上\n满足高斯公式的条件，所以\nff (2x+ z)dydz + zdxdy = -3ff dV\nSUS,\nΩ\n= -3f dz ∫ dxdy =-3f πzdz = -\n3π\n2\nD(z)\n其中，D(z)是圆域：x²+y²≤z,面积为πz.\n3\n3\n因此，I=-π\nf (2x + z)dydz + zdxdy = -\nπ\nπ-(-π)=\n2\nS\n（2）【解析】由多元复合函数求导法则，得\nze\nzzzn\nax\nnexo e xo ne\naz\nzene ze\nOz\n0z\noy\nOu oy 'dv oy\nne\nOv\n\n[[page:10]]\n²z\n0v .0²z 0v . 0²z 0u\nOu\n所以\nOx\nOx\nx noe x zexe one x0\n0²z\n0²z\ndu\nduov\n0²z\n0²z 0v . 0²z 0v . 0²z 0u\nOz\nOxoy\nOuov\nv oy + av oy  ovou oy\nay\nOu\nOy\n0²z\n0²z\n（a-2）\np+\nOu\nduov\n0v2\nOy\nOvouOy\n0²z\n0²z\nOuov\n+a\nOv2\n代入6\n：0，并整理得\n0x2\nOxoy\n0y2\n0²\n0²z\n(10+5a)\nD-D+9)+\nOxoy\nOy\nOuov\nOv\n于是,令6+α-a²=0得a=3或α=-2.\nα=-2时，10+5a=0，故舍去，a=3时，10+5a≠0，因此仅当a=3时化简为\n=0.\ndudv\n【相关知识点】多元复合函数求导法则：若u=u(x,y)和v=v(x,y)在点(x,y)处偏导数存\n在,函数z=f(u,v)在对应点(u,v)具有连续偏导数,则复合函数z= f[u(x,y),v(x,y)]在\n点(x,y)处的偏导数存在,且\nAe fe'nefezeaefene feze\nee neex e x n_x\n五、 (本题满分7分)\n【解析】先将级数分解，\n10\n\n[[page:11]]\n=\nn=(n² -1)2\"\n一\n1\nQ\n2n+1\n[-u\n2+1\nn+1\n2n+2.n\nn=2\nA =∑\nA,=∑\nn=3 2\"·n\n则\nA=A-A2.\n(-1)”\n由熟知ln(1+x)幂级数展开式,即ln(1+x)=\n-x\"(-1<x≤1)，得\nn=1\nn\nA=\nn（1-\n2n+2\n4\nn\n4\nA=\n(-1)\"-1\n-\n²=-ln(1-\n:ln2-\n8\nn\n5\n3\n因此,\nA = A, - A2\nln2.\n4\n六、 (本题满分7分)\n【解析】曲线y=f(x)上点(x,f(x)）处的切线方程为\nY- f(x)= f'(x)(X -x) .\n令X=0得y轴上的截距Y=f(x)-f'(x)x.由题意,\nf(t)dt = f(x)- f'(x)x .\n为消去积分,两边乘以x,得[f(t)dt=xf(x)- f(x)x²,\n*\n将恒等式两边对x求导，得\nf(x)= f(x)+xf'(x)-2xf'(x)-x²f\"(x) ,\n即\nxf\"(x)+ f'(x)=0 .\n在(*)式中令x=0得0=0自然成立.故不必再加附加条件.就是说f(x)是微分方程\nxy\"+y'=0 的通解.下面求解微分方程xy\"+y'=0.\n11\n\n[[page:12]]\n方法一： xy\"+y'=0=(xy')'=0=→xy'=C,\n因为x>0,所以y′=,\nx\n两边积分得y= f(x)=C,lnx+C2·\nx\n再积分得y= f(x)=C,lnx+C2·\n七、 (本题满分8分)\n【解析】由于问题涉及到f,f'与f\"的关系，自然应当利用泰勒公式,而且应在点c展开：\n2!\n分别取x=0,1得\n(0-c)²，5在c与0之间,\n2!\n(1-c)²，在c与1之间,\n2!\n两式相减得f(1)-f(0)=f'(c)+\n[f\"(5)(1-c)²- f\"()c²],\n2!\n于是\nf'(c)= f(1)- f(0)-:\n[f\"()|≤[f()+|f(0)]+,\"()(-c)+\"()²\n由此\nb\n+>[+(-]+>\n2\n2\n八、 (本题满分6分)\n【解析】（1)因为A=E-T，为数，T为n阶矩阵,所以\nA²=(E-T)(E-T)=E-2gT +5(Tg)gT =E-(2-gT)T ,\n因此,\nA² = AE-(2-gTs)gT =E-gT (sTg-1)sgT =0\n因为是非零列向量,所以T≠0,故A²=AT-1=0,即T=1.\n(2)反证法.当T=1时,由(1)知A²=A,若A可逆,则A=A-'A²=A-'A=E.\n与已知A=E-T≠E矛盾，故A是不可逆矩阵.\n12\n\n[[page:13]]\n九、 (本题满分8分)\n【解析】(1)此二次型对应的矩阵为\n-1\n3\nA=\n-1\n5\n-3\n3\n-3\nC\n因为二次型秩 r(f)=r(A)=2,由\n-1\n3\n4\n4\n0\n4\n0\n0\nA=\n-1\n5\n-3\n3\n6\n-3\n3\n-3\nC\n3\nC\n可得c=3.再由A的特征多项式\n[-5\n1\n-3\n|E-A=\n1\n-5\n3\n=A( -4)(-9)\n-3\n3\n-3\n求得二次型矩阵的特征值为0,4,9.\n(2)因为二次型经正交变换可化为4y²+9y²，故\nf(x,x2,x)=1,即4y²+9y²=1.\n表示椭圆柱面.\n【相关知识点】主轴定理：对于任一个n元二次型\nf(x,X2,...,x) =xT Ax,\n存在正交变换x=Ωy（Q为n阶正交矩阵)，使得\nx\" Ax = y(Q AQ)y = Ay²+ Ay² + .+ ²\n其中,,··,,是实对称矩阵A的n个特征值，Q的n个列向量α,α2,,α,是A对应于\n特征值,，·,,的标准正交特征向量.\n十、填空题(本题共2小题,每小题3分,满分6分.)\n3\n（1）【答案】\n7\n【解析】设事件C=“抽取的产品是次品”，事件D=“抽取的产品是工厂A生产的”，\n则事件D表示“抽取的产品是工厂B生产的”，依题意有\nP(D) = 0.60, P(D) = 0.40, P(C | D) = 0.01, P(C | D) = 0.02 .\n13\n\n[[page:14]]\n应用贝叶斯公式可以求得条件概率P(D|C)：\nP(D)P(C | D)\n0.6 x0.01\nP(D|C)=\nP(D)P(C | D) + P(D)P(C | D)\n0.6×0.01+0.4x0.02\n【相关知识点】贝叶斯公式：设试验E的样本空间为S．A为E的事件,B,B2,,B,为S的\n一个划分,且P(A)>0,P(B)>0(i=1,2,···,n)，则\nP(B)P(A| B;)\nP(B;| A) = -\n,i =1,2,...,n.\n(*)\n∑P(B,)P(A|B,)\nj=1\n(*)式称为贝叶斯公式.\n2\n(2）【答案】\n【解析】由于与n相互独立且均服从正态分布N(0,(-\n2），因此它们的线性函数\nU=-服从正态分布,且\nEU =E(-n)=Eg-En=0,\nDU=D(-n)=D+D=\n=1，\n22\n所以有\nU ~ N(0,1).\n代入正态分布的概率密度公式，有\nu²\nf(u)=\n2du.\n√2π\n应用随机变量函数的期望公式有\nE(-D=E(UI)=|\nn\n√2π\n12元\n由凑微分法,有\nE(-nl)=-2|\n√2元\n【相关知识点】对于随机变量X与Y均服从正态分布,则X与Y的线性组合亦服从正态分\n布.\n若X与Y相互独立,由数学期望和方差的性质,有\n14\n\n[[page:15]]\nE(aX +bY +c)=aE(X)+bE(Y)+c ,\nD(aX +bY +c) =a²D(X)+b²D(Y) ,\n其中a,b,c为常数.\n十一、(本题满分6分.)\n）））））)（【】\n{X<Y}=の,故P{X<Y}=0,即\n‘0={=x=x}d={==x}={==x}d\n{1=()uw=()xeu}={==x}d\n=P{=1,n=1}=P{=1}P{=1}=\n类似地可以计算出所有P;的值列于下表中,得到随机变量(X,Y)的联合分布律：\nX\nY\n1\n2\n3\n1\n0\n0\n9\n2\n1\n2\n0\n9\n9\n2\n2\n1\n3\n9\n9\n9\n(2)将表中各行元素相加求出X的边缘分布\n[1\n2\n3\nX~\n1\n3\n5\n.9\n9\n9\n由离散型随机变量数学期望计算公式可得\n3\n5\n22\nEX：\n9\n9\n9\n9\n【相关知识点】\n1.离散型随机变量的边缘分布计算公式：\n二维离散型随机变量(X,Y)关于X与Y的边缘概率分布或边缘分布律分别定义为：\n15\n\n[[page:16]]\nPi. =P{X =x,}=∑P{X =x,Y= y,}=∑Pyi=1,2,.\n=!d={<=xx=x}d={<=x}d=d\n它们分别为联合分布律表格中第i行与第j列诸元素之和.\n2．离散型随机变量数学期望计算公式：E(X)=x·P{X=x}.\nk=1\n16",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-01.png",
+      "line_count": 67,
+      "avg_score": 0.9126,
+      "elapsed": [
+        2.0582055000122637,
+        0.30599260330200195,
+        5.111166715621948
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-02.png",
+      "line_count": 28,
+      "avg_score": 0.9179,
+      "elapsed": [
+        1.182151700137183,
+        0.07025980949401855,
+        6.341062784194946
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-03.png",
+      "line_count": 76,
+      "avg_score": 0.8852,
+      "elapsed": [
+        1.257869299966842,
+        0.20675444602966309,
+        4.025020122528076
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-04.png",
+      "line_count": 56,
+      "avg_score": 0.8833,
+      "elapsed": [
+        1.2533161002211273,
+        0.13796401023864746,
+        4.817609071731567
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-05.png",
+      "line_count": 70,
+      "avg_score": 0.9251,
+      "elapsed": [
+        1.157575799850747,
+        0.36222171783447266,
+        4.428704500198364
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-06.png",
+      "line_count": 67,
+      "avg_score": 0.9066,
+      "elapsed": [
+        1.1837492999620736,
+        0.22011113166809082,
+        4.745138883590698
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-07.png",
+      "line_count": 34,
+      "avg_score": 0.8798,
+      "elapsed": [
+        1.13173110014759,
+        0.0995631217956543,
+        4.552613973617554
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-08.png",
+      "line_count": 37,
+      "avg_score": 0.906,
+      "elapsed": [
+        1.0977882000152022,
+        0.1282641887664795,
+        3.7826337814331055
+      ]
+    },
+    {
+      "page": 9,
+      "image": "images\\answer_pages\\page-09.png",
+      "line_count": 56,
+      "avg_score": 0.8674,
+      "elapsed": [
+        1.1877533998340368,
+        0.07543444633483887,
+        4.265828609466553
+      ]
+    },
+    {
+      "page": 10,
+      "image": "images\\answer_pages\\page-10.png",
+      "line_count": 59,
+      "avg_score": 0.793,
+      "elapsed": [
+        1.269736499991268,
+        0.4282677173614502,
+        3.9379513263702393
+      ]
+    },
+    {
+      "page": 11,
+      "image": "images\\answer_pages\\page-11.png",
+      "line_count": 54,
+      "avg_score": 0.919,
+      "elapsed": [
+        1.1737476999405771,
+        0.1724410057067871,
+        3.3910789489746094
+      ]
+    },
+    {
+      "page": 12,
+      "image": "images\\answer_pages\\page-12.png",
+      "line_count": 34,
+      "avg_score": 0.9193,
+      "elapsed": [
+        1.2091007998678833,
+        0.10565471649169922,
+        4.567717790603638
+      ]
+    },
+    {
+      "page": 13,
+      "image": "images\\answer_pages\\page-13.png",
+      "line_count": 62,
+      "avg_score": 0.9659,
+      "elapsed": [
+        1.110906400019303,
+        0.07243657112121582,
+        5.086052179336548
+      ]
+    },
+    {
+      "page": 14,
+      "image": "images\\answer_pages\\page-14.png",
+      "line_count": 43,
+      "avg_score": 0.9333,
+      "elapsed": [
+        1.3147759998682886,
+        0.12197685241699219,
+        3.991598606109619
+      ]
+    },
+    {
+      "page": 15,
+      "image": "images\\answer_pages\\page-15.png",
+      "line_count": 56,
+      "avg_score": 0.9559,
+      "elapsed": [
+        1.345535899978131,
+        0.16132497787475586,
+        4.132552146911621
+      ]
+    },
+    {
+      "page": 16,
+      "image": "images\\answer_pages\\page-16.png",
+      "line_count": 6,
+      "avg_score": 0.9168,
+      "elapsed": [
+        1.0900435999501497,
+        0.013908147811889648,
+        2.0318846702575684
+      ]
+    }
+  ]
+}

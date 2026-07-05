@@ -1,0 +1,43 @@
+{
+  "exam_id": "kaoyan_math1_1995",
+  "exam_type": "math1",
+  "exam_label": "数学一",
+  "year": 1995,
+  "source_files": {
+    "questions": "math1_1995_questions.md",
+    "answers": "math1_1995_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 22,
+  "explanation_count": 22,
+  "question_ids": [
+    "kaoyan_math1_1995_q001",
+    "kaoyan_math1_1995_q002",
+    "kaoyan_math1_1995_q003",
+    "kaoyan_math1_1995_q004",
+    "kaoyan_math1_1995_q005",
+    "kaoyan_math1_1995_q006",
+    "kaoyan_math1_1995_q007",
+    "kaoyan_math1_1995_q008",
+    "kaoyan_math1_1995_q009",
+    "kaoyan_math1_1995_q010",
+    "kaoyan_math1_1995_q011",
+    "kaoyan_math1_1995_q012",
+    "kaoyan_math1_1995_q013",
+    "kaoyan_math1_1995_q014",
+    "kaoyan_math1_1995_q015",
+    "kaoyan_math1_1995_q016",
+    "kaoyan_math1_1995_q017",
+    "kaoyan_math1_1995_q018",
+    "kaoyan_math1_1995_q019",
+    "kaoyan_math1_1995_q020",
+    "kaoyan_math1_1995_q021",
+    "kaoyan_math1_1995_q022"
+  ],
+  "generated_at": "2026-06-30T07:09:43.260221+00:00",
+  "paper_scope": "试卷 I only",
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

@@ -1,0 +1,57 @@
+{
+  "exam_id": "kaoyan_math3_1989",
+  "exam_type": "math3",
+  "exam_label": "数学三",
+  "year": 1989,
+  "source_files": {
+    "questions": "math3_1989_questions.md",
+    "answers": "math3_1989_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 21,
+  "explanation_count": 21,
+  "question_ids": [
+    "kaoyan_math3_1989_q001",
+    "kaoyan_math3_1989_q002",
+    "kaoyan_math3_1989_q003",
+    "kaoyan_math3_1989_q004",
+    "kaoyan_math3_1989_q005",
+    "kaoyan_math3_1989_q006",
+    "kaoyan_math3_1989_q007",
+    "kaoyan_math3_1989_q008",
+    "kaoyan_math3_1989_q009",
+    "kaoyan_math3_1989_q010",
+    "kaoyan_math3_1989_q011",
+    "kaoyan_math3_1989_q012",
+    "kaoyan_math3_1989_q013",
+    "kaoyan_math3_1989_q014",
+    "kaoyan_math3_1989_q015",
+    "kaoyan_math3_1989_q016",
+    "kaoyan_math3_1989_q017",
+    "kaoyan_math3_1989_q018",
+    "kaoyan_math3_1989_q019",
+    "kaoyan_math3_1989_q020",
+    "kaoyan_math3_1989_q021"
+  ],
+  "source_page_assets": [
+    "images/source_pages/page_009.png",
+    "images/source_pages/page_010.png",
+    "images/source_pages/page_011.png"
+  ],
+  "answer_page_assets": [
+    "images/answer_pages/page_001.png",
+    "images/answer_pages/page_002.png",
+    "images/answer_pages/page_003.png",
+    "images/answer_pages/page_004.png",
+    "images/answer_pages/page_005.png",
+    "images/answer_pages/page_006.png"
+  ],
+  "status": "reviewed",
+  "notes": [
+    "题干使用 TeX 源按数学三试卷四顺序还原。",
+    "答案解析使用同年数学三答案解析 PDF 文本层按 TeX 题目结构拆分。",
+    "PDF 页面图渲染为复核辅助资产，不替代题干正文。"
+  ],
+  "generated_at": "2026-07-03T10:30:25.915445+00:00"
+}

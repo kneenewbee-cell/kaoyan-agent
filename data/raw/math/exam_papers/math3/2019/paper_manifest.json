@@ -1,0 +1,17 @@
+{
+  "exam_id": "kaoyan_math3_2019",
+  "exam_type": "math3",
+  "year": 2019,
+  "question_count": 23,
+  "source_files": [
+    "math3_2019_questions.md",
+    "math3_2019_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "2019 年原 OCR 中间文件存在中文乱码，本脚本按源页图与答案页图重建题干、答案和解析。",
+    "公式统一使用 LaTeX 块或行内公式，不使用 text code fence 表示数学公式。"
+  ]
+}

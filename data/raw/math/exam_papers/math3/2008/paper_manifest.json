@@ -1,0 +1,20 @@
+{
+  "exam_id": "kaoyan_math3_2008",
+  "exam_type": "math3",
+  "year": 2008,
+  "question_count": 23,
+  "source_files": [
+    "math3_2008_questions.md",
+    "math3_2008_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "2008 年数三题卡、总题面与总答案已完成中文文本精修。",
+    "图形题继续复用 question_assets 中的原始裁图作为展示辅助。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}

@@ -1,0 +1,115 @@
+{
+  "text": "[[page:1]]\n1995 年全国硕士研究生入学统一考试数学一试题解析\n一、填空题(本题共5个小题,每小题3分，满分15分.)\n(1）【答案】e6\n【解析】这是1°型未定式求极限，\n2\n1.3x.2\nlim(1 + 3x)sinx = lim(1+3x)3x\nsin.x\n0←x\n0←x\n令3x=t,则当x→0时，t→0,所以\nlim(1+3x)3x = lim(1+t)' =e ,\nx→→0\n0←\n2\n6.x\nlim-\n6.x\nlim(1 + 3x)sinx = lim esinx :\n6 lim\n故\nx→0sinx\n=e\nx→0sinx\n0←x\nx→0\n(2）【答案】\nd\n【解析】\ndx\n= J cost²dt- xcos(x²)²-(2x)\ncost?dt - 2x² cos x4 .\n【相关知识点】积分上限函数的求导公式：\ndcB(x)\nf(t)dt = f(β(x))B'(x)- f(a (x))a'(x).\ndxJa(x)\n(3）【答案】4\n【解析】利用向量运算律有\n[(a+b)x(b+c)]·(c+a)\n=[(a+b)xb]·(c+a)+[(a+b)xc]·(c+a)\n=(axb+bxb)·(c+a)+(axc+bxc)·(c+a) (其中bxb=0)\n=(axb).c+(axb).a+(axc).c+(bxc)·a\n=(axb).c+(bxc).a\n=(axb)·c+(axb).c=4.\n(4）【答案】√3\n\n[[page:2]]\n【解析】令αn=\nn\n(2m-l,则当n→∞o时,有\n2\" +(-3)\"\nn+1\n2(n+1)-1\nlim\nn+1\nlim\nn→00\nan\nn→o0\nn\n.2n-1\nx\n2\"+(-3)\"\n3”\n+(-1)\"\n3\n= lim x\nn→→∞0\nn\n2\n+1\n3n+1\n+(-1)\"+1\n而当÷x\nx²<1时,幂级数收敛,即|x<√3时,此幂级数收敛,当x²\nx²>1时,即|x|>√3时,此\n3\n3\n幂级数发散,因此收敛半径为R=√3.\n3\n0\n0\n（5）【答案】\n0\n2\n0\n0\n0\n【解析】在已知等式A-'BA=6A+BA两边右乘以A-',得A-'B=6E+B，即\n(A-' -E)B =6E.\n3\n0\n0\n因为\nA-=\n0\n4\n0，所以\n0\n0\n7\n0\n0\n3\nB = 6(A-' -E)-' =6\n0\n3\n0\n0\n2\n0\n0\n0\n6\n0\n二、选择题（本题共5个小题，每小题3分，满分15分.）\n(1）【答案】(C)\n【解析】这是讨论直线L的方向向量与平面Ⅱ的法向量的相互关系问题.\n直线L的方向向量\nj\nk\n3\n2\n=-28i+14j-7k=-7(4i-2j+k),\n2\n-1\n-10\n平面Ⅱ的法向量n=4i-2j+k，lIln，L⊥I.应选(C).\n\n[[page:3]]\n(2）【答案】(B)\n【解析】由f\"(x)>0可知f'(x)在区间[0,1]上为严格单调递增函数,故\nf'(1)> f'(x)> f'(0),(0 <x <1)\n由微分中值定理，f(1)-f(0)=f'(5),(0<<1).所以\nf'(1)> f(1)-f(0)= f'(5)> f'(0),(0<<1)\n故应选择(B).\n(3）【答案】（A)\n【解析】由于利用观察法和排除法都很难对本题作出选择，必须分别验证充分条件和必要\n条件.\n充分性:因为f(0)=0,所以\nF(x)-F(0)\nf(x)(1+ |sin x)\n=lim\nf(x)\nf(x)- f(0)\nlim\nlir\n1im\n= f(0)，\n0←x\nx\n0←x\nx\nx→0\nx\n0←x\nx\n由此可得F(x)在x=0处可导.\n必要性:设F(x)在x=O处可导,则f(x)·sinx在x=0处可导,由可导的充要条件知\nf(x)·|sin x]\nf(x) ·|sin x\nlim\nlim\n_0←x\nx\nx→0+\nx\nsin x\n根据重要极限lim\n=1，可得\nx→0\nx\nsin x\nsin x\nsinx\nsin x\nlim\nlim\n-1,，lim\nlim\n=1，\n②\n0←x\nx\n0←x\nx\n0←x\nx\n+0←x\nx\n结合①,②,我们有f(0)=-f(0),故f(0)=0.应选(A).\n(4）【答案】(C)\n【解析】这是讨论u,与∑u敛散性的问题.\nn=1\nn=1\n∑u, =∑(-1)\"ln\n是交错级数，显然ln(1+\n单调下降趋于零，由莱布尼\nn=1\nn=1\n兹判别法知，该级数收敛.\n正项级数\nn=1\n\n[[page:4]]\n根据正项级数的比较判别法以及\n∑一发散,→∑u²发散.因此,应选(C).\nn=1n\nn=1\n【相关知识点】\n正项级数的比较判别法：\n设>u和\n=A,则\nV\nv，都是正项级数，且lim\nn→∞Un\nn=1\nn=1\n(1）当0<A<+∞o时，≥u,和≥v同时收敛或同时发散;\nn=1\nn=1\n(2）当A=O时,若u,收敛,则∑v,收敛；若∑v,发散,则u,发散;\nn=1\nn=1\nn=1\nn=1\n(3）当A=+∞时,若∑v,收敛,则≥u,收敛；若u,发散,则∑v, 发散.\nn=1\nn=1\nn=1\nn=1\n(5）【答案】(C)\n【解析】P是交换单位矩阵的第一、二行所得初等矩阵，P,是将单位矩阵的第一行加到\n第三行所得初等矩阵；\n而B是由A先将第一行加到第三行，然后再交换第一、二行两次初等交换得到的，因此\nPP2A=B,故应选(C).\n三、(本题共2小题,每小题5分,满分10分.)\n（1）【解析】这实质上已经变成了由方程式确定的隐函数的求导与带抽象函数记号的复合函\n数求导相结合的问题.\ndz\n先由方程式μp(x²,e\",z)=0,其中 y= sinx 确定z=z(x),并求\ndx\n将方程两边对x求导得\nzp\nP'·2x+p²·e\" cosx+ p'\n0\ndx\ndz\n1\n解得\nP'· 2x+ p²·e\" cosx)\ndx\nP3\n现再将u= f(x,y,z)对x求导,其中 y=sinx，z=z(x),\ndu\ndz\n可得\nf'+ f\"·cosx+ f'\ndx\ndx\ndu\n将①式代入得\nf'+ f'·cosx- f'\np'·2x+p'·e cosx)\ndx\n【相关知识点】\n多元复合函数求导法则：如果函数u=p(x,y),v=y(x,y)都在点(x,y)具\n\n[[page:5]]\n有对x及对y的偏导数,函数z=f(u,v)在对应点(u,v)具有连续偏导数,则复合函数\nz= f((x,y),y(x,y))在点(x,y)的两个偏导数存在,且有\nznzz\ndx\nOu ox 0v @x\nze'ne zeze\nne\nOy\ndu oy dv oy\nOy\n(2）【解析】方法一：用重积分的方法.\n将累次积分I=JdxJf(x)f(v)dy 表成二重积分\nI ={ f(x)f(y)dxdy ,\nD\n其中D如右图所示.交换积分次序\nI = Sdyf f(x)f(y)dx .\n由于定积分与积分变量无关,改写成\nI=Jdx]* f(y)f(x)dy .\np(x)f(x)s xpJ+p(<)f(x)xpJ= 17)\n=<p()fxp(x)f=p(),f(x)xp=\nA2\n2\n方法二：用分部积分法.\n注意d(Jf(y)dy=-f(x)dx ,将累次积分I 写成\n1=f(f(x)ff(y)dy px=-Jf(y)dya (f(y)dy\n(f(ay)\n四、(本题共2小题,每小题6分,满分12分.）\n(1）【解析】将曲面积分I化为二重积分I=「ff(x,y)dxdy .\nDxy\n首先确定被积函数\nf(x,y)=z√1+z²+z²=\n对锥面z=√x²+y²而言，√1+z²+\n\n[[page:6]]\n其次确定积分区域即在xOy平面的投影区域Dx\n(见右图)，按题意：\nDw :x²+y²≤2x,即(x-1)²+ y²≤1.\nDx\nx² + y²dxdy .\nDx\n作极坐标变换x=rcosθ,y=rsinθ，则\nπ\n2\n2\n2cos θ\n因此\n2cosθ\nr·rdr =2√2\nd0=\n9\n(2）【解析】这就是将f(x)作偶延拓后再作周期为4的周期延拓.于是得f(x)的傅氏系数：\nb, = 0(n =1,2,3,...)\nnπx\nl=2\nnπ\n(x)cos\n1)c0\nxdx\n1\n2\nnπ\n2\n2\nnπ\n-1)d sin\nsin\nxdx\nnπ\n2\nnπ\n2\n4\n2\nnπ\n4\nCOS\n(-1)\"-1)\nx\n2\n-2\nnπ\nnπ\n0\n-8\nk= 1,2,3,...\n0,\nn=2k,\n-(x-1)²\n=0.\n2\n由于(延拓后）f(x)在[-2,2]分段单调、连续且f(-1)=1.于是f(x)有展开式\n8\n(2n-1)π\nf(x)=-\nCOS\n-x,x e[0,2] .\nπ\n(2n-1)²\n2\n五、 (本题满分7分)\n【解析】设点M 的坐标为(x,y),则M 处的切线方程为Y-y=y'(X-x).\n令 X=0,得Y=y-xy',切线与y 轴的交点为 A(O,y-xy).由 MA|=OA|,有\n√x²+(xy)² =|y-xy1.\n\n[[page:7]]\n化简后得伯努利方程\n2yy'\nx\n令z=y²，方程化为一阶线性方程\n-Z=-x.\nx\n解得z=x(c-x)，即\ny²=cx-x²,亦即 y=√cx-x²\n又由\n得c=3,L的方程为 y=√3x-x²(0<x<3).\n六、 (本题满分8分)\n【解析】在平面上{Pdx+Qdy与路径无关(其中 P,Q有连续偏导数)，\nOP\nQ\nQ\n，即\n=2x.\noy\nOx\nOx\n对x积分得\nQ(x,y)=x²+p(y),其中 μp(y)待定.代入另一等式得对t,\n(t,1)\np(<)+ x)+xp(x{=<p(<)+ x)+xp(xz\nJ(0,0)\n下面由此等式求p(y).\n方法一：易求得原函数\n2xydx +(x² + (p(y)dy = ydx² + x²dy+ p(y)dy\n=d(x²y)+a(S p(s)ds)=d(x²y+ J°p(s)ds)\n于是由①式得\np(s)ds\ns)ds\n(0,0）\n(0,0)\n即\n+[p(s)ds =t+[p(s)ds ,亦即\nt² =t+ ∫, p(s)ds\n求导得\n2t=1+p(t)，即\np(t)= 2t -1.\n因此\nQ(x,y)=x² +2y -1 .\n方法二：取特殊的积分路径：对①式左端与右端积分分别取积分路径如下图所示.\nyL\n(t,1)\n(1,t)\n于是得\n(t² +p(y)dy = J’(1+p(y))dy .\n\n[[page:8]]\n即\nt²+{p(y)dy =t+ ∫o(y)dy ,亦即 t² =t+J’p(y)dy\n其余与方法一相同.\n七、 (本题满分8分)\n【解析】(1)反证法.假设3c∈(a,b),使g(c)=0.则由罗尔定理，5∈(a,c)与2∈(c,b),\n使g'()=g'(2)=0；从而由罗尔定理，∈(,2)(a,b)，g\"()=0.这与\ng\"(x)≠0矛盾.\n“，（，)\n这应该从所要证明的结果来考察.由证明的结果可以看出本题即证f(x)g\"(x)-f\"(x)g(x)\n在(a,b)存在零点.\n方法一：注意到\nf(x)g\"(x)- f\"(x)g(x)=(f(x)g'(x)-f(x)g(x),\n考察f(x)g\"(x)-f\"(x)g(x)的原函数,令\np(x) = f(x)g'(x)- f'(x)g(x),\n→p(x)在[a,b]可导，(a)=p(b)=0.由罗尔定理，∈(a,b)，使p'(5)=0.即有\nf() _ f\"(5)\nf()g\"()-f\"(5)g()=0,亦即\ng(5) g\"(5)\n方法二：若不能像前面那样观察到f(x)g\"(x)-f\"(x)g(x)的原函数,我们也可以用积分来\n讨论这个问题：\nf(x)g\"(x)- f\"(x)g(x)=(?)' {[f(x)g\"(x)- f\"(x)g(x) Jdx =? .\n{[f(x)g\"(x)- f\"(x)g(x)]dx = {f(x)dg'(x)- {g(x)df'(x)\nxp(x),8(x),f {-(x)8(x),f]- [xp(x),f(x),8J-(x),8(x)f]=\n= f(x)g'(x)- f'(x)g(x) (取C=0).\n令p(x)=f(x)g'(x)-f(x)g(x),其余与方法一相同.\n八、 (本题满分7分)\n【解析】设对应于==1的特征向量为=(x,x2,x）,因为A为实对称矩阵,且实对\n\n[[page:9]]\n称矩阵的不同特征值所对应的特征向量相互正交,故T=0,即x2+x,=0.\n解之得\n52 =(1,0,0),5, =(0,1,-1)T .\n于是有\nA(5,,)=(A,,),\n所以\nA =(A5,A,A5)(,,5)-1\n0\n0\n0\n0\n0\n0\n-1\n0\n1\n0\n0\n0\n-1\n-1\n0\n九、 (本题满分6分)\n【解析】方法一：根据AAT=E有\n|A+E|=| A+ AAT |= A(E+ A\")|=| AIIE+ A|= AI| A+E| ,\n移项得\n(1-|A)| A+E|=O.\n因为|4|<0,故1-|A|>0.所以|A+E|=0.\n方法二：因为（A+E)AT=AA”+A\"|=E+ A\"=|E+A|,\n所以\n[A+E||4|=|E + A],\n即\n(1-|AI)| A+E|=O.\n因为|4|<0,故1-|A|>0.所以|A+E|=0.\n十、填空题(本题共2小题，每小题3分，满分6分.)\n（1）【解析】由题设,因为是独立重复实验,所以X服从n=10,p=0.4的二项分布.\n由二项分布的数学期望和方差计算公式，有\nE(X) =np = 4,D(X)= np(1- p) = 2.4 ,\n根据方差性质有\nE(X²)= D(X)+[E(X)]² =18.4 .\n(2）【解析】令A={X<0},B={Y<0}，则\nP{max(X,Y)≥0} =1-P{max(X,Y)<0} =1-P{X <0,Y <0} .\n\n[[page:10]]\n由概率的广义加法公式P(AUB)=P(A)+P(B)-P(AB),有\nP{max(X,Y)≥0} =1-[1 -P(AB)] =P(A +B) =P(A)+ p(B)-P(AB)\n44\n3\n5\n十一、 (本题满分6分)\n【解析】方法1：用分布函数法先求Y的分布函数F(y).\n当y≤1时,\nF(y)=0;\n当y>1时,\nF(y)=P{Y≤y}=P(ex≤y) = P{X<lny}\n所以由连续型随机变量的概率密度是分布函数的微分,得\ny>1,\nf(y)=F(y)={\n0,\ny≤1.\n或者直接将\ne*dx对y求导数得\n= xpx-\nIny\ne\ndy\ny\n方法2：用单调函数公式直接求Y的概率密度.\n由于y=e^在(0,+oo)内单调,其反函数x=h(y)=lny在(1,+oo)内可导且其导数为\n≠0，则所求概率密度函数为\n[h(y)· fx(h(y),y>1,\nfy(y)=\n0,\ny≤1.\n0\n≤1.\n[0,\ny≤1.\n【相关知识点】对积分上限的函数的求导公式：\n若 F(t)={f(x)dx，α(t)，β(t)均一阶可导,则\nF'(t)= β'(t)· f [B(t)]-α'(t)· f [α(t)].",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-01.png",
+      "line_count": 45,
+      "avg_score": 0.9283,
+      "elapsed": [
+        2.1757714000996202,
+        0.08771777153015137,
+        4.3845930099487305
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-02.png",
+      "line_count": 81,
+      "avg_score": 0.9392,
+      "elapsed": [
+        1.1497125998139381,
+        0.3094668388366699,
+        3.9572012424468994
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-03.png",
+      "line_count": 73,
+      "avg_score": 0.8973,
+      "elapsed": [
+        1.1742105002049357,
+        0.06561064720153809,
+        4.64032244682312
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-04.png",
+      "line_count": 62,
+      "avg_score": 0.9422,
+      "elapsed": [
+        1.2163012998644263,
+        0.28751707077026367,
+        5.086402893066406
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-05.png",
+      "line_count": 32,
+      "avg_score": 0.8624,
+      "elapsed": [
+        1.2055460999254137,
+        0.05519247055053711,
+        3.6259191036224365
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-06.png",
+      "line_count": 69,
+      "avg_score": 0.9208,
+      "elapsed": [
+        1.1840323999058455,
+        0.3181755542755127,
+        3.9732935428619385
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-07.png",
+      "line_count": 48,
+      "avg_score": 0.9073,
+      "elapsed": [
+        1.0486082998104393,
+        0.07710146903991699,
+        4.33903956413269
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-08.png",
+      "line_count": 27,
+      "avg_score": 0.9373,
+      "elapsed": [
+        1.189304200001061,
+        0.1917552947998047,
+        4.391350746154785
+      ]
+    },
+    {
+      "page": 9,
+      "image": "images\\answer_pages\\page-09.png",
+      "line_count": 42,
+      "avg_score": 0.9333,
+      "elapsed": [
+        1.2147009000182152,
+        0.20378470420837402,
+        4.9901227951049805
+      ]
+    },
+    {
+      "page": 10,
+      "image": "images\\answer_pages\\page-10.png",
+      "line_count": 37,
+      "avg_score": 0.9367,
+      "elapsed": [
+        1.1812156999949366,
+        0.07207274436950684,
+        4.217400789260864
+      ]
+    }
+  ]
+}

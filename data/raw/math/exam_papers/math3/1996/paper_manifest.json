@@ -1,0 +1,66 @@
+{
+  "exam_id": "kaoyan_math3_1996",
+  "exam_type": "math3",
+  "exam_label": "数学三",
+  "year": 1996,
+  "source_files": {
+    "questions": "math3_1996_questions.md",
+    "answers": "math3_1996_answers.md"
+  },
+  "card_dir": "questions",
+  "index_file": "questions.jsonl",
+  "question_count": 21,
+  "explanation_count": 21,
+  "question_ids": [
+    "kaoyan_math3_1996_q001",
+    "kaoyan_math3_1996_q002",
+    "kaoyan_math3_1996_q003",
+    "kaoyan_math3_1996_q004",
+    "kaoyan_math3_1996_q005",
+    "kaoyan_math3_1996_q006",
+    "kaoyan_math3_1996_q007",
+    "kaoyan_math3_1996_q008",
+    "kaoyan_math3_1996_q009",
+    "kaoyan_math3_1996_q010",
+    "kaoyan_math3_1996_q011",
+    "kaoyan_math3_1996_q012",
+    "kaoyan_math3_1996_q013",
+    "kaoyan_math3_1996_q014",
+    "kaoyan_math3_1996_q015",
+    "kaoyan_math3_1996_q016",
+    "kaoyan_math3_1996_q017",
+    "kaoyan_math3_1996_q018",
+    "kaoyan_math3_1996_q019",
+    "kaoyan_math3_1996_q020",
+    "kaoyan_math3_1996_q021"
+  ],
+  "source_page_assets": [
+    "images/source_pages/page_039.png",
+    "images/source_pages/page_040.png",
+    "images/source_pages/page_041.png"
+  ],
+  "answer_page_assets": [
+    "images/answer_pages/page_001.png",
+    "images/answer_pages/page_002.png",
+    "images/answer_pages/page_003.png",
+    "images/answer_pages/page_004.png",
+    "images/answer_pages/page_005.png",
+    "images/answer_pages/page_006.png",
+    "images/answer_pages/page_007.png",
+    "images/answer_pages/page_008.png",
+    "images/answer_pages/page_009.png",
+    "images/answer_pages/page_010.png",
+    "images/answer_pages/page_011.png",
+    "images/answer_pages/page_012.png",
+    "images/answer_pages/page_013.png",
+    "images/answer_pages/page_014.png",
+    "images/answer_pages/page_015.png"
+  ],
+  "status": "reviewed",
+  "notes": [
+    "题干使用 TeX 源按数学三试卷四顺序还原。",
+    "答案解析使用同年数学三答案解析 PDF 文本层按 TeX 题目结构拆分。",
+    "PDF 页面图渲染为复核辅助资产，不替代题干正文。"
+  ],
+  "generated_at": "2026-07-03T10:30:42.378297+00:00"
+}

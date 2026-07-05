@@ -1,0 +1,82 @@
+{
+  "text": "[[page:1]]\n2014年（数一）真题答案解析\n一、选择题\n(1) C\n解\n由渐近线定义可知,四个选项的曲线均不存在水平渐近线和垂直渐近线.\n1\n对于y=+sin\n一，可知\nx\n1\nx+ sin\nf(x)\na =lim\n=lim\nx\n=lim\nx\n1\nb=lim[f(x）－ax]=limsin\n=0.\nx\n所以y=x是y=+sin\n的斜渐近线.故应选C.\ng(x)\n(1,f(1))\n(2) D\n解当f\"(x)≥O时,f(x）是凹函数.\n(0,f(0))\nAx)\n而g（x）=［f（1）－f（o)]x+f（o）可视为连接（0,f（0)）与\n0\n1\n（1,f（1)）的直线段,如右图所示,则f(x）≤g（x）.\n故应选 D.\n(3) D\n解\n积分区域如右图所示，换成极坐标则为\ncox0--sin0\ndo\nf(rcosθ,rsinθ)rdr +\ndoI, f(rcosθ ,rsinθ)rdr.\n故应选 D.\n(4) A\n2\n解\n因为\n(x—acosx —bsinx)²dx =\n3+π(a²+b²-46).\n3\n所以相当于求α²+b²－4b 极小值点.\n显然α=0,b=2时积分最小，即acosx+bsin.x=2sinx.\n故应选A.\n(5）B\n解\n由行列式展开定理按第一列展开：\na\nb\n0\n6\n0\nb\n0\n0\n0\n6\nd\n0\n0\n0\n6\n0\nC\nd\n0\n0\n0\nd\np\n0\n0\n0\nd\n—ad(ad -bc)+bc(ad --bc)=-(ad -bc)².\n故应选B.\n(6) A\n0\n因为（α+kα,α2+lα）=（α,α2α3）\n0\n1\n=(α1,α2,α3)A.\nk\n对任意的常数k,l,矩阵α的秩都为2，\n\n[[page:2]]\n所以若向量α1,α2α线性无关,则α+kα,α2+lα一定线性无关.\n[1]\n[o]\n[o]\n而当α=|0|,α=\n1,α3=\n0时，\n0\n0\n对任意的常数k,l,向量α+kα3,α2+lα线性无关，但α1,α2,α线性相关.故应选A.\n(7） B\n解\n)-)=()()()=()-()=(-))\n=0.5P(A)=0.3,\n得P（A）=0.6,\n则P(B-A)=P(B)-P(AB)=P(B)-P(A)P(B)=0.2.\n故应选 B.\n(8) D\n解\nEY,=\nyf(y)dy +\n..yf(y)d\n(EX, +EX2),\n2\n1\n√\nEY2\n-E(X,+X2）=\n(EX,+EX2),\n2\n2\n故EY，=EY2,又因为\nDY, =E(Y²) -(EY,)²,DY, =E(Y²) -(EY2)²,\n则 DY, - DY2 =E(Y²) -E(Y²)\n1\n\"y²f(y)dy+|y²f(y）\n(X,+X2)2\n2\n1\n1\n1\nE(X²)\nE(X)\nE[(X, +X2)²]\n2\n2\n4\n1\nE(X² +x2 -2X,X2):\n-E[(x, -x2)²] > 0,\n4\n4\n即 DY，>DY2.故应选 D.\n二、填空题\n(9） 2x -y-z=l\n解\nZ'=2x(1 - siny)- cosx ·y²,Z'(1,0) =2.\nZ'=-x²cosy + 2y(1 - sinx),Z'(1,0) =-1.\n所以曲面在（1,0,1）处的法向量为n={2，一1，一1}.\n则切平面方程为2(x-1）+（-1)（－0)+（-1)（z-1）=0,\n即2x-y-=l.\n（10）1\n解 f(x)=|2(x -1)dx =x²-2x+C,x ∈[0,2].\n因为f（x）为奇函数,所以f（0）=0,可知C=0，\n即f(x)=x²-2x.\n又f(x）的周期为 4,故f（7)=f（-1+8）=f（-1）=-f(1）=1.\n(11) xe2z+1\n解方程变形为y′=In,属于齐次方程.\n设u=,则u\ndu\n=ulnu,\ndx\n\n[[page:3]]\ndu\n分离变量得\nu(lnu -1)\ndu\n两边积分得\nu(lnu-1)\nx\nln| lnu - 1 ↓=lnx +C,\n即lnu-1=Cx.\nx\n（12）π\n解\n由斯托克斯公式\ndydz\ndzdx\ndx dy\na\ne\na\nzdx + ydz\ndydz+ dzdx=\ndxdy=π，\n0x\ny\nE\nD\nZ\n0\ny\n其中∑：\n+=0\n(13)[-2,2]\n解由配方法可知f（,）=²\n²+ 2axx3+ 4x23\n=(x +ax)²-(x2- 2x)²+(4-a²)x²\n由于负惯性指数为1,则 4一α²≥0,\n所以α的取值范围是[一2,2].\n2\n(14)\n5n\nE(c∑x)=c∑E(x?) =c∑e(x²)\n= 1\n20\n= Cn\n2x\nx²f(x)dx =Cn\ndx=Cn\n302\n2\n因为C≥x²是θ² 的无偏性估计,所以E(C≥x²)=θ².\ni=1\n=1\n5\n即Cn·\n-0²=θ²,所以C=\n2\n2\n5n\n三、解答题\n(e²\n-1)-tdt\n-1)-t]dt\n（15）解\nlim\n=lim\n→+0o\nx²1n(1 +\nx\n=lim [x²(e -1) -x]\n1\n=lim\nlim\n7\n2\n\n[[page:4]]\n（16）解在y²+xy²+x²+6=0两端关于x求导，得\n3y²y' + y² + 2xyy' + 2xy +x²y'=0.\n令'=0,得=-2π，或=0（不适合方程，舍去).\n将=-2x代人方程得－6x²+6=0,解得x=1,f(1)=-2.\n在 3²'+y²+2xy′+2x+x²′=0两端关于求导,得\n=+,(+)+()(+)+(++)\n4\n求得f\"（1）=\n>o.\n所以x=1是函数f（x）的极小值点,极小值为f（1）=一2.\n（17）解\n因为\nf'(e” cosy)e cosy,\n²z\n=f\"(ecosy)e²r cos²y + f'(e²cosy)e cosy,\nx?\ndz\n-f'(ecosy)e\" siny,\nay\n²z\n= f\"(e cosy)e²r sin²y -- f'(e cosy)e* cosy ,\n所以\n=（4z+e²cosy）e²化为\n3x\nf\"(e cosy)e²x =[4f(e* cosy) + e* cosy]e2z.\n从而函数f（u）满足方程\nf\"(u)=4f(u)+u.\n方程①对应的齐次方程的通解为\nf(u) =Ce²u +C2e-2u\n,故方程① 的通解为\n方程① 的一个特解为－\n4\nf(u) =C,e2u +C2e-2u\nu\n4\n(C, + C2 =0,\n由f(0)=0,f'(0)=0得\n1\n2C, - 2C2\n0.\n4\n解得\nC,\n16\n16\n故f(u)：\n-2u—4u).\n16\nx\n²=1\n（18）解\n设∑为平面=1上被\n所围部分的下侧,，与所围成的空间区域记\n为Ω,则\n(x - 1)²dydz+ (y -1)²dzdx + (z -1)dx dy\n∑+\n[3(x -1)²+3(y -1)²+1]dxdydz\nΩ\n由于\n(x - 1)²dydz + (y - 1)²dzdx + (z - 1)dxdy =0\n\n[[page:5]]\nydx dydz = 0,\nn\n所以\n(3x² +3y² + 7)dxdydz.\n2n\n(3x²+3y²+7)dxdydz =\n1\ndo\ndr\n‘=(+)(-)=(+)\n于是I=一4π，\n（I）因为cosaπ一cosb,=απ，且0<απ<\n,所以 0<αn<bn.\n（19）证\n,0<b，<\n2\n又因为≥6，收敛,所以limb，=0.\nn=1\n故lima，=0.\n1\n一\ncosb\nan\n（Ⅱ）因为lim\nlim\nb²\n1—cosbn\n62\n1\nan\nlim\n1—cosbn\n1\nlim\nan\n2 n→∞an+ 1- cosan\n2\n且级数6，收敛,所以收敛.\nbn\nn=1\n=1\n（20）解\n（I）对矩阵A施以初等行变换\n/1\n-2\n3\n/1\n0\n0\n1\n0\n1\n一\n0\n0\n2\n1\n2\n0\n3\n0\n0\n1\n2\n则方程组Ax=0的一个基础解系为α\n3\n1\n（Ⅱ）对矩阵（A：E）施以初等行变换\n1\n-2\n3\n- 4  1\n0\n0\n0\n0\n112\n6\n(A:E)=\n0\n1\n-1\n10\n1\n0\n0\n-2-1\n-3\n1\n2\n0\n-3 10\n0\n1\n0\n0\n1\n-3-1\n-4\n记E=(e,e2,e),则\n2]\n1\nAx=e的通解为x：\n+kα，k为任意常数；\n1\n0\n6\n3\nAx=e2的通解为x\n+k2，k2为任意常数；\n0\n\n[[page:6]]\n1\nAx =e的通解为x=\n+k3α，k3为任意常数.\n1\n0\n于是,所求矩阵为\n2\n6\n一\n1\n一\n3\n1\nB：\n=\n+（kα,k2α,kα），k,k2,k3为任意常数.\n1\n一\n4\n1\n0\n0\n0\n1\n0\n0\n1\n0\n0\n2\n（21）证\n设A=\n···\n···\n1\n0\n0\nn\n因为\n-1\n|入E-A|=\n=(入-n)入--1\n：\n-1\n1\n入\n0\n·\n1\n0\n入\n|AE-B|=\n=(入 -n)a n--1\n：\n：\n0\n入一n\n所以A与B有相同的特征值入，=n，入2=0(n-1重).\n由于A为实对称矩阵，所以A相似于对角矩阵\nn\n0\nA\n因为r（入2E一B）=r(B)=1,\n所以B对应于特征值入2=0有n一1个线性无关的特征向量，\n于是B也相似于A.\n故A与B相似.\n（22）解\n（I)F(y)=P{Y≤y}\n{=X|>}d{=x}d+{=x|>}d{=x}=\n1\n-P{Y≤|X=1}+-\nP{Y≤yIX=2}.\n2\n2\n当y<0时,F(y)=0;\n当0≤<1时,Fy(y)\n4\n当1≤<2时,F()\n1\n2\n当y≥2时,Fy(y)=1.\n所以Y的分布函数为\n\n[[page:7]]\n<o,\n‘>O\n4\nFy(y)\n1≤<2,\ny≥2.\n（Ⅱ）随机变量Y的概率密度为\n3\n<1,\n4\nfy(y）=\n1\n1≤<2,\n4\n[0,\n其他.\n3\nEY:\nyf(y)dy=\n2x\nx≥0,\n（23）解\n（I）总体X的概率密度为f（c；θ）=\nθ\n>r\nπθ\n1\n元0\nEX\n2\n√π0\n2\nue-udu=θ.\nθ\n（Ⅱ）设x1,2，,x，为样本观测值，似然函数为\n(2\"xx2·\"x\n∑x²\n=('x)II=(0)T\ne\n1,2,\",n>O,\nθn\ni = 1\n0,\n其他.\n当x1,x2,\",x，>0时，InL(θ)=nln2+\n>lnx;-nlnθ\nA\ni=1\n=\nd InL(0)\n=0，得θ的最大似然估计值为0，=\ndθ\nθ\ni=1\n从而θ的最大似然估计量为\n1\nn\ni=1\n（Ⅲ）存在，α=θ.因为{X）是独立同分布的随机变量序列，且EX²=θ<+∞，所以根据\n辛钦大数定律，当n→00时，0，=\nlimP(l0,-0l≥e}=0.",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-1.png",
+      "line_count": 92,
+      "avg_score": 0.9143,
+      "elapsed": [
+        1.9845732001122087,
+        0.4780104160308838,
+        5.495769500732422
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-2.png",
+      "line_count": 72,
+      "avg_score": 0.9063,
+      "elapsed": [
+        1.0434647998772562,
+        0.18923020362854004,
+        5.801032066345215
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-3.png",
+      "line_count": 74,
+      "avg_score": 0.9022,
+      "elapsed": [
+        1.118708400055766,
+        0.12149643898010254,
+        3.5176591873168945
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-4.png",
+      "line_count": 60,
+      "avg_score": 0.8911,
+      "elapsed": [
+        1.1165952999144793,
+        0.09398913383483887,
+        5.291685104370117
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-5.png",
+      "line_count": 111,
+      "avg_score": 0.8955,
+      "elapsed": [
+        1.14091209997423,
+        0.4534642696380615,
+        4.624899387359619
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-6.png",
+      "line_count": 82,
+      "avg_score": 0.8949,
+      "elapsed": [
+        1.1961458001751453,
+        0.5412454605102539,
+        4.875948190689087
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-7.png",
+      "line_count": 61,
+      "avg_score": 0.8586,
+      "elapsed": [
+        1.1067979000508785,
+        0.1932389736175537,
+        4.274293899536133
+      ]
+    }
+  ]
+}

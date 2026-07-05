@@ -1,0 +1,225 @@
+{
+  "text": "[[page:1]]\n2001年全国硕士研究生入学统一考试数学一试题解析\n一、填空题\n(1)【答案】y\"-2y'+2y=0.\n【详解】因为二阶常系数线性齐次微分方程y\"+Py'+qy=O的通解为\ny=é\"(c,sin βx+C2cos βx)时，则特征方程r²+ pr+q=0对应的两个根为一对共轭复\n根：,2= α±βi，所以根据题设y=e^(c, sinx+C2cos x)（C,c为任意常数)为某二阶常\n系数线性齐次微分方程的通解，知：α=1,β=1，特征根为,2=α±Bi=1±i，从而对应\n的特征方程为：（-(1+i))(-(1-i))=²-2+2=0，于是所求二阶常系数线性齐次\n微分方程为y\"-2y'+2y=0.\n2\n(2)【答案】\n【分析】若r(x,y,z)具有连续的一阶偏导数，梯度 gradr在直角坐标中的计算公式为：\nOr\ngradr =\nOx\nay\noz\n设 A(x,y,z)= P(x,y,z)i+Q(x,y,z)j+R(x,y,z)k，其中 P,Q,R具有一阶连续偏\n导数，散度divA在直角坐标中的计算公式为：\nOP,R\ndivA =\nox' oy\"\naz\n若r(x,y,z)具有二阶连续偏导数，则在直角坐标中有计算公式：\n0²r. 0²r.0\ndiv(gradr) =\n2\nax²\n0y2\n【详解】本题实际上是计算\nor _ 0√x² + y² + z2\n2x\nx\nOx\nx\n2√x²+y²+z²\n/x²+y²+z\n\n[[page:2]]\ndr\ndr\nax\n类似可得\n根据定义有div(gradr)\n3r²-x²-\n于是\ndiv(gradr) (1,-2,2) =\n2\n/x²+y2\n√1² +(-2)² + 22\n(1,-2,2)\n(3) 【答案】 [' dx[ f(x, y)dy.\n【详解】由题设二次积分的限，画出对应的积分区域，\nx+y=1\nX=2\n如图阴影部分.但在-1≤y≤0内，2≥1-y，\n题设的二次积分并不是f(x,y)在某区域上的二重积分，\n因此，应先将题设给的二次积分变形为：\ndyJ,- f(x, y)dx =-J dyf_, f(x, y)dx,\n其中D={(x,y)-1≤y≤0,1-y≤x≤2}，再由图所示，又可将D改写为\nD={(x,y)]1≤x≤2,1-x≤y≤0},\n于是\ndyf(x,y)dx =-²dy²f(x,y)dx=-{²dx²f(x,y)dy\n=J axS。 f(x,y)dy.\n(4)【答案】\n(A+2E).\n2\n【详解】要求(A-E)的逆，应努力把题中所给条件化成（A-E)B=E的形式.\n由题设A²+A-4E=0 =→>A²+A-2E=2E→(A-E)(A+2E)=2E\n\n[[page:3]]\n即\nA-E)\n(A+2E)=E\n(A-E)-' =(A+2E).\n故\n(5)【答案】1/2\nD(X)\n【分析】切比雪夫不等式：P{X-E(X)≥ε}≤\n【详解】根据切比雪夫不等式有\n2²\n二、选择题\n(1）【答案】(D)\n【详解】从题设图形可见，在y轴的左侧，曲线y=f(x)是\n严格单调增加的，因此当x<0时，一定有f(x)>0，对应\ny=f'(x)图形必在x轴的上方，由此可排除(A)，(C);\n(B)\n(C)\n(D)\n(A)\n又y=f(x)的图形在y轴右侧靠近y轴部分是单调增，所以在这一段内一定有\nf(x)>0，对应y=f'(x)图形必在x轴的上方，进一步可排除(B)，故正确答案为(D).\n(2)【答案】(C)\n【详解】题目仅设函数f(x,y)在点(0,0)附近有定义及f(0,0)=3,f(0,0)=1,未设\nf(x,y)在点(O,0)可微，也没设z=f(x,y)，所以谈不上dz，因此可立即排除(A);\n令 F(x,y,z)=z-f(x,y)，则有F=-f,F=-f,F²=1.因此过点(0,0,f(0,0))\n的法向量为±{F,Fy,F}=±{-f,-f,1}=±{-3,-1,1}，可排除(B);\n\n[[page:4]]\nx=x\n曲线\n{y=0\n,点(0,0,f(0,0))的切向量为\n(y=0\n(z = f(x,0)\n±{1,0,f(0,0)}=±{1,0,3}．故正确选项为(C).\n(3)【答案】(B)\n【详解】方法1：因为\nf(x)\nf(x)\nlim f(1-e) 1-e =x lim\nx\nlim\nh→01\nh\nx→0 In(1-x)\n0←x\nx\nln(1-x)\nf(x)\nf(x)\nf(x)-f(0)\nIn(1-x)~-x lim\nx\n= f′(0)\nf(0)=0 lim\nx→0\n-x\n0←x\nx\n0x\nx-0\n可见，若f(x)在点x=0可导，则极限lim\nf(l-e\"）一定存在；反过来也成立.\nh→0h\n方法2：排除法：举反例说明(A)，(C)，(D)说明不成立.\n比如，f(x)=x，在x=0处不可导，但\n2si\ncosh\n1-cosh\nlim\nf(1-cos h) = lim\nlim\nlim\nh→0h\n0y\nh²\nh→0\nh2\nh→0\nh²\nh\n2\n1\nlim\n故排除(A)\nsin\n2\nh→0\nh²\n2\nh-sinh\nh-sinh\n-f(h -sin h) = lim\nlim\nh\nh→0h\nh→0\nh2\n0\nh3\n2sin\nh-sinh\nh-sinh\n1-cosh\n其中，lim\n洛\n等\nlim\n2\nl1m\nlim\nh3\n0y\nh3\n0←\n3h2\n0\n3h2\n0←\n3h²\n6\nh-sinh\n根据有界量与无穷小的乘积为无穷小，所以lim\n=0.故排除(C).\nh→0\nh3\n1,x≠0\n又如f(x)=\n在x=0处不可导，但lim\n[f(2h)- f(h)]= lim\n：0存在，\n0,x=0\nh→0h\n0←y\nh\n进一步可排除(D).\n\n[[page:5]]\n(4)【答案】(A)\n【详解】方法1：因为A是实对称矩阵，必相似于对角阵∧.\n-4-4-4-4\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n2,3,4行分\n-1\n-1\n-1\n-1\n[E-A|=\n-1\n-1\n-1\n-1\n别加到行\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n1\n1\n1\n1行提出公\n-1\n-1\n-1\n-1\n(-4)\n因子(-4)\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n-1\n1\n1行分别加\n0\n0\n=²(-4)=0\n(-4)\n到2,3,4行\n0\n入\n0\n0\n0\n0\n入\n得A的特征值为：=4,==4=O,故必存在正交矩阵Q，使得\n0\n0\n0\n0\n0\n0\n0\nQ-'AQ =Q′ AQ =\n0\n0\n0\n0\n0\n0\n0\n0\n因此，A与B相似.由两矩阵合同的充要条件：实对称矩阵 A与B合同的充要条件是\nA与B相似.因此，A与B也合同．即A与B既合同且相似.应选(A).\n方法2：因为A是实对称矩阵，故A必相似于一对角阵∧．又由相似矩阵有相同的特征值，\n相同的秩，知A与A有相同的秩，故r(A)=r(A)=1，即A对角线上有3个元素为零.\n因此，===0是A的特征值.\n求另一个特征值，由特征值的和等于矩阵主对角线元素之和，知\n∑A;=N4=∑an=4. 故， M4 =4.\ni=1\n即A有特征值=4和=0(三重根)，和对角阵B的特征值完全一致，故A,B相\n似.又由两矩阵合同的充要条件：实对称矩阵A与B合同的充要条件是A与B相似.知\nA,B合同.\n(5)【答案】A\n【详解】掷硬币结果不是正面向上就是反面向上，所以X+Y=n，从而Y=n-X，\n\n[[page:6]]\n故\nDY = D(n - X)= DX\n由方差的定义：DX=EX²－(EX)²，所以\n(x-u)-(zX+xu- u)=[(x-u)a]-<(x-u)=(x-u)= Kα\n= n² -2nEX + EX² -n² + 2nEX -(EX)² = EX² -(EX)² = DX)\n由协方差的性质：cov(X,c)=O(c为常数)；cov(aX,bY)=ab cov(X,Y)\ncov(X, + X2,Y) = cov(X,Y)+ cov(X2, Y))\n所以\ncov(X,Y)= cov(X,n - X)= cov(X,n)-cov(X, X) = 0- DX = -DX\ncov(X,Y)\n-DX\n由相关系数的定义，得\n-1\narctane*\n三【详解】\n=xp\n-2x arctan e*dx =\narctan e*d (-2x)\n2\narctan e*d(e-2x）分部-\narctan e* - {e-2* d arctan e*\n2\nde*\narctan e* -\nJe2x(1+ e2x)\narctane\n1+e2x\narctanex-e-2x\nde\narctan e* + e~* + arctan e*)+ C\n四【详解】由题设，\ndp(x)\nd\n[f(x,f(x,x)] = f(x, f(x,x))+ f’(x, f(x,x))(f(x,x))\ndx\ndx\n=f(x,f(x,x)+f(x,f(x,x)} f(x,x)+ f(x,x)\nfe\nof\n这里f'=\nOx\ndy\n\n[[page:7]]\ndp(x)\n所以\nf(x,f(x,x)+f(x,f(x,x) f’(x,x)+ f’(x,x)\ndx\n= f(1,1)+ f(1,1)| f’(1,1)+ f′(1,1)|= 2+3·[2+3]=17\n又\nf(1,1)=1, p(x)= f(x,f(x,x)),\n所以\np(1)= f(1, f(1,1)) f(1,1) =1 f(1,1) = 1,\np\ndp(x)\n所以\n3@²(x)\ndx\ndx\ndp(x)\n=3g²(1) dg(x)\np(1) =1,\n=17 3.1.17=51\ndx\ndx\n五【详解】首先将arctanx展开.\n因为\n(arctan x)'\n(-1)\"x²n\nx ∈ (-1,1)\n1+ x\nn=\n故\narctan x = arctan 0+ ↑ (arctan x)'dx = 0 +\ndx\n(-1)\"\n∑(-1)\"[x²ndx =\n2n+1\nx ∈(-1,1)\nX\nn=02n+1\nn=0\n1+ x²\n1+x²\n(-1)\"\n(-1)\"\n于是\nf(x)=\n2n+1\n=(1+x²)≥\narctanx=\n2n\n2n+1\nX\nx\nx\nn=0\n(-1)\"\n(-1)\"\nx2n+2 _ (-1)°\n(-1)\"+l-1\n2(n+1)\nn=02n+1\nn02n+1\n2.0+1\n2n+1\n2(n+1)-1\n0\n(-1)\"\n(-1)\"\n8\n(-1)\"\n(-1)\"\n=1+>\n2n\n+\n2n\n=1+\n2n\n2n\nX.\nX\n2n+1\n2n-1\n2n-1\nX\n2n+1\n=1+≥(-1)\"\n(-1)\"2\n<+[=\nx ∈(-1,1),x≠ 0\n2n+1 2n-1\n1-4n\nn=1\nn=1\n(-1)\"2\n又 lim f(x) = lim]\n1+\n2n\n=1，且f(0)=1，所以f(x)在x=0处连续，从\n0x\nx→0\n1-4n\nn=1\n而x=0时，f(x)=1+≥\n(-1)\"2\n2x2m， x∈(-1,1),\n1-4n\n1-4n\nn=1\nn=1\n\n[[page:8]]\n(-1)\"2\n又在x=±1处级数\n收敛，\n1-4n²\n1+ x2\n1+x\nπ\nlim f(x) = lim\narctan x =lim\nx→→1\nx\nx→→1\nx\nx→→1\n2\n1+x\n1+x\nlim f(x)= lim\n-arctanx = lim\n·lim arctan x=-\nf(-1)\nx→→1*\nx→→1+\nx\nx→→1\n所以f(x)在x=1处左连续，在x=-1处右连续，所以等式可扩大到x=±1，\n(-1)\"2\n2x2m，x∈[-1,1],\n从而\nf(x)=1+≥\n1-4n\nn=1\n(-1)\"\nf(x)-1\n变形得\n2n\n-4n\n2\n(-1)\"\n(-1)'\n.12㎡ =÷[f(1)-1]\n因此\n1-4n²\n1-4n\n六【详解】方法1：用斯托克斯公式之后化成第一型曲面积分计算.\n记S为平面x+y+Z=2上由L所围成的有界部分的上侧，（曲线的正向与曲面的\n侧的方向符合右手法则)D 为S在xoy 坐标面上的投影，D={(x,y)Ixl+[y|=1}\n{cos α,cos β,cos y}\n1\n在x+y+z=2中，左右两边关于x求偏导，得1+z=0，得z=-1.\n在x+y+z=2中，左右两边关于y求偏导，得1+z=0，得z=-1.\n代入上式得\n11\n{cos α,cos β,cos y} :\n√'√'下\n为S指定侧方向的单位法向量，由斯托克斯公式得\nI = Φ,(y² - z²)dx+(2z² -x²)dy +(3x² - y²)dz\n\n[[page:9]]\ndydz dzdxdxdy\ndydz\ndzdx\ndxdy\na\nOx\noy\n0z\nOx\noy\nze\nS\nP\nQ\nR\n²-z²2z²-x²3x²-y²\n| (-2y-4z)dydz+(-2z-6x)dzdx+(-2x-2y)dxdy\n将题中的空间曲线积分化为第二类曲面积分，而对于第二类曲面积分，一般的解答\n方法是将它先化为第一类曲面积分，进而化为二重积分进行计算.\n1\n1\n1\n把dS=\ndydz,dS =\ndzdx,dS =\ndxdy代入上式,\ncos α\ncos β\n[cos 入\nS[ s0o(<z-xz-)+g s0o(x9-zz-)+ s0o(z-<z-)]= I\nS[(-2y-4z)+(-2z-6x)+(-2x-2y)]us\nS\n-= Sp[z9-+-x8-]]\n(4x + 2y + 3z)dS\n√3\nS\n按第一型曲面积分的算法，将S投影到xoy，记为.dS与它在xoy平面上的投\n影do的关系是\n1\ndS=\ndo=\n1+z\ndo\nCos\n故dS=√3do，将x+y+z=2代入\n(4x+2y+3z)dS：\n=-2{{(x-y+6)do\nD\n由于D关于y轴对称，利用区域的对称性，因为区域关于y轴对称，被积函数是\n关于x的奇函数，所以“xd=0.D关于x轴对称，利用区域的对称性，因为区域关\n于x轴对称，被积函数是关于y的奇函数，故ydo=0，所以\nD\n2l/(x-y+6)do =-21|xdo+2l| ydo-12l|\n-12||dxdy\nD\nD\nD\nD\n=-12·D的面积(由二重积分的几何意义知，「fdxdy即 D的面积)\nD\n\n[[page:10]]\n其中，D为xl+|y≤1，D的面积=4·÷·1·1=2，所以I=-12·2=-24.\n2\n方法2：转换投影法.\n用斯托克斯公式，取平面x+y+z=2被L所围成的部分为S，按斯托克斯公式的\n规定，它的方向向上（曲线的正向与曲面的侧的方向符合右手法则），S在xoy平面上\n的投影域记为\nD={(x,y)||x|+|y|=1 }.\n由斯托克斯公式得\nI =Φ,(y² -z²)dx +(2z² -x²)dy +(3x² - y²)dz\ndydzdzdx\ndxdy\ndydz\ndzdx\ndxdy\nx\noy\n0z\nOx\noy\nz0\nS\nP\nQ\nR\n2z²-x² 3x²-y²\nff (-2y- 4z)dydz +(-2z-6x)dzdx+(-2x - 2y)dxdy\n1\n1\n由dS=\ndydz,dS =\ndzdx,dS =\ndxdy,\ncosa\n[cos β\nCos\n1\n及{cos α,cos β,cos y}\n知dS=\ndydz =\ndxdy，dS =\ndzdx=\ndxdy,\ncosα\nCOs 入\ncos β\nCOs\ncos α\n故\ndydz =\ndxdy=\n-dxdy =-z'dxdy\n[cos 2|\n1\n[cos β]\n= xpzp\ndxdy=\n-dxdy =-z'dxdy\n[cos 2\n1\noz\n因为S为z=2-x-y，式子左右两端分别关于x,y求偏导，\n-1,于是\nax\nI = {{ (-2y- 4z)dydz +(-2z -6x)dzdx +(-2x -6y)dxdy\nS\n\n[[page:11]]\nOz\nθz\n=J{-2y-4z,-2z-6x,-2x-6y}\n1dxdy\nx' oy'\nS\n(pxp(9 + -x) Jz-= <pxp(zε+<z+x+) z- :\nS\nD\n因为区域D关于y轴对称，被积函数是关于x的奇函数，所以Ⅱxd=0．类似的，因为\nD\n区域D关于x轴对称，被积函数是关于y的奇函数，故 ydo=〇，所以\nD\nI= -2f (x- y+6)do =-2] xdo+ 2] ydo-12{ do =-12f dxdy\nD\nD\nD\nD\nD\n=-12·D的面积(由二重积分的几何意义知，{↑dxdy即 D 的面积)\nD\nD为|x+|y≤1，D的面积=4·÷·1·1=2，所以\n2\nI=-12.2=-24.\n方法3：降维法.\n记S为平面x+y+z=2上由L所围成的有界部分的上侧（曲线的正向与曲面的\n侧的方向符合右手法则），D为S在xoy坐标面上的投影，D={(x,y)Ix|+[y=1}\n把x+y+z=2代入I中，L,为L 在xoy平面上投影，逆时针.\nI=Φ,(y²-(2-x-y)²)dx+(2(2-x-y)² -x²)dy+(3x² -y²)(-dx-dy)\n(p(8+8-x8-x+ x-<e)+xp(-<+x+x- x-)$=\nax\ny\n-2] (x- y+ 6)dxdy = -24\nD\n方法4：用斯托克斯公式后用第二型曲面积分逐个投影法\n记S为平面x+y+z=2上由L所围成的有界部分的上侧，（曲线的正向与曲面的\n侧的方向符合右手法则)\n1\n{cos α,cos β,cos y}=\n在x+y+z=2中，左右两边关于x求偏导，得1+z=0，得z=-1.\n在x+y+z=2中，左右两边关于y求偏导，得1+z=0，得z=-1.\n代入上式得\n\n[[page:12]]\n111\n{cosα,cos β,cos y} =\n{√√√」\n为S指定侧方向的单位法向量，由斯托克斯公式得\nzp(<-xe)+<p(x-z)+xp(z-z)$= I\ndydz  dzdx  dxdy\ndydz\ndzdx\ndxdy\na\nx\noy\n0z\nox\noy\nOz\nP\nQ\nR\n[y²-z²2z²-x² 3x²-y²\n=ff(-2y- 4z)dydz+(-2z -6x)dzdx +(-2x- 2y)dxdy\nS\n用逐个投影法，先计算I={f(-2y-4z)dydz,\n其中\nS\nDy={(y,z)|2-y-z|+|y|≤1}为 S在yoz 平面上的投影，分别令\ny≥0,y≤0,2-y-z≥0,2-y-z≤0，可得到D的4条边界线的方程:\n右：2y+z=3；上:z=3；左：2y+z=1；下：z=1.\n于是\n(y+ 2z)dy = -16\n再计算I2={{(-2z-6x)dzdx，其中 Dx={(x,z)Ix+|2-x-z≤1}为S在xoz\n平面上的投影，分别令x≥0,x≤0,2-x-z≥0,2-x-z≤0，可得到D的4条边界\n线的方程：\n右：2y+z=3；上:z=3；左：2y+z=1；下：z=1.\n于是\n(z + 3x)dx = J (z -6)dz = -8\nzp\n(z-1）\n再计算I={{(-2x-2y)dxdy，其中D={(x,y)|x|+[y|≤1}为S在xoy 平面\nD\n上的投影，因为区域关于y轴和x轴均对称，被积函数是关于x和y都是奇函数，\n于是\nI = -2{{ (x+ y)dxdy = 0\n故\nI = I,+ I2 + I =-24.\n方法5：参数式法.\nL是平面x+y+z=2与柱面x+v=1的交线，是由4条直线段构成的封闭折\n\n[[page:13]]\n线，将题中要求的空间曲线积分分成四部分来求，\n当x≥0,y≥0时，L:y=1-x,z=2-x-y，则dy=-dx,dz=-dx，x从1 到\n0．以x为参数，于是\n(y²-z²)dx+(2z² -x²)dy+(3x²-y²)dz\n=[(1-x)²-(2-x-y)²]dx+[2(2-x-y)² -x²](-dx)+[3x²-(1-x)²](-dx)\n=[(1-x)² -1+(2-x²)(-1)]dx\n则\nf, (y² -z²)dx +(2z² -x²)dy+(3x²- y²)dz\n=f「(1-x)² -1+(2 -x²)(-1)]dx =\n当x≤0,y≥0，L:y=1+x,z=1-2x，则dy=dx,dz=-2dx，x从 0到-1\n于是\n(y²-z²)dx+(2z²-x²)dy+(3x²-y²)dz\n(xp-)[(x+)-x]+xp[x-(x-D]+xp[(x-)-(x+)]=\n= (2x + 4)dx\n所以\n, (y² -z²)dx+(2z²-x²)dy+(3x² - y²)dz = {。(2x+4)dx =-3\n当x≤0,y≤0，L:y=1-x,z=3,则dy=-dx,dz=0，x从-1到0，于是\n(y² -z²)dx+(2z² -x²)dy+(3x² -y²)dz\n=[(1-x)²-3²]dx+[2·3² -x²](-dx)+[3x² -(1-x)²]·0\n=(2x² +2x-26)dx\n79\n所以\n, (y² -z²)dx+(2z² -x²)dy+(3x² - y²)dz = f(2x² + 2x-26)dx =\n3\n当x≥0,y≤0，L4:y=x-l,z=3-2x，则dy=dx,dz=-2dx，x从 0 到 1,\n于是\n(y²-z²)dx+(2z² -x²)dy+(3x²-y²)dz\n(xpz-)[(1-x)-zxε]+xp[x-(x-ε)z]+xp[(x-ε)-(1-x)]=\n= (-18x +12)dx\n\n[[page:14]]\n所以\n(y² - z²)dx + (2z² -x²)dy +(3x² - y²)dz = [(-18x +12)dx = 3.\n所以\nI=$,=↓,+』, +J,+J,=-24.\n七【分析】拉格朗日中值定理：如果f(x)满足在闭区间[α,b]上连续，在开区间(a,b)内可\n导，则至少存在一点∈(a,b)，使等式 f(b)-f(a)=f'(5)(b-α)成立\n【详解】（1）因为y=f(x）在（-1,1）内具有二阶连续导数，所以一阶导数存在，由拉格\n朗日中值定理得，任给非零x∈(-1,1)，存在 θ(x)∈(0,1)，θ(x)·x∈(-1,1)，使\nf(x)= f(0)+xf\"[θ(x)·x]，(0<θ(x)<1) 成立.\n因为 f\"(x)在(-1,1)内连续且 f\"(x)≠0，所以f\"(x)在(-1,1)内不变号，不妨设\nf\"(x)>0,则f'(x)在(-1,1)内严格单调且增加，故θ(x)唯一.\n(2)方法1:由(1)知 f(x)= f(0)+xf[θ(x)·x]，(0<θ(x)<1)\n于是有xf\"[θ(x)x]=f(x)-f(0)，即\nf[0(x)x]= f(x)-f(0)\nx\nf[θ(x)x]- f(0) _ f(x)- f(0)- f'0)x\n所以\n2\nx\nx\n上式两边取极限，再根据导数定义，得\nf\"[θ(x)x]- f'(0)\nf'[θ(x)x]-f(0)\n左端=lim\nlim\n0(x)\n0←x\nx\n0←x\nθ(x)x\nf\"[θ(x)x]- f'(0)\n=lim\n-lim 0(x) = f \"(0) lim θ(x)\nx→0\nθ(x)x\n0←x\nf(x)- f(0)- f(0)x\nf(x)-f'(0)\n右端=lim\n洛lim\n0←x\nx→0\n2x\nf'(x)-f'(0)\nlim\n导数定义\n0)\n2 x→0\nx-0\n左边=右边，即f\"(0)limθ(x)=\nf\"(0)，故lim θ(x)：\nx→→0\n2\nx→0\n2\n方法2：由泰勒公式得f(x)=f(0)+f(0)x+\nf\"(5)x², §∈(0, x)\n2\n再与(1)中的\nf(x) = f(0)+xf [0(x)x](0 <θ(x)<1)\n\n[[page:15]]\n比较，所以\nxf [θ(x)x]= f(x)- f(0)= f(0)x+=f\"(5)x²,\n2\n约去x，有\nf[θ(x)x]= f(0)+÷ f\"(5)x,\n2\nf[0(x)x]-f(0)\n凑成\n0(x)=\nf\"(5),\n(x)x\n2\n一\nf\"[θ(x)x]-f'(0)\n由于\nlim\n= f\"(0), lim f\"(x) =lim f\"()= f\"(0)\n0←x\n0(x)x\n→0\n所以\nf\"(0)limθ(x)= -\nf\"(0)\nx→0\n2\nlim θ(x) =\n1\n故\nx→0\n2\n2(x²+y²)\n≥0=x²+y²≤÷h²(t)，所以侧面在xoy 面上的投影为：\n八【详解】z=h(t)-\nh(t)\n2\n记V为雪堆体积，S为雪堆的侧面积，则由体积公式\nV =S f(x,y)dxdy = {f zdxdy = {f|\n[h(t)-2(x²+y²)\ndxdy\nh(t)\nD\nD\nh(t)\n化为极坐标，令x=rcosθ,y=rsinθ，0≤r≤\n>θ>0\nπ\n√2\n2\n2r\nh(t)\nh(t)\nrdr\nh(t)\nh(t)\nh(t)\nh(t)\nh(t)\n2r2\nh(t)rdr-\nV\n-rdr\nr|=2π|h(t)\nh(t)\n2\n2h(t)l\nh(t)\n()ey\nπ\nh(t)\n4\n8\n再由侧面积公式：\npxp(<z)+(z)+1=<pxp(f)+(f)+1[=S\nD\n\n[[page:16]]\n4x\n4y\n16(x² + y²)\ndxdy\ndxdy\nh(t)\nh(t)\nh(t)²\nD\nh(t)\n化为极坐标，令x=rcosθ,y=rsinθ，0≤r≤\n>0>0\"\nπ\n√2\n2\nh(t)\nh(t)\nh(t)\n16r2\n16r2\n16r2\nh（t）\n16r2\n()-y\n16\n16\n3\nπh²(t)\n(4) 48\nπh²(t).2.(27-1) =\n13πh²(t)\n16\n3\n()4\n16\n12\nAp\n由题意知\n-0.9S(t)，将上述V(t)和S(t)代入，得\n1p\ndh(t)\n13πh²(t)\n4\n=-0.9.\n-0.9.\np\n12\n4\nip\n12\n1p\n13\n积分解得\nh(t)=\n-t+C\n10\n13\n由h(0)=130，得C=130.所以h(t)=\n-t+130.\n10\n13\n令h(t)→0，即\nt+130→0=t→100\n10\n因此高度为130厘米的雪堆全部融化所需要时间为100小时.\n九【详解】由题设知，β,β2,…,βg均为α,α2,\",α_的线性组合，齐次方程组当有非零解\n时，解向量的任意组合仍是该齐次方程组的解向量，所以β,β2,·,β均为Ax=O的解．下\n面证明β,β2,.··,β线性无关．设\nk,β+kβ +...+kβs= 0\n(*)\n把β=tα+t2α2,β2=tα2+t2α，,β=tα+t2α,代入整理得，\n(tk, +t2ks)a +(tk +t,k2)α2 +..·+(t2ks-1 +tks)as= 0\n由α,α2,\",α为线性方程组 Ax=O的一个基础解系，知α,α2,\",α,线性无关，由线性\n\n[[page:17]]\n无关的定义，知(*)中其系数全为零，即\ntk+tk=0\ntk+tk=0\n：\n(tks-1+tks=0\n其系数行列式\n0\n0\n0\nt2\n##\n0\nt\n0\nt\n0\n32\n0\n(*)\n=t\" +(-1)\"+lt2\nt\n0\n2f1\n0\nt\n0 0 0 t+(-1)s+1\nt\n由齐次线性方程组只有零解得充要条件，可见，当t+（-1)t²≠0,，即t≠（-t2)，即\n当s 为偶数，t≠±t2;当s为奇数，t≠t,时，上述方程组只有零解k,=k,=…=kg=O,因\n此向量组β,β2,…,β线性无关,\n[s= 2n,\n故当{\n[s=2n+1, t≠t2\n十【详解】(1)\n方法1：求B，使A=PBP-成立，等式两边右乘P，即AP=PB成立.\n由题设知，AP= A(x,Ax,A²x)=(Ax,A²x,A”x)，又A²x=3Ax-2A²x，故有\n0\n0\n0\n0\n0\n0\nAP =(Ax,A²x,3Ax -2A²x) = (x,Ax, A²x)\n0\n3\n=\nP\n0\n3\n0\n-2\n0\n0\n0\n即如果取B=\n0\n3\n，此时的B 满足 A= PBP-」，即为所求.\n1\n0\n1\n-2\n\n[[page:18]]\n方法2：由题设条件P=(x,Ax,A²x)是可逆矩阵，由可逆的定义，知有 P-使\n1\n0\nPP- = P-1P = P-(x, Ax,A²x)=(P-x,P-Ax,P-A²x) =E = 0\n1\n0\n0\n0\no\n0\n即有 P-lx=|0|,P-Ax=|1|,P-A²x=|0|．由题设条件，A²x=3Ax-2A²x，有\n0\n0\n1\no]\n0\nP-A²x= P-′(3Ax-2A²x)=3P-Ax-2P-A²x =3|1 |-2|0|=\n3\n0\n1\n-2\n由A=PBP-1，得\nB = P-AP = P-A(x, Ax, A²x) = P-(Ax, A²x,A’x)\n(000）\n=(P- Ax,P- A²x,P- A²x)=| 1 0\n3\n0\n(2）由(1)及矩阵相似的定义知，A与B相似．由矩阵相似的性质：若A～B，则\nf(A)～f(B)，则A+E与A-E也相似.又由相似矩阵的行列式相等，得\n1\n0\n0\n1\n0\n0\n1行×(-1)\nA+E=|B+E=1\n1\n3\n0\n1\n加到2行\n0\n0\n1\n-1\n十一【分析】首先需要清楚二项分布的产生背景．它的背景是：做n次独立重复试验，每次\n试验的结果只有两个(要么成功，要么失败)，每次试验成功的概率都为P，随机变量X表\n示n次试验成功的次数，则X～B(n,P)．在此题中，每位乘客在中途下车看成是一次实验，\n每个人下车是独立的，有n个人相当于做了n次独立重复实验，把乘客下车看成实验成功，\n有m次成功.\n【详解】（1)求在发车时有n个乘客的条件下，中途有m人下车的概率，相当于求条件概率\nP{Y=m|X=n}，由题设知，此条件概率服从二项分布，因此根据二项分布的分布律有:\nP{Y = m | X = n} = C\" P\" (1- P)\"-m,0 ≤m≤n,n = 0,1,2...\n(2）求二维随机变量(X,Y)的概率分布,其实就是求P{X=n,Y=m}，利用乘法公式,\n\n[[page:19]]\n有\nP{X=n,Y =m}=P{Y=m|X =n}P{X =n}\n又X服从参数(>0)的泊松分布，由泊松分布的分布律有P{X=n}\nh!\n故\nP{X=n,Y=m}=P{Y=mX=n}P{X=n}=C\"p\"(1-P)-m.\n入”，\nn!\n其中0≤m≤n,n=0,1,2...\n+【详解】记x=x,x=x，则=(x+x)，即2x=x+x\nni=l\nni=1\n∑EX,\nEX=E\nnu\n且\nu，EX,=\nn\nE(Y)=E[(x+x-2x)²=E{[(x,-x)+(x-x)]}\n因此\n[(x-x)+(x-x)(x-x)z+（(x-x)]}g=\n(x-x)]a+{[（(x-x(x-x)]}a+(x-x)]\n因为样本方差S²：\nn-1≥(x-x)²\n是总体方差的无偏估计，则ES²=²，即\n(x,-x)²=o²\nES²=E\n(x,-x)=(n-1)o²，同理\n所以\n(x+-x)²=(n-1)o²\nE\nE\n{[(x-x)(x-x)]}az={[(x-x)(x-x)]\n而\n=2E[(x,-x)(x+-x)]=E(xX+-X,X-XxX++xX)\n(EX;Xn+-EX,X -EX,X+ +EXX)\ni=1\n\n[[page:20]]\n由于 X1,X2,·…,X2,(n≥2)相互独立同分布，则X,与X2，X与Xn+，X与X,也独\n立(i=1,2..·n)．而由独立随机变量期望的性质(若随机变量X,Y独立，且EX,EY都存在，\n则EXY=EXEY)，所以\n=X'X=X'X =+x'X =+X'X\nEX,Xm+ = EX,EXn+i =u², EX,X, = EX,EX, =u²\n[(x,-x)(x-x)]}\n故有\n=∑(EX;Xn+i-EX,X2-EX,Xn+i+EX,X2)=∑(u²-u²-u²+u²)=0\n=\n(x-x)]+{(xx)(x-x)]}a+[(x-x)]\n即\nE(Y)=E\n=(n-1)o² +(n-1)o² =2(n-1)o²",
+  "page_reports": [
+    {
+      "page": 1,
+      "image": "images\\answer_pages\\page-01.png",
+      "line_count": 37,
+      "avg_score": 0.8616,
+      "elapsed": [
+        2.041527499910444,
+        0.10404610633850098,
+        5.136559247970581
+      ]
+    },
+    {
+      "page": 2,
+      "image": "images\\answer_pages\\page-02.png",
+      "line_count": 30,
+      "avg_score": 0.9183,
+      "elapsed": [
+        1.156813200097531,
+        0.0339963436126709,
+        3.823014259338379
+      ]
+    },
+    {
+      "page": 3,
+      "image": "images\\answer_pages\\page-03.png",
+      "line_count": 26,
+      "avg_score": 0.9618,
+      "elapsed": [
+        1.197183300042525,
+        0.05861401557922363,
+        4.470240116119385
+      ]
+    },
+    {
+      "page": 4,
+      "image": "images\\answer_pages\\page-04.png",
+      "line_count": 108,
+      "avg_score": 0.9273,
+      "elapsed": [
+        1.2029786000493914,
+        0.22167348861694336,
+        4.141072034835815
+      ]
+    },
+    {
+      "page": 5,
+      "image": "images\\answer_pages\\page-05.png",
+      "line_count": 96,
+      "avg_score": 0.9686,
+      "elapsed": [
+        1.1640045999083668,
+        0.223388671875,
+        6.881246089935303
+      ]
+    },
+    {
+      "page": 6,
+      "image": "images\\answer_pages\\page-06.png",
+      "line_count": 42,
+      "avg_score": 0.9379,
+      "elapsed": [
+        1.052216500043869,
+        0.1156303882598877,
+        4.036555051803589
+      ]
+    },
+    {
+      "page": 7,
+      "image": "images\\answer_pages\\page-07.png",
+      "line_count": 107,
+      "avg_score": 0.9308,
+      "elapsed": [
+        1.2474579999689013,
+        0.21480226516723633,
+        4.147061109542847
+      ]
+    },
+    {
+      "page": 8,
+      "image": "images\\answer_pages\\page-08.png",
+      "line_count": 57,
+      "avg_score": 0.9195,
+      "elapsed": [
+        1.1781425001099706,
+        0.1580824851989746,
+        4.447082281112671
+      ]
+    },
+    {
+      "page": 9,
+      "image": "images\\answer_pages\\page-09.png",
+      "line_count": 60,
+      "avg_score": 0.9085,
+      "elapsed": [
+        1.1280700999777764,
+        0.16390180587768555,
+        5.109968185424805
+      ]
+    },
+    {
+      "page": 10,
+      "image": "images\\answer_pages\\page-10.png",
+      "line_count": 65,
+      "avg_score": 0.8984,
+      "elapsed": [
+        1.2987449001520872,
+        0.26608896255493164,
+        4.622136831283569
+      ]
+    },
+    {
+      "page": 11,
+      "image": "images\\answer_pages\\page-11.png",
+      "line_count": 42,
+      "avg_score": 0.931,
+      "elapsed": [
+        1.2427159000653774,
+        0.10171270370483398,
+        5.572723388671875
+      ]
+    },
+    {
+      "page": 12,
+      "image": "images\\answer_pages\\page-12.png",
+      "line_count": 47,
+      "avg_score": 0.8916,
+      "elapsed": [
+        1.0436471998691559,
+        0.14870858192443848,
+        5.484562158584595
+      ]
+    },
+    {
+      "page": 13,
+      "image": "images\\answer_pages\\page-13.png",
+      "line_count": 29,
+      "avg_score": 0.9614,
+      "elapsed": [
+        1.203866200055927,
+        0.07602143287658691,
+        5.130929946899414
+      ]
+    },
+    {
+      "page": 14,
+      "image": "images\\answer_pages\\page-14.png",
+      "line_count": 60,
+      "avg_score": 0.9231,
+      "elapsed": [
+        1.2139077000319958,
+        0.21772146224975586,
+        5.960086345672607
+      ]
+    },
+    {
+      "page": 15,
+      "image": "images\\answer_pages\\page-15.png",
+      "line_count": 74,
+      "avg_score": 0.9235,
+      "elapsed": [
+        1.3140023001469672,
+        0.17350244522094727,
+        3.7419657707214355
+      ]
+    },
+    {
+      "page": 16,
+      "image": "images\\answer_pages\\page-16.png",
+      "line_count": 73,
+      "avg_score": 0.9271,
+      "elapsed": [
+        1.056085600052029,
+        0.22690391540527344,
+        4.790991306304932
+      ]
+    },
+    {
+      "page": 17,
+      "image": "images\\answer_pages\\page-17.png",
+      "line_count": 62,
+      "avg_score": 0.915,
+      "elapsed": [
+        1.1970716000068933,
+        0.17652392387390137,
+        4.064388036727905
+      ]
+    },
+    {
+      "page": 18,
+      "image": "images\\answer_pages\\page-18.png",
+      "line_count": 55,
+      "avg_score": 0.9466,
+      "elapsed": [
+        1.2785273999907076,
+        0.18927645683288574,
+        6.9851624965667725
+      ]
+    },
+    {
+      "page": 19,
+      "image": "images\\answer_pages\\page-19.png",
+      "line_count": 37,
+      "avg_score": 0.9024,
+      "elapsed": [
+        1.1564795998856425,
+        0.07755327224731445,
+        3.5949459075927734
+      ]
+    },
+    {
+      "page": 20,
+      "image": "images\\answer_pages\\page-20.png",
+      "line_count": 13,
+      "avg_score": 0.8882,
+      "elapsed": [
+        1.1597420999314636,
+        0.0264890193939209,
+        3.4408249855041504
+      ]
+    }
+  ]
+}

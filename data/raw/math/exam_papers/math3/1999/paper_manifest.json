@@ -1,0 +1,21 @@
+{
+  "exam_id": "kaoyan_math3_1999",
+  "exam_type": "math3",
+  "year": 1999,
+  "question_count": 20,
+  "source_files": [
+    "math3_1999_questions.md",
+    "math3_1999_answers.md"
+  ],
+  "questions_jsonl": "questions.jsonl",
+  "questions_dir": "questions",
+  "status": "reviewed",
+  "notes": [
+    "题干、标准答案与解析已逐题整理为可直接展示版本。",
+    "questions.jsonl、单题题卡与总答案文件已同步为 reviewed/available。",
+    "已清理明显扫描抽取残留、无效交叉引用与公式断裂问题。"
+  ],
+  "review_status": "reviewed",
+  "answer_status": "available",
+  "explanation_status": "available"
+}
