@@ -456,3 +456,194 @@ user_topic_stats.jsonl
 4. AI 判分修正后，最终结果和统计同步更新。
 5. 旧 JSONL 记录不丢失，仍能被读取。
 6. 不影响系统题库公共数据，不改 `data/raw` 结构。
+
+## 产品审查后的优化要求
+
+本轮使用当前页面审查了系统资料库中的主链路：
+
+```text
+系统资料库入口
+-> 单题详情抽屉
+-> 生成同类训练
+-> 练习单生成
+-> 开始练习
+-> 草稿作答
+-> 提交与结果记录
+```
+
+审查截图和记录保存在：
+
+```text
+E:\temp\practice-record-data-layer-audit-2026-07-06
+```
+
+审查发现当前链路的交互已经基本成形，但数据层还需要补上几个“防断层”约束。特别是：作答草稿可以保存，但提交阶段如果失败或中断，用户必须能明确知道“尚未提交”，并能继续提交，而不是页面状态和数据状态各说各话。
+
+### 草稿与提交状态必须一等公民
+
+`practice_attempts` 需要明确区分草稿、提交中、已提交和提交失败。持久层可以继续只保存稳定状态，但接口返回值和前端状态至少要表达：
+
+```text
+draft: 用户正在作答，答案可修改。
+submitting: 前端临时状态，正在提交，不重复触发提交。
+submitted: 已生成判分结果，不再允许改答案。
+submit_failed: 前端或后端可恢复状态，保留草稿答案，可重试提交。
+abandoned: 用户主动放弃或长期未完成。
+```
+
+草稿记录增加这些辅助字段：
+
+```text
+last_saved_at
+answer_count
+dirty
+save_error
+submit_error
+client_attempt_token
+```
+
+`client_attempt_token` 用于提交幂等。用户重复点击提交或网络超时重试时，后端应识别这是同一次提交，不能重复生成统计。
+
+### 逐题明细需要尽早拆出
+
+当前实现里 `practice_attempts.jsonl` 同时承载 answers、results、summary 和 AI 判分结果。第一版可以兼容读取这种结构，但新写入路径应优先形成独立的逐题明细：
+
+```text
+practice_attempts.jsonl       attempt 主记录和 summary
+practice_attempt_items.jsonl  每题答案、判分、AI 修正和最终结果
+```
+
+`practice_attempts` 只保留结果摘要和必要索引：
+
+```text
+attempt_id
+practice_set_id
+status
+started_at
+submitted_at
+summary
+item_count
+source_meta
+```
+
+逐题结果统一从 `practice_attempt_items` 读取。这样后续按题目、知识点、题型、错题、AI 规划查数据时，不需要反复扫描整张练习记录。
+
+### 提交流水线要可恢复、可重建
+
+提交练习应按这个顺序落地：
+
+```text
+1. 校验 attempt 属于当前用户且 status=draft
+2. 生成 submit_token，标记本次提交请求
+3. 读取 practice_set 题目快照
+4. 为每道题生成 attempt item
+5. 本地判分 choice / blank / solution
+6. 写入 attempt items
+7. 汇总 attempt summary
+8. 更新 attempt 为 submitted
+9. 增量更新 user_question_stats 和 user_topic_stats
+10. 返回 attempt + items + summary
+```
+
+如果第 6 步之后失败，后端需要能够通过 `attempt_id` 重建 summary 和 stats。提交记录不能进入一种“答案保存了，但结果丢了，页面还以为提交了”的灰区。
+
+### AI 判分需要异步感和幂等
+
+AI 判分不应只是一个普通按钮请求。结果页需要展示明确状态：
+
+```text
+idle: 可请求 AI 判分。
+grading: 正在评分，按钮显示“正在评分”且不可重复点击。
+succeeded: 已完成，显示 AI 结论、置信度和反馈。
+failed: 评分失败，保留本地结果，可重试。
+```
+
+数据层需要保存：
+
+```text
+ai_grade_request_id
+ai_grade_status
+ai_status
+ai_feedback
+judge_confidence
+judge_reason
+graded_at
+grading_version
+```
+
+同一道题同一次 attempt 的 AI 判分也要幂等。重复点击或超时重试不应产生多条互相矛盾的最终结果。AI 修正后必须同步重算：
+
+```text
+practice_attempt_items
+practice_attempts.summary
+user_question_stats
+user_topic_stats
+```
+
+### 结果页读取真实记录
+
+结果页不能只依赖前端临时对象。提交成功后应以 `attempt_id` 为主，从后端读取真实记录：
+
+```text
+GET /api/materials/system/practice-attempts/{attempt_id}
+```
+
+返回结构需要包含：
+
+```text
+attempt
+items
+summary
+question_stats_delta
+topic_stats_delta
+```
+
+页面显示规则：
+
+```text
+选择题：只显示本地正确 / 错误，不显示 AI 判分按钮。
+填空题：显示本地正确 / 错误；可点 AI 判分纠正等价表达。
+解答题：显示待评分、参考答案和解析；可点 AI 判分。
+AI 纠正后：页面状态、attempt summary 和统计同时更新。
+```
+
+### 统计和 AI 规划只能读摘要
+
+后续 AI 规划不直接读全量 `practice_attempt_items`。需要新增摘要层：
+
+```text
+learning_profile_snapshots
+```
+
+快照字段建议：
+
+```text
+snapshot_id
+user_id
+schema_version
+generated_at
+range_start
+range_end
+practice_count
+question_count
+topic_summary
+repeated_wrong_questions
+favorite_unmastered_questions
+pending_review_count
+low_confidence_ai_count
+recent_improvement
+representative_examples
+source_stats_version
+```
+
+AI 规划读取快照和少量代表题，不能读取几百条原始作答。这样可以控制 token，也能避免旧数据量大后响应变慢。
+
+### 审查后新增成功标准
+
+1. 草稿作答后，刷新或返回仍能恢复答案，并显示最后保存时间。
+2. 提交失败时，attempt 保持 `draft` 或可恢复状态，页面明确提示失败并允许重试。
+3. 提交成功后，`practice_attempt_items` 中能按 `attempt_id + question_id` 查询每题记录。
+4. 重复提交同一个草稿不会重复增加练习次数和知识点统计。
+5. AI 判分按钮有明确的 `grading` 状态，失败后保留本地结果并允许重试。
+6. AI 判分修正后，结果页、attempt summary、单题统计和知识点统计保持一致。
+7. AI 学习规划只读取 stats 和 snapshot，不直接扫描全量明细。
