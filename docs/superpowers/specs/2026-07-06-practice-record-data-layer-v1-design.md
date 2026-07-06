@@ -13,6 +13,7 @@
 3. 能按用户和题目聚合出单题统计。
 4. 能按用户和知识点聚合出知识点统计。
 5. 结果页、复习规划和后续 AI 学习规划使用同一套真实记录。
+6. 数据量变大后，查询和 AI 规划仍然读取聚合摘要，而不是反复扫描全量历史。
 
 ## 非目标
 
@@ -21,6 +22,151 @@
 3. 不重构系统题库公共内容。
 4. 不让 AI 直接读取全部原始历史记录生成规划。
 5. 不把解答题评分做成完全自动可信结论，第一版保留人工修正空间。
+
+## 数据量增长设计
+
+第一版虽然继续使用本地 JSONL，但模型必须按“大量历史记录”设计。核心原则是三层分离：
+
+```text
+原始明细层：保存每次作答和每题判分，保证可追溯。
+聚合统计层：保存用户-题目、用户-知识点的当前统计，保证快速查询。
+AI 摘要层：只给 AI 提供后端整理过的近期表现、薄弱点和代表样例。
+```
+
+### 分层存储
+
+小数据阶段：
+
+```text
+data/users/{user_id}/system_library/
+├── practice_attempts.jsonl
+├── practice_attempt_items.jsonl
+├── user_question_stats.jsonl
+└── user_topic_stats.jsonl
+```
+
+中等数据阶段：
+
+```text
+data/users/{user_id}/system_library/
+├── attempts/2026-07.jsonl
+├── attempt_items/2026-07.jsonl
+├── stats/question_stats.jsonl
+├── stats/topic_stats.jsonl
+└── indexes/
+    ├── question_attempt_index.json
+    ├── topic_attempt_index.json
+    └── latest_attempt_index.json
+```
+
+数据库阶段：
+
+```text
+practice_attempts
+practice_attempt_items
+user_question_stats
+user_topic_stats
+learning_profile_snapshots
+```
+
+代码层只依赖 repository 接口，不依赖 JSONL 文件路径。这样后续迁移 SQLite 或 MySQL 时，不改前端和判分业务。
+
+### 查询策略
+
+随着记录变多，禁止常规页面每次扫描全部 `practice_attempt_items`。
+
+常用查询必须走聚合表或索引：
+
+```text
+查看一道题历史：user_question_stats + question_attempt_index
+查看知识点表现：user_topic_stats
+生成 AI 规划：learning_profile_snapshots 或实时聚合摘要
+结果页回看：attempt_id 精确读取
+复习规划候选：stats 中的 repeated_wrong / weakness_level / latest_practiced_at
+```
+
+原始明细只用于：
+
+```text
+打开某一次练习结果
+追溯某道题某次判分
+重建统计
+抽取少量代表样例给 AI
+```
+
+### 增量聚合
+
+提交练习和 AI 判分后，同步更新当前统计：
+
+```text
+practice_attempt_items 追加或更新
+-> user_question_stats 增量更新
+-> user_topic_stats 增量更新
+-> attempt summary 重新汇总
+```
+
+同时提供重建能力：
+
+```text
+rebuild_user_learning_stats(user_id)
+```
+
+重建逻辑从明细层重新计算统计，用于修复旧数据、算法升级或统计文件损坏。增量更新必须是幂等的：同一个 `attempt_id + question_id` 重新处理时，不应重复增加练习次数。
+
+### 准确性策略
+
+统计只以 `final_status` 为准，但必须保留判分来源：
+
+```text
+local_status
+ai_status
+manual_override
+final_status
+judge_method
+judge_confidence
+grading_version
+graded_at
+```
+
+当 AI 或人工修正结果时，要重新计算该题、该知识点和该 attempt 的统计。不能只改页面展示。
+
+低置信度或待核对结果不应被当成“确定错误”：
+
+```text
+correct: 计入正确
+incorrect: 计入错误
+partial: 单独统计，AI 规划时作为薄弱信号
+pending_review / pending_grading: 单独统计，不直接拉低准确率
+unanswered: 计入未作答，不计入正确率分母或单独展示
+```
+
+### AI 摘要策略
+
+AI 学习规划不读取全部历史流水。后端先生成摘要：
+
+```text
+最近 N 次练习表现
+错误率最高的知识点
+反复错的题
+收藏但未掌握的题
+近期改善或退步趋势
+待核对和低置信度判分数量
+每个薄弱点最多附带 2-3 个代表题
+```
+
+AI 输入应包含统计摘要和少量代表样例，而不是几百条原始作答记录。这样更省 token，也更准确。
+
+### 数据保留与压缩
+
+默认保留所有明细记录，但页面不直接扫全量明细。数据很大时可以做冷热分层：
+
+```text
+近 90 天：明细直接可查
+更早历史：保留明细文件，但主要走统计摘要
+长期分析：使用月度 snapshot 或 learning_profile_snapshots
+```
+
+任何压缩或归档都不能删除用户可见的练习结果；至少应保留 attempt_id、题目、用户答案、最终判分和提交时间。
 
 ## 数据模型
 
@@ -34,6 +180,7 @@
 attempt_id
 user_id
 practice_set_id
+schema_version
 status: draft / submitted / abandoned
 started_at
 submitted_at
@@ -62,6 +209,7 @@ attempt_id
 user_id
 practice_set_id
 question_id
+schema_version
 question_type
 answer_type: choice / blank / solution
 topics
@@ -75,6 +223,7 @@ judge_confidence
 judge_reason
 ai_feedback
 manual_override
+grading_version
 submitted_at
 graded_at
 ```
@@ -90,6 +239,7 @@ graded_at
 ```text
 user_id
 question_id
+stats_version
 practice_count
 answered_count
 correct_count
@@ -107,6 +257,7 @@ wrong_streak
 correct_streak
 is_repeated_wrong
 updated_at
+source_attempt_ids_recent
 ```
 
 该表不替代 `question_states.jsonl`。`question_states` 继续负责收藏、错题、掌握、备注等用户主动状态；`user_question_stats` 负责练习行为统计。
@@ -121,6 +272,7 @@ updated_at
 user_id
 subject
 topic
+stats_version
 practice_count
 question_count
 correct_count
@@ -132,6 +284,7 @@ latest_practiced_at
 weakness_level: none / light / medium / heavy
 trend: unknown / improving / stable / declining
 updated_at
+representative_question_ids
 ```
 
 一个题可以有多个知识点。提交后每个相关知识点都更新一次统计。
