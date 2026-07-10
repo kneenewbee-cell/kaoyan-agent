@@ -347,8 +347,12 @@ def chunk_markdown(
             if section.problem_group:
                 problem_metadata = {
                     "problem_id": section.problem_group.get("problem_id"),
+                    "problem_unit_id": section.problem_group.get("problem_unit_id"),
                     "problem_index": section.problem_group.get("problem_index"),
+                    "display_problem_index": section.problem_group.get("display_problem_index"),
+                    "problem_scope_id": section.problem_group.get("problem_scope_id"),
                     "problem_title": section.problem_group.get("title"),
+                    "problem_family": section.problem_group.get("problem_family"),
                     "problem_kind": section.problem_group.get("problem_kind"),
                     "problem_part_index": part_index,
                 }

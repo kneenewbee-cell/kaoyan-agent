@@ -82,9 +82,11 @@ data/raw/data/
 *.log
 *.tmp
 *.bak
+*.epub
 ~$*
 scripts/run_current_affairs_llm_smoke.py
 patch_weave.py
+patch_weave_full.py
 node_modules/
 dist/
 build/

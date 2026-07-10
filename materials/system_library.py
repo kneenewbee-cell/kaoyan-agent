@@ -9,11 +9,16 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOT = ROOT / "data" / "raw"
 
+SUPPORTED_MATH_EXAM_TYPES = ("math1", "math2", "math3")
 EXAM_TYPE_LABELS = {
     "math1": "数一",
+    "math2": "数二",
+    "math3": "数三",
 }
 LIBRARY_NAMES = {
     "math1": "数一历年真题",
+    "math2": "数二历年真题",
+    "math3": "数三历年真题",
 }
 QUESTION_TYPE_LABELS = {
     "single_choice": "选择题",
@@ -103,63 +108,65 @@ class SystemQuestionLibrary:
         topic: str | None,
         query: str | None,
     ) -> tuple[list[dict[str, Any]], list[str]]:
-        if subject != "math" or exam_type != "math1":
+        if subject != "math":
             return [], []
 
         rows = []
         topic_options: set[str] = set()
-        for row, year_dir in self._iter_question_rows(subject, exam_type):
-            try:
-                item = self._question_item(row, year_dir)
-            except (OSError, UnicodeDecodeError, ValueError, TypeError):
-                continue
-            if not self._matches_filters(
-                item,
-                library_name=library_name,
-                year=year,
-                question_type=question_type,
-                topic=None,
-                query=query,
-            ):
-                continue
-            topic_options.update(str(value) for value in item.get("topics") or [] if str(value).strip())
-            if topic is not None and not self._matches_topic(item, topic):
-                continue
-            rows.append(item)
+        for resolved_exam_type in self._math_exam_types(exam_type):
+            for row, year_dir in self._iter_question_rows(subject, resolved_exam_type):
+                try:
+                    item = self._question_item(row, year_dir)
+                except (OSError, UnicodeDecodeError, ValueError, TypeError):
+                    continue
+                if not self._matches_filters(
+                    item,
+                    library_name=library_name,
+                    year=year,
+                    question_type=question_type,
+                    topic=None,
+                    query=query,
+                ):
+                    continue
+                topic_options.update(str(value) for value in item.get("topics") or [] if str(value).strip())
+                if topic is not None and not self._matches_topic(item, topic):
+                    continue
+                rows.append(item)
 
         rows.sort(key=lambda item: (-(item.get("year") or 0), item.get("question_number") or 0))
         return rows, sorted(topic_options)
 
     def get_question(self, question_id: str) -> dict[str, Any]:
-        for row, year_dir in self._iter_question_rows("math", "math1"):
-            if row.get("question_id") != question_id:
-                continue
-            try:
-                item = self._question_item(row, year_dir)
-            except (OSError, UnicodeDecodeError, ValueError, TypeError):
-                item = self._fallback_question_item(row, year_dir)
-            sections = self._safe_read_row_card_sections(row, year_dir)
-            exam_type = str(row.get("exam_type") or "math1")
-            year = self._safe_int(row.get("year"), 0)
-            question_markdown = self._detail_markdown(
-                sections.get("题目") or self._row_question_fallback(row),
-                exam_type,
-                year,
-            )
-            answer = self._detail_markdown(sections.get("标准答案") or row.get("answer") or "", exam_type, year)
-            explanation = self._detail_markdown(sections.get("解析") or row.get("explanation") or "", exam_type, year)
-            return {
-                **item,
-                "answer": answer,
-                "explanation": explanation,
-                "question_markdown": question_markdown,
-                "answer_markdown": answer,
-                "explanation_markdown": explanation,
-            }
+        for exam_type in SUPPORTED_MATH_EXAM_TYPES:
+            for row, year_dir in self._iter_question_rows("math", exam_type):
+                if row.get("question_id") != question_id:
+                    continue
+                try:
+                    item = self._question_item(row, year_dir)
+                except (OSError, UnicodeDecodeError, ValueError, TypeError):
+                    item = self._fallback_question_item(row, year_dir)
+                sections = self._safe_read_row_card_sections(row, year_dir)
+                row_exam_type = str(row.get("exam_type") or exam_type)
+                year = self._safe_int(row.get("year"), 0)
+                question_markdown = self._detail_markdown(
+                    sections.get("题目") or self._row_question_fallback(row),
+                    row_exam_type,
+                    year,
+                )
+                answer = self._detail_markdown(sections.get("标准答案") or row.get("answer") or "", row_exam_type, year)
+                explanation = self._detail_markdown(sections.get("解析") or row.get("explanation") or "", row_exam_type, year)
+                return {
+                    **item,
+                    "answer": answer,
+                    "explanation": explanation,
+                    "question_markdown": question_markdown,
+                    "answer_markdown": answer,
+                    "explanation_markdown": explanation,
+                }
         raise KeyError(f"system question not found: {question_id}")
 
     def asset_path(self, exam_type: str, year: int, asset_path: str) -> Path:
-        if exam_type != "math1":
+        if exam_type not in SUPPORTED_MATH_EXAM_TYPES:
             raise ValueError(f"unsupported exam_type: {exam_type}")
         normalized_asset = self._normalize_asset_path(asset_path)
         year_dir = self.raw_root / "math" / "exam_papers" / exam_type / str(year)
@@ -189,8 +196,18 @@ class SystemQuestionLibrary:
                     except json.JSONDecodeError:
                         continue
                     if isinstance(row, dict):
-                        rows.append((row, year_dir))
+                        normalized_row = dict(row)
+                        normalized_row.setdefault("exam_type", exam_type)
+                        rows.append((normalized_row, year_dir))
         return rows
+
+    def _math_exam_types(self, exam_type: str) -> tuple[str, ...]:
+        normalized = str(exam_type or "").strip()
+        if normalized in ("", "all"):
+            return SUPPORTED_MATH_EXAM_TYPES
+        if normalized in SUPPORTED_MATH_EXAM_TYPES:
+            return (normalized,)
+        return ()
 
     def _fallback_question_item(self, row: dict[str, Any], year_dir: Path) -> dict[str, Any]:
         exam_type = str(row.get("exam_type") or "math1")

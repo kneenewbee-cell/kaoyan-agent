@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>考研 Agent 助手</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
-  <link rel="stylesheet" href="/static/styles.css?v=20260705-practice-result-scroll-polish" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260709-review-workflow-v1" />
 </head>
 <body>
   <main class="app-shell">
@@ -241,6 +241,8 @@
                   <select id="systemLibraryNameFilter">
                     <option value="">全部</option>
                     <option value="math1">数学一真题</option>
+                    <option value="math2">数学二真题</option>
+                    <option value="math3">数学三真题</option>
                   </select>
                 </label>
                 <label class="field">
@@ -320,6 +322,9 @@
                 <p class="helper-text">按今日/逾期/未来/已完成归拢系统题库复习任务。</p>
               </div>
             </div>
+            <section id="reviewLearningInsights" class="review-learning-insights" aria-label="学习洞察">
+              <div class="empty-state">正在读取练习记录...</div>
+            </section>
             <div class="review-filter-grid" aria-label="复习任务筛选">
               <label class="field">
                 <span>学科</span>
@@ -376,6 +381,6 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
-  <script src="/static/app.js?v=20260705-practice-result-scroll-polish"></script>
+  <script src="/static/app.js?v=20260709-review-workflow-v1"></script>
 </body>
 </html>

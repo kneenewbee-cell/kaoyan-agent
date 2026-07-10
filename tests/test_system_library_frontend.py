@@ -22,6 +22,10 @@ class SystemLibraryFrontendTests(unittest.TestCase):
 
         self.assertIn("function renderSystemQuestionMarkdown(question)", source)
         self.assertIn("renderSystemQuestionMarkdown(question)", source)
+        self.assertIn("function latestSubmittedPracticeAttempt", source)
+        self.assertIn("data-practice-latest-result-open", source)
+        self.assertIn("practice-attempts?practice_set_id", source)
+        self.assertIn("renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt", source)
         self.assertIn("function renderSystemAssetFallback(question)", source)
         self.assertNotIn("template.content.querySelectorAll(\"img\").forEach((image) => image.remove())", source)
 
@@ -107,8 +111,8 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         html = INDEX_HTML.read_text(encoding="utf-8")
         styles = STYLES_CSS.read_text(encoding="utf-8")
 
-        self.assertIn("styles.css?v=20260705-practice-result-scroll-polish", html)
-        self.assertIn("app.js?v=20260705-practice-result-scroll-polish", html)
+        self.assertIn("styles.css?v=20260709-review-workflow-v1", html)
+        self.assertIn("app.js?v=20260709-review-workflow-v1", html)
         self.assertIn(".system-workflow-dialog .small-button", styles)
         self.assertIn(".system-workflow-dialog .dark-button", styles)
         self.assertIn("background: #ffffff;", styles)
@@ -123,6 +127,40 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn("function renderSystemTopicOptions", source)
         self.assertIn("data.topic_options", source)
         self.assertIn('systemTopicFilter?.addEventListener("change"', source)
+
+    def test_system_library_filter_exposes_math2_and_math3_collections(self) -> None:
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn('<option value="math1">数学一真题</option>', html)
+        self.assertIn('<option value="math2">数学二真题</option>', html)
+        self.assertIn('<option value="math3">数学三真题</option>', html)
+        self.assertIn('systemState.examType = systemLibraryNameFilter ? systemLibraryNameFilter.value : "math1";', source)
+        self.assertIn('exam_type: systemState.examType', source)
+        self.assertIn("function systemExamTypeLabel", source)
+        self.assertIn('当前${currentExamLabel}题库', source)
+
+    def test_review_wrong_action_opens_filterable_wrong_pool_workflow(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function openWrongQuestionPoolModal", source)
+        self.assertIn("function renderWrongQuestionPoolModal", source)
+        self.assertIn("/api/materials/system/wrong-question-pool", source)
+        self.assertIn("/api/materials/system/practice-sets/from-wrong-pool", source)
+        self.assertIn("data-wrong-pool-topic", source)
+        self.assertIn("data-wrong-pool-risk-type", source)
+        self.assertIn("data-wrong-pool-create", source)
+        self.assertIn("risk_type", source)
+        self.assertIn("priority_reasons", source)
+        self.assertIn("priority-reason-list", source)
+        self.assertIn("openWrongQuestionPoolModal();", source)
+        self.assertIn("共练", source)
+        self.assertIn("判断可信度", source)
+        self.assertIn(".wrong-pool-list", styles)
+        self.assertIn(".wrong-pool-item", styles)
+        self.assertIn(".priority-reason-list", styles)
+        self.assertIn(".priority-reason-chip", styles)
 
     def test_system_question_state_patch_is_saved_with_current_user(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")
@@ -418,8 +456,21 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn(".practice-detail-paper", styles)
         self.assertIn(".practice-detail-back-button", styles)
         self.assertIn(".practice-paper-question", styles)
+        self.assertIn(".practice-latest-result", styles)
         self.assertIn(".practice-question-menu-panel", styles)
         self.assertIn(".practice-print-overlay", styles)
+
+    def test_practice_set_detail_links_to_latest_submitted_result(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function latestSubmittedPracticeAttempt", source)
+        self.assertIn("function practiceAttemptSummaryText", source)
+        self.assertIn("data-practice-latest-result", source)
+        self.assertIn("data-practice-latest-result-open", source)
+        self.assertIn("practice-attempts?practice_set_id", source)
+        self.assertIn("renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt", source)
+        self.assertIn(".practice-latest-result", styles)
 
     def test_practice_attempt_flow_exposes_draft_submit_and_result_surfaces(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")
@@ -460,6 +511,7 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn("/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}/attempts", source)
         self.assertIn("/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}/answers", source)
         self.assertIn("/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}/submit", source)
+        self.assertIn("async function fetchPracticeAttemptDetail", source)
         self.assertIn("practice_attempt", source)
         self.assertIn("提交后本次练习记录不可修改", source)
         self.assertIn("再次练习将在后续版本开放", source)
@@ -505,6 +557,18 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn("practice-attempt-submit-bar", source)
         self.assertIn('if (answerType === "blank")', source)
         self.assertIn("practiceResultStatusClass", source)
+        self.assertIn("function practiceAttemptFinalStatus", source)
+        self.assertIn("result.final_status", source)
+        self.assertIn("pending_review:", source)
+        self.assertIn("data-practice-ai-grade", source)
+        self.assertIn("/items/${encodeURIComponent(questionId)}/grade", source)
+        self.assertIn('judge_method: "ai"', source)
+        self.assertIn("function setPracticeAiGradeButtonLoading", source)
+        self.assertIn('button.textContent = "正在评分...";', source)
+        self.assertIn("button.disabled = true;", source)
+        self.assertIn('button.setAttribute("aria-busy", "true");', source)
+        self.assertIn("const currentScrollTop = body ? body.scrollTop : 0;", source)
+        self.assertIn("restoreWorkflowBodyScroll(body, options.restoreScrollTop);", source)
         self.assertIn('needs_review: "待核对"', source)
         self.assertIn("practice-result-status correct", source)
         self.assertIn("practice-result-status incorrect", source)
@@ -512,6 +576,101 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn(".practice-result-status.correct", styles)
         self.assertIn(".practice-result-status.incorrect", styles)
         self.assertIn(".practice-result-status.needs_review", styles)
+        self.assertIn(".small-button.is-loading:disabled", styles)
+
+    def test_practice_result_renders_learning_record_insights(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function renderPracticeAttemptInsights", source)
+        self.assertIn("data-practice-record-insights", source)
+        self.assertIn("practice-record-insights", source)
+        self.assertIn("insights: detail.insights ||", source)
+        self.assertIn(".practice-record-insights", styles)
+
+    def test_practice_result_next_actions_are_clickable(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("data-practice-next-action", source)
+        self.assertIn("applyPracticeResultFocus", source)
+        self.assertIn("practice-result-focus-message", source)
+        self.assertIn("data-practice-result-status", source)
+        self.assertIn("data-practice-result-topics", source)
+        self.assertIn(".practice-result-row.is-emphasized", styles)
+        self.assertIn(".practice-result-row.is-dimmed", styles)
+
+    def test_practice_result_row_exposes_state_menu(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("practice-result-menu", source)
+        self.assertIn("data-practice-result-toggle-favorite", source)
+        self.assertIn("data-practice-result-toggle-wrong", source)
+        self.assertIn("data-practice-result-toggle-mastery", source)
+        self.assertIn("data-practice-result-add-review", source)
+        self.assertIn("function savePracticeResultQuestionState", source)
+        self.assertIn(".practice-result-menu", styles)
+
+    def test_question_drawer_exposes_learning_history_snapshot(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function loadSystemQuestionLearningSnapshot", source)
+        self.assertIn("function renderSystemQuestionLearningSnapshot", source)
+        self.assertIn("learning-snapshot", source)
+        self.assertIn("data-system-learning-history", source)
+        self.assertIn(".system-learning-history", styles)
+
+    def test_review_tasks_render_learning_reasons(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("learning_reasons", source)
+        self.assertIn("review-task-reasons", source)
+        self.assertIn(".review-task-reasons", styles)
+
+    def test_review_page_renders_learning_insights_dashboard(self) -> None:
+        html = INDEX_HTML.read_text(encoding="utf-8")
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn('id="reviewLearningInsights"', html)
+        self.assertIn("const reviewLearningInsights", source)
+        self.assertIn("learningInsights", source)
+        self.assertIn("function loadReviewLearningInsights", source)
+        self.assertIn("function renderReviewLearningInsights", source)
+        self.assertIn("/api/materials/system/learning-insights", source)
+        self.assertIn("data-review-insight-action", source)
+        self.assertIn("learningTopicReasonTags", source)
+        self.assertIn(".review-learning-insights", styles)
+        self.assertIn("grid-template-columns: repeat(auto-fit, minmax(210px, 1fr))", styles)
+        self.assertIn(".review-insight-action", styles)
+
+    def test_review_insights_open_topic_panel_and_pending_review_list(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function openLearningTopicPanel", source)
+        self.assertIn("data-learning-topic-card", source)
+        self.assertIn("openPendingReviewModal", source)
+        self.assertIn("/api/materials/system/pending-review-items", source)
+        self.assertIn("data-pending-review-ai", source)
+        self.assertIn("data-pending-review-correct", source)
+        self.assertIn("data-pending-review-incorrect", source)
+        self.assertIn(".learning-topic-panel", styles)
+        self.assertIn(".pending-review-list", styles)
+        self.assertIn(".pending-review-item", styles)
+
+    def test_pending_review_manual_confirmation_warns_on_conflicting_evidence(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("function pendingReviewManualConflictSources", source)
+        self.assertIn("function confirmPendingReviewManualGrade", source)
+        self.assertIn("window.confirm", source)
+        self.assertIn("manual_conflict_sources", source)
+        self.assertIn("manual_evidence", source)
+        self.assertIn("config.items.find", source)
 
     def test_practice_attempt_parses_inline_choice_options(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")
@@ -529,6 +688,7 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertIn('practiceAnswerTextValue(answer.value)', source)
         self.assertIn('practiceAnswerTextValue(answer.text)', source)
         self.assertIn('practiceAnswerTextValue(answer.content)', source)
+        self.assertIn('practiceAnswerTextValue(answer.markdown)', source)
         self.assertIn("function stripPracticeChoiceOptionsFromMarkdown", source)
         self.assertIn("function stripPracticeChoiceLeadIn", source)
         self.assertIn("stripPracticeChoiceLeadIn(source.slice(0, optionStart).trimEnd())", source)

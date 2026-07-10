@@ -49,6 +49,29 @@ async def create_practice_set(
     return {"ok": True, "user_id": uid, "practice_set": practice_set}
 
 
+@router.post("/practice-sets/from-wrong-pool")
+async def create_practice_set_from_wrong_pool(
+    request: Request,
+    payload: dict[str, Any],
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        practice_set = _store().create_practice_set_from_wrong_pool(
+            uid,
+            question_ids=payload.get("question_ids") or [],
+            title=payload.get("title"),
+            subject=str(payload.get("subject") or "math"),
+            exam_type=str(payload.get("exam_type") or ""),
+            filters=payload.get("filters") if isinstance(payload.get("filters"), dict) else {},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "practice_set": practice_set}
+
+
 @router.post("/practice-candidates")
 async def preview_practice_candidates(
     request: Request,
@@ -73,6 +96,56 @@ async def preview_practice_candidates(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"ok": True, **preview}
+
+
+@router.get("/wrong-question-pool")
+async def list_wrong_question_pool(
+    request: Request,
+    user_id: str | None = Query(None),
+    subject: str = Query("math"),
+    exam_type: str = Query(""),
+    topic: str | None = Query(None),
+    question_type: str | None = Query(None),
+    risk_type: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        pool = _store().list_wrong_question_pool(
+            uid,
+            subject=subject,
+            exam_type=exam_type,
+            topic=topic,
+            question_type=question_type,
+            risk_type=risk_type,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "pool": pool}
+
+
+@router.get("/pending-review-items")
+async def list_pending_review_items(
+    request: Request,
+    user_id: str | None = Query(None),
+    subject: str = Query("math"),
+    exam_type: str = Query(""),
+    topic: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        pending_review = _store().list_pending_review_items(
+            uid,
+            subject=subject,
+            exam_type=exam_type,
+            topic=topic,
+            limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "pending_review": pending_review}
 
 
 @router.get("/practice-sets")
@@ -170,6 +243,96 @@ async def submit_practice_attempt(
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"ok": True, "user_id": uid, "practice_attempt": practice_attempt}
+
+
+@router.post("/practice-attempts/{attempt_id}/items/{question_id}/grade")
+async def grade_practice_attempt_item(
+    attempt_id: str,
+    question_id: str,
+    request: Request,
+    payload: dict[str, Any],
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        store = _store()
+        judge_method = str(payload.get("judge_method") or "")
+        if judge_method == "ai" and not payload.get("final_status"):
+            practice_attempt = store.request_practice_item_ai_grade(uid, attempt_id, question_id)
+        else:
+            practice_attempt = store.apply_practice_item_grade(
+                uid,
+                attempt_id,
+                question_id,
+                judge_method=judge_method,
+                final_status=str(payload.get("final_status") or ""),
+                judge_confidence=payload.get("judge_confidence"),
+                judge_reason=payload.get("judge_reason"),
+                ai_feedback=payload.get("ai_feedback"),
+                manual_override=payload.get("manual_override"),
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "practice_attempt": practice_attempt}
+
+
+@router.get("/practice-attempts/{attempt_id}")
+async def get_practice_attempt(
+    attempt_id: str,
+    request: Request,
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        store = _store()
+        practice_attempt = store.get_practice_attempt(uid, attempt_id)
+        items = store.list_practice_attempt_items(uid, attempt_id=attempt_id)
+        insights = store.build_practice_attempt_insights(uid, attempt_id)
+        return {
+            "ok": True,
+            "user_id": uid,
+            "practice_attempt": practice_attempt,
+            "items": items,
+            "summary": practice_attempt.get("summary") or {},
+            "question_stats": store.list_user_question_stats(uid),
+            "topic_stats": store.list_user_topic_stats(uid),
+            "insights": insights,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/questions/{question_id}/learning-snapshot")
+async def question_learning_snapshot(
+    question_id: str,
+    request: Request,
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        snapshot = _store().build_question_learning_snapshot(uid, question_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "snapshot": snapshot}
+
+
+@router.get("/learning-insights")
+async def learning_insights(
+    request: Request,
+    user_id: str | None = Query(None),
+    subject: str | None = Query(None),
+    limit: int = Query(5, ge=1, le=10),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        insights = _store().build_learning_insights(uid, subject=subject, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "insights": insights}
 
 
 @router.get("/practice-attempts")

@@ -56,7 +56,7 @@ class ExerciseStructureRepairTest(unittest.TestCase):
         self.assertEqual(result["report"]["applied_count"], 1)
         self.assertEqual(result["report"]["candidate_count"], 1)
         self.assertEqual(client.payloads[0]["target_missing_index"], 2)
-        self.assertEqual(client.payloads[0]["candidate_type"], "previous_problem_absorption")
+        self.assertEqual(client.payloads[0]["candidate_type"], "sequence_gap")
 
     def test_rejects_llm_split_on_option_line(self) -> None:
         markdown = """# 真题
@@ -175,6 +175,135 @@ B. 选项二
         self.assertEqual(groups[1]["problem_index"], 2)
         self.assertEqual(groups[1]["end_line"], 6)
         self.assertEqual([group["start_line"] for group in groups], [3, 5, 7, 9, 11, 13])
+
+    def test_repair_uses_sequence_gap_candidate_scope_when_numbers_restart(self) -> None:
+        markdown = """# 分类练习
+
+## 一、选择题
+
+1. 选择第一题
+
+2. 选择第二题
+
+## 二、填空题
+
+1. 填空第一题
+疑似第二题被粘在这里。
+
+3. 填空第三题
+"""
+        initial = analyze_exercise_structure(markdown, material_type="exercise")
+        client = FakeBoundaryClient(
+            {
+                "decision": "split_previous_problem",
+                "target_problem_index": 2,
+                "start_line": 12,
+                "end_line": 12,
+                "confidence": 0.9,
+                "title": "2. 填空第二题",
+                "reason_codes": ["sequence_gap_in_restarted_scope"],
+            }
+        )
+
+        result = repair_exercise_structure(markdown, initial, llm_client=client)
+        payload = client.payloads[0]
+        groups = result["problem_groups"]
+
+        self.assertEqual(payload["previous_problem"]["title"], "1. 填空第一题")
+        self.assertEqual(payload["next_problem"]["title"], "3. 填空第三题")
+        self.assertEqual([group["title"] for group in groups], ["1. 选择第一题", "2. 选择第二题", "1. 填空第一题", "2. 填空第二题", "3. 填空第三题"])
+
+    def test_tail_candidate_sends_last_problem_window_to_llm(self) -> None:
+        markdown = """# 真题
+
+22. 第二十二题
+第一行正文。
+第二行正文。
+第三行正文。
+设另一个新问题，求参数。
+继续新问题正文。
+"""
+        initial = analyze_exercise_structure(markdown, material_type="exercise")
+        client = FakeBoundaryClient(
+            {
+                "decision": "split_previous_problem",
+                "target_problem_index": 23,
+                "start_line": 7,
+                "end_line": 8,
+                "confidence": 0.88,
+                "title": "23. 设另一个新问题，求参数。",
+                "reason_codes": ["tail_problem_absorption"],
+            }
+        )
+
+        result = repair_exercise_structure(markdown, initial, llm_client=client)
+
+        self.assertEqual(client.payloads[0]["candidate_type"], "tail_problem_absorption")
+        self.assertEqual(result["report"]["applied_count"], 1)
+        self.assertEqual([group["problem_index"] for group in result["problem_groups"]], [22, 23])
+
+    def test_strong_local_gap_evidence_can_override_llm_no_split(self) -> None:
+        markdown = """# 真题
+
+(19) 第十九题
+已知平面区域 D。
+(I）求D的面积；
+（Ⅱ）求D绕x轴旋转所成旋转体的体积。
+
+设平面有界区域D位于第一象限，计算二重积分。
+20-22 题 APP扫码听课
+
+(21) 第二十一题
+证明命题。
+"""
+        initial = analyze_exercise_structure(markdown, material_type="exercise")
+        client = FakeBoundaryClient(
+            {
+                "decision": "no_split",
+                "target_problem_index": 20,
+                "start_line": None,
+                "end_line": None,
+                "confidence": 0.9,
+                "title": "",
+            }
+        )
+
+        result = repair_exercise_structure(markdown, initial, llm_client=client)
+
+        self.assertEqual(result["report"]["applied_count"], 1)
+        self.assertIn("local_high_confidence_sequence_gap", result["report"]["applied"][0]["reason_codes"])
+        self.assertEqual([group["problem_index"] for group in result["problem_groups"]], [19, 20, 21])
+
+    def test_low_paren_sequence_in_single_gap_can_repair_missing_problem_stem(self) -> None:
+        markdown = """# 真题
+
+6. 第六题有完整 A B C D 选项。
+
+(1）若条件一成立；
+
+（2）若条件二成立；
+
+（3）若条件三成立；
+
+8. 第八题
+"""
+        initial = analyze_exercise_structure(markdown, material_type="exercise")
+        client = FakeBoundaryClient(
+            {
+                "decision": "no_split",
+                "target_problem_index": 7,
+                "start_line": None,
+                "end_line": None,
+                "confidence": 0.9,
+                "title": "",
+            }
+        )
+
+        result = repair_exercise_structure(markdown, initial, llm_client=client)
+
+        self.assertEqual(result["report"]["applied_count"], 1)
+        self.assertIn("low_paren_sequence_after_previous_problem", result["report"]["applied"][0]["reason_codes"])
+        self.assertEqual([group["problem_index"] for group in result["problem_groups"]], [6, 7, 8])
 
 
 if __name__ == "__main__":

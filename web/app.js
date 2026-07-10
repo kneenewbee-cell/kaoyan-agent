@@ -79,6 +79,7 @@ const systemStatusSummary = document.querySelector("#systemStatusSummary");
 const systemSaveStatus = document.querySelector("#systemSaveStatus");
 const reviewTasksRefreshButton = document.querySelector("#reviewTasksRefreshButton");
 const reviewTasksStatus = document.querySelector("#reviewTasksStatus");
+const reviewLearningInsights = document.querySelector("#reviewLearningInsights");
 const reviewTaskList = document.querySelector("#reviewTaskList");
 const reviewSubjectFilter = document.querySelector("#reviewSubjectFilter");
 const reviewTargetTypeFilter = document.querySelector("#reviewTargetTypeFilter");
@@ -98,7 +99,7 @@ const systemState = {
   userId: "",
   subject: "math",
   contentType: "questions",
-  examType: "math1",
+  examType: "",
   page: 1,
   pageSize: 10,
   query: "",
@@ -120,6 +121,12 @@ const systemState = {
   selectedIds: new Set(),
 };
 
+const SYSTEM_EXAM_TYPE_LABELS = {
+  math1: "数学一",
+  math2: "数学二",
+  math3: "数学三",
+};
+
 const systemTutor = {
   active: false,
   questionId: "",
@@ -133,6 +140,9 @@ const systemTutor = {
 
 const reviewTasksState = {
   items: [],
+  learningInsights: null,
+  insightsLoading: false,
+  insightsError: "",
   loading: false,
   error: "",
   filters: {
@@ -352,6 +362,10 @@ function systemQuestionTitle(item) {
   const exam = item?.exam_type_label || "数一";
   const number = item?.question_number ? `Q${item.question_number}` : "";
   return [year, exam, number].filter(Boolean).join(" ");
+}
+
+function systemExamTypeLabel(examType) {
+  return SYSTEM_EXAM_TYPE_LABELS[examType] || "全部数学";
 }
 
 function systemStateMatchesStatus(questionId) {
@@ -1191,7 +1205,7 @@ function renderSystemQuestionList() {
 }
 
 function syncSystemFiltersFromInputs() {
-  systemState.examType = systemLibraryNameFilter?.value || "math1";
+  systemState.examType = systemLibraryNameFilter ? systemLibraryNameFilter.value : "math1";
   systemState.year = systemYearFilter?.value || "";
   systemState.questionType = systemQuestionTypeFilter?.value || "";
   systemState.topic = (systemTopicFilter?.value || "").trim();
@@ -1558,6 +1572,7 @@ function renderSystemPracticeModal(overlay, question, config) {
   const canCreate = systemPracticeCanCreate(candidates, config);
   const topicOptions = systemPracticeTopicOptions(question);
   const created = config.createdPracticeSet;
+  const currentExamLabel = systemExamTypeLabel(systemState.examType || question.exam_type);
   body.innerHTML = `
     <div class="workflow-form-grid">
       <label class="field">
@@ -1571,7 +1586,7 @@ function renderSystemPracticeModal(overlay, question, config) {
       <label class="field">
         <span>找题范围</span>
         <select data-system-practice-source-scope>
-          <option value="exam_type" ${config.sourceScope === "exam_type" ? "selected" : ""}>当前数学一题库</option>
+          <option value="exam_type" ${config.sourceScope === "exam_type" ? "selected" : ""}>当前${currentExamLabel}题库</option>
           <option value="same_library" ${config.sourceScope === "same_library" ? "selected" : ""}>同一资料库</option>
           <option value="same_year" ${config.sourceScope === "same_year" ? "selected" : ""}>同一年真题</option>
           <option value="subject" ${config.sourceScope === "subject" ? "selected" : ""}>全部数学题库</option>
@@ -1753,6 +1768,627 @@ async function deleteSystemPracticeSet(practiceSet, question, config, overlay) {
   }
 }
 
+function wrongPoolQuestionTypeLabel(value) {
+  const labels = {
+    single_choice: "选择题",
+    multiple_choice: "选择题",
+    choice: "选择题",
+    fill_blank: "填空题",
+    blank: "填空题",
+    solution: "解答题",
+  };
+  return labels[value] || value || "题型";
+}
+
+function wrongPoolRiskTypeLabel(value) {
+  const labels = {
+    "": "全部风险",
+    all: "全部风险",
+    wrong: "错题",
+    pending: "待核对",
+    skipped: "多次未答",
+    manual: "手动标记",
+  };
+  return labels[value] || value || "风险类型";
+}
+
+function wrongPoolRiskTypeOptions(config) {
+  const rawOptions = Array.isArray(config.riskTypeOptions) ? config.riskTypeOptions : [];
+  const seen = new Set();
+  const options = [];
+  [{ value: "", label: "全部风险" }, ...rawOptions].forEach((option) => {
+    const value = String(option.value || "");
+    if (seen.has(value)) return;
+    seen.add(value);
+    options.push({
+      value,
+      label: option.label || wrongPoolRiskTypeLabel(value),
+      count: Number(option.count || 0),
+    });
+  });
+  ["wrong", "pending", "skipped", "manual"].forEach((value) => {
+    if (!seen.has(value)) {
+      options.push({ value, label: wrongPoolRiskTypeLabel(value), count: 0 });
+    }
+  });
+  return options;
+}
+
+function renderPriorityReasonTags(reasons = []) {
+  const tags = Array.isArray(reasons)
+    ? reasons.filter((reason) => reason && (reason.label || reason.type)).slice(0, 4)
+    : [];
+  if (!tags.length) return "";
+  return `
+    <div class="priority-reason-list">
+      ${tags.map((reason) => `<span class="priority-reason-chip">${escapeHtml(reason.label || reason.type || "")}</span>`).join("")}
+    </div>
+  `;
+}
+
+function wrongPoolSelectedItems(config) {
+  const selectedIds = config.selectedIds || new Set();
+  return (config.items || []).filter((item) => selectedIds.has(item.question_id));
+}
+
+function renderWrongPoolItem(item, config) {
+  const selected = config.selectedIds?.has(item.question_id);
+  const riskText = `错题 ${Number(item.wrong_count || 0)} · 待核对 ${Number(item.pending_review_count || 0)} · 共练 ${Number(item.attempt_count || 0)} 次`;
+  return `
+    <article class="wrong-pool-item ${selected ? "selected" : ""}">
+      <label class="wrong-pool-check">
+        <input type="checkbox" value="${escapeHtml(item.question_id)}" data-wrong-pool-item ${selected ? "checked" : ""}>
+      </label>
+      <div class="wrong-pool-item-body">
+        <div class="wrong-pool-item-head">
+          <strong>${escapeHtml(item.title || item.question_id)}</strong>
+          <span>${escapeHtml(item.library_name || systemExamTypeLabel(item.exam_type))}</span>
+        </div>
+        <p>${escapeHtml(item.preview || "暂无题干预览")}</p>
+        <div class="wrong-pool-meta">
+          <span>${escapeHtml(wrongPoolQuestionTypeLabel(item.question_type))}</span>
+          <span>${escapeHtml((item.topics || []).join(" / ") || "未标注知识点")}</span>
+          <span>${escapeHtml(riskText)}</span>
+          <span>优先级 ${escapeHtml(String(item.priority_score || 0))}</span>
+        </div>
+        ${renderPriorityReasonTags(item.priority_reasons)}
+      </div>
+    </article>
+  `;
+}
+
+function renderWrongQuestionPoolModal(overlay, config) {
+  const body = overlay.querySelector(".system-workflow-body");
+  if (!body) return;
+  const selectedItems = wrongPoolSelectedItems(config);
+  const created = config.createdPracticeSet;
+  const topicOptions = Array.isArray(config.topicOptions) ? config.topicOptions : [];
+  const typeOptions = Array.isArray(config.questionTypeOptions) ? config.questionTypeOptions : [];
+  body.innerHTML = `
+    <div class="workflow-form-grid wrong-pool-filters">
+      <label class="field">
+        <span>题库范围</span>
+        <select data-wrong-pool-exam-type>
+          <option value="" ${config.examType ? "" : "selected"}>全部数学题库</option>
+          <option value="math1" ${config.examType === "math1" ? "selected" : ""}>数学一真题</option>
+          <option value="math2" ${config.examType === "math2" ? "selected" : ""}>数学二真题</option>
+          <option value="math3" ${config.examType === "math3" ? "selected" : ""}>数学三真题</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>题型</span>
+        <select data-wrong-pool-question-type>
+          <option value="" ${config.questionType ? "" : "selected"}>全部题型</option>
+          ${["single_choice", "fill_blank", "solution", ...typeOptions.filter((item) => !["single_choice", "fill_blank", "solution"].includes(item))]
+            .map((type) => `<option value="${escapeHtml(type)}" ${config.questionType === type ? "selected" : ""}>${escapeHtml(wrongPoolQuestionTypeLabel(type))}</option>`)
+            .join("")}
+        </select>
+      </label>
+      <label class="field">
+        <span>知识点</span>
+        <select data-wrong-pool-topic>
+          <option value="" ${config.topic ? "" : "selected"}>全部知识点</option>
+          ${topicOptions.map((topic) => `<option value="${escapeHtml(topic)}" ${config.topic === topic ? "selected" : ""}>${escapeHtml(topic)}</option>`).join("")}
+        </select>
+      </label>
+      <label class="field">
+        <span>风险类型</span>
+        <select data-wrong-pool-risk-type>
+          ${wrongPoolRiskTypeOptions(config)
+            .map((option) => `
+              <option value="${escapeHtml(option.value)}" ${config.riskType === option.value ? "selected" : ""}>
+                ${escapeHtml(option.label)}${option.count ? `（${escapeHtml(String(option.count))}）` : ""}
+              </option>
+            `)
+            .join("")}
+        </select>
+      </label>
+    </div>
+    <section class="system-workflow-section">
+      <div class="wrong-pool-summary">
+        <div>
+          <h4>错题池</h4>
+          <p>${config.loading ? "正在读取错题..." : `共 ${Number(config.total || 0)} 道可复习错题，默认勾选优先级最高的 ${Math.min(5, Number(config.total || 0))} 道。`}</p>
+        </div>
+        <span class="status-pill learning">已选 ${selectedItems.length}</span>
+      </div>
+      ${config.error ? `<p class="helper-text error-text">${escapeHtml(config.error)}</p>` : ""}
+      ${config.loading ? `
+        <div class="empty-state">正在加载错题池...</div>
+      ` : config.items.length ? `
+        <div class="wrong-pool-list">
+          ${config.items.map((item) => renderWrongPoolItem(item, config)).join("")}
+        </div>
+      ` : `
+        <div class="empty-state">当前筛选下没有错题。可以换一个学科、题型或知识点。</div>
+      `}
+    </section>
+    ${created ? renderSystemPracticeSetSummary(created, selectedItems) : ""}
+    <div class="system-workflow-actions">
+      <button type="button" class="small-button dark-button" data-wrong-pool-create ${selectedItems.length && !config.creating ? "" : "disabled"}>
+        ${config.creating ? "生成中..." : "生成错题练习单"}
+      </button>
+    </div>
+  `;
+  body.querySelector("[data-wrong-pool-exam-type]")?.addEventListener("change", (event) => {
+    config.examType = event.target.value || "";
+    config.createdPracticeSet = null;
+    void loadWrongQuestionPool(config, overlay);
+  });
+  body.querySelector("[data-wrong-pool-question-type]")?.addEventListener("change", (event) => {
+    config.questionType = event.target.value || "";
+    config.createdPracticeSet = null;
+    void loadWrongQuestionPool(config, overlay);
+  });
+  body.querySelector("[data-wrong-pool-topic]")?.addEventListener("change", (event) => {
+    config.topic = event.target.value || "";
+    config.createdPracticeSet = null;
+    void loadWrongQuestionPool(config, overlay);
+  });
+  body.querySelector("[data-wrong-pool-risk-type]")?.addEventListener("change", (event) => {
+    config.riskType = event.target.value || "";
+    config.createdPracticeSet = null;
+    void loadWrongQuestionPool(config, overlay);
+  });
+  body.querySelectorAll("[data-wrong-pool-item]").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.checked) {
+        config.selectedIds.add(input.value);
+      } else {
+        config.selectedIds.delete(input.value);
+      }
+      config.createdPracticeSet = null;
+      renderWrongQuestionPoolModal(overlay, config);
+    });
+  });
+  body.querySelector("[data-wrong-pool-create]")?.addEventListener("click", () => {
+    void createWrongPoolPracticeSet(config, overlay);
+  });
+  body.querySelector("[data-system-practice-start]")?.addEventListener("click", () => {
+    void openPracticeAttempt(config.createdPracticeSet, selectedItems, { fallbackQuestions: selectedItems });
+  });
+  body.querySelector("[data-system-practice-view]")?.addEventListener("click", () => {
+    void openSystemPracticeSetDetail(config.createdPracticeSet, { fallbackQuestions: selectedItems });
+  });
+  body.querySelector("[data-system-practice-add-review]")?.addEventListener("click", () => {
+    openSystemReviewModal(selectedItems[0] || {}, {
+      practiceSet: config.createdPracticeSet,
+      questionIds: practiceSetQuestionIds(config.createdPracticeSet, selectedItems),
+    });
+  });
+  body.querySelector("[data-system-practice-download-pdf]")?.addEventListener("click", () => {
+    void openSystemPracticeSetPrintable(config.createdPracticeSet, { fallbackQuestions: selectedItems });
+  });
+  body.querySelector("[data-system-practice-delete]")?.addEventListener("click", () => {
+    void deleteWrongPoolPracticeSet(config, overlay);
+  });
+}
+
+async function loadWrongQuestionPool(config, overlay) {
+  config.loading = true;
+  config.error = "";
+  renderWrongQuestionPoolModal(overlay, config);
+  const params = new URLSearchParams({
+    user_id: currentMaterialsUserId(),
+    subject: config.subject || "math",
+    exam_type: config.examType || "",
+    limit: "50",
+  });
+  if (config.topic) params.set("topic", config.topic);
+  if (config.questionType) params.set("question_type", config.questionType);
+  if (config.riskType) params.set("risk_type", config.riskType);
+  try {
+    const data = await fetchJson(`/api/materials/system/wrong-question-pool?${params.toString()}`);
+    const pool = data.pool || {};
+    config.items = Array.isArray(pool.items) ? pool.items : [];
+    config.total = Number(pool.total || config.items.length || 0);
+    config.topicOptions = Array.isArray(pool.topic_options) ? pool.topic_options : [];
+    config.questionTypeOptions = Array.isArray(pool.question_type_options) ? pool.question_type_options : [];
+    config.riskTypeOptions = Array.isArray(pool.risk_type_options) ? pool.risk_type_options : [];
+    config.selectedIds = new Set(pool.default_selected_question_ids || []);
+  } catch (error) {
+    config.items = [];
+    config.total = 0;
+    config.selectedIds = new Set();
+    config.riskTypeOptions = [];
+    config.error = error.message;
+  } finally {
+    config.loading = false;
+    renderWrongQuestionPoolModal(overlay, config);
+  }
+}
+
+function openWrongQuestionPoolModal(options = {}) {
+  const { overlay } = createSystemWorkflowOverlay("错题池", "筛选错题，默认选择优先级最高的 5 道，生成可追踪的错题练习单。");
+  const config = {
+    subject: options.subject || reviewTasksState.filters.subject || systemState.subject || "math",
+    examType: options.examType || systemState.examType || "",
+    topic: options.topic || "",
+    questionType: options.questionType || "",
+    riskType: options.riskType || "",
+    items: [],
+    total: 0,
+    topicOptions: [],
+    questionTypeOptions: [],
+    riskTypeOptions: [],
+    selectedIds: new Set(),
+    loading: false,
+    error: "",
+    creating: false,
+    createdPracticeSet: null,
+  };
+  renderWrongQuestionPoolModal(overlay, config);
+  void loadWrongQuestionPool(config, overlay);
+}
+
+async function createWrongPoolPracticeSet(config, overlay) {
+  const selectedItems = wrongPoolSelectedItems(config);
+  if (!selectedItems.length) {
+    setSystemSaveStatus("error", "请先选择要复习的错题。");
+    return;
+  }
+  config.creating = true;
+  renderWrongQuestionPoolModal(overlay, config);
+  try {
+    const payload = {
+      question_ids: selectedItems.map((item) => item.question_id),
+      title: "错题复习",
+      subject: config.subject || "math",
+      exam_type: config.examType || "",
+      filters: {
+        topic: config.topic || "",
+        question_type: config.questionType || "",
+        risk_type: config.riskType || "",
+      },
+    };
+    const data = await fetchJson(`/api/materials/system/practice-sets/from-wrong-pool?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    config.createdPracticeSet = data.practice_set || data;
+    setSystemSaveStatus("saved", "错题练习单已生成");
+  } catch (error) {
+    config.createdPracticeSet = null;
+    setSystemSaveStatus("error", `错题练习单生成失败：${error.message}`);
+  } finally {
+    config.creating = false;
+    renderWrongQuestionPoolModal(overlay, config);
+  }
+}
+
+async function deleteWrongPoolPracticeSet(config, overlay) {
+  const practiceSetId = systemPracticeSetId(config.createdPracticeSet);
+  if (!practiceSetId) return;
+  try {
+    await fetchJson(`/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+      method: "DELETE",
+    });
+    config.createdPracticeSet = null;
+    setSystemSaveStatus("saved", "错题练习单已删除");
+    renderWrongQuestionPoolModal(overlay, config);
+  } catch (error) {
+    setSystemSaveStatus("error", `删除错题练习单失败：${error.message}`);
+  }
+}
+
+function learningTopicByName(topicName) {
+  const weakTopics = Array.isArray(reviewTasksState.learningInsights?.weak_topics)
+    ? reviewTasksState.learningInsights.weak_topics
+    : [];
+  return weakTopics.find((item) => String(item.topic || "") === String(topicName || "")) || null;
+}
+
+function openLearningTopicPanel(topicName) {
+  const topic = learningTopicByName(topicName) || { topic: topicName };
+  const title = String(topic.topic || "未命名知识点");
+  const { overlay, close } = createSystemWorkflowOverlay("知识点处理", "从学习概览进入，先看原因，再选择错题、待核对或复习任务。");
+  const body = overlay.querySelector(".system-workflow-body");
+  if (!body) return;
+  body.innerHTML = `
+    <section class="learning-topic-panel">
+      <header>
+        <div>
+          <p class="eyebrow">Learning Topic</p>
+          <h4>${escapeHtml(title)}</h4>
+          <p>系统知识点内容暂未接入。当前先展示你的练习记录、风险原因和可执行入口。</p>
+        </div>
+        <span class="status-pill learning">优先级：${escapeHtml(learningPriorityLabel(topic.priority_score))}</span>
+      </header>
+      <div class="learning-topic-panel-grid">
+        <div>
+          <strong>练习记录</strong>
+          <p>共练 ${escapeHtml(String(topic.attempt_count || 0))} 次，错题 ${escapeHtml(String(topic.wrong_count || 0))} 次，待核对 ${escapeHtml(String(topic.pending_review_count || 0))} 次，未答 ${escapeHtml(String(topic.unanswered_count || 0))} 次。</p>
+          <p>判断可信度：${escapeHtml(learningConfidenceLabel(topic.confidence))}</p>
+        </div>
+        <div>
+          <strong>处理原因</strong>
+          ${learningTopicReasonTags(topic) || "<p>暂无明确风险原因。</p>"}
+        </div>
+      </div>
+      <div class="system-workflow-actions">
+        <button type="button" class="small-button dark-button" data-topic-panel-wrong>复习相关错题</button>
+        <button type="button" class="small-button" data-topic-panel-pending>核对相关题</button>
+        <button type="button" class="small-button" data-topic-panel-filter>筛选复习任务</button>
+      </div>
+    </section>
+  `;
+  body.querySelector("[data-topic-panel-wrong]")?.addEventListener("click", () => {
+    close();
+    openWrongQuestionPoolModal({ topic: title, riskType: "wrong" });
+  });
+  body.querySelector("[data-topic-panel-pending]")?.addEventListener("click", () => {
+    close();
+    openPendingReviewModal({ topic: title });
+  });
+  body.querySelector("[data-topic-panel-filter]")?.addEventListener("click", () => {
+    close();
+    if (reviewKeywordFilter) reviewKeywordFilter.value = title;
+    reviewTasksState.filters.keyword = title;
+    void loadReviewTasks();
+    setReviewTasksStatus("saved", `已按知识点「${title}」筛选复习任务`);
+  });
+}
+
+function pendingReviewItemTitle(item = {}) {
+  return item.question_title || item.title || item.question_id || "待核对题目";
+}
+
+function pendingReviewAnswerTypeLabel(value = "") {
+  if (value === "blank") return "填空题";
+  if (value === "solution") return "解答题";
+  return value || "待核对";
+}
+
+function pendingReviewManualConflictSources(item = {}, finalStatus = "") {
+  const sources = [];
+  const localStatus = String(item.local_status || "");
+  const aiStatus = String(item.ai_status || "not_used");
+  if (["correct", "incorrect", "partial"].includes(localStatus) && localStatus !== finalStatus) {
+    sources.push("local");
+  }
+  if (["correct", "incorrect", "partial"].includes(aiStatus) && aiStatus !== finalStatus) {
+    sources.push("ai");
+  }
+  return sources;
+}
+
+function pendingReviewStatusLabel(status = "") {
+  if (status === "correct") return "正确";
+  if (status === "incorrect") return "错误";
+  if (status === "partial") return "部分正确";
+  if (status === "pending_review") return "待核对";
+  if (status === "unanswered") return "未作答";
+  if (status === "not_used") return "未使用";
+  return status || "未知";
+}
+
+function confirmPendingReviewManualGrade(item = {}, finalStatus = "") {
+  const conflictSources = pendingReviewManualConflictSources(item, finalStatus);
+  if (!conflictSources.length) return true;
+  const sourceLabels = conflictSources.map((source) => (source === "ai" ? "AI 判分" : "本地判分")).join("、");
+  const localStatus = pendingReviewStatusLabel(item.local_status || "");
+  const aiStatus = pendingReviewStatusLabel(item.ai_status || "not_used");
+  const finalLabel = pendingReviewStatusLabel(finalStatus);
+  return window.confirm(
+    `${sourceLabels}与本次人工确认不一致。\n\n本地判分：${localStatus}\nAI 判分：${aiStatus}\n人工确认：${finalLabel}\n\n仍然按人工确认保存吗？`
+  );
+}
+
+function renderPendingReviewItem(item) {
+  const attemptId = item.attempt_id || "";
+  const questionId = item.question_id || "";
+  const topics = Array.isArray(item.topics) ? item.topics : [];
+  const conflictSources = Array.isArray(item.manual_conflict_sources) ? item.manual_conflict_sources : [];
+  const evidence = item.manual_evidence && typeof item.manual_evidence === "object" ? item.manual_evidence : {};
+  return `
+    <article class="pending-review-item">
+      <header>
+        <div>
+          <strong>${escapeHtml(pendingReviewItemTitle(item))}</strong>
+          <p>${escapeHtml(pendingReviewAnswerTypeLabel(item.answer_type))} · ${escapeHtml(topics.join(" / ") || "未标注知识点")}</p>
+        </div>
+        <span class="practice-result-status needs_review">待核对</span>
+      </header>
+      <div class="pending-review-answer-grid">
+        <div>
+          <strong>你的答案</strong>
+          <div class="system-markdown">${renderSystemMarkdown(item.user_answer || "未作答")}</div>
+        </div>
+        <div>
+          <strong>参考答案</strong>
+          <div class="system-markdown">${renderSystemMarkdown(item.standard_answer || "暂无参考答案")}</div>
+        </div>
+      </div>
+      ${conflictSources.length ? `
+        <p class="practice-result-focus-message">上次人工确认与 ${escapeHtml(conflictSources.join(" / "))} 判分不一致；证据：本地 ${escapeHtml(pendingReviewStatusLabel(evidence.local_status || item.local_status || ""))}，AI ${escapeHtml(pendingReviewStatusLabel(evidence.ai_status || item.ai_status || "not_used"))}。</p>
+      ` : ""}
+      ${item.judge_reason ? `<p class="practice-result-feedback">${escapeHtml(String(item.judge_reason))}</p>` : ""}
+      <div class="pending-review-actions">
+        <button type="button" class="small-button" data-pending-review-open="${escapeHtml(questionId)}">查看题目</button>
+        <button type="button" class="small-button" data-pending-review-ai data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">AI 判分</button>
+        <button type="button" class="small-button" data-pending-review-correct data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">确认正确</button>
+        <button type="button" class="small-button" data-pending-review-incorrect data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">确认错误</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderPendingReviewModal(overlay, config) {
+  const body = overlay.querySelector(".system-workflow-body");
+  if (!body) return;
+  const topicOptions = Array.isArray(config.topicOptions) ? config.topicOptions : [];
+  body.innerHTML = `
+    <div class="workflow-form-grid">
+      <label class="field">
+        <span>题库范围</span>
+        <select data-pending-review-exam-type>
+          <option value="" ${config.examType ? "" : "selected"}>全部数学题库</option>
+          <option value="math1" ${config.examType === "math1" ? "selected" : ""}>数学一真题</option>
+          <option value="math2" ${config.examType === "math2" ? "selected" : ""}>数学二真题</option>
+          <option value="math3" ${config.examType === "math3" ? "selected" : ""}>数学三真题</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>知识点</span>
+        <select data-pending-review-topic>
+          <option value="" ${config.topic ? "" : "selected"}>全部知识点</option>
+          ${topicOptions.map((topic) => `<option value="${escapeHtml(topic)}" ${config.topic === topic ? "selected" : ""}>${escapeHtml(topic)}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <section class="system-workflow-section">
+      <div class="wrong-pool-summary">
+        <div>
+          <h4>待核对名单</h4>
+          <p>${config.loading ? "正在读取待核对题..." : `共 ${Number(config.total || 0)} 道需要核对的非选择题。`}</p>
+        </div>
+      </div>
+      ${config.error ? `<p class="helper-text error-text">${escapeHtml(config.error)}</p>` : ""}
+      ${config.loading ? `
+        <div class="empty-state">正在加载待核对名单...</div>
+      ` : config.items.length ? `
+        <div class="pending-review-list">
+          ${config.items.map(renderPendingReviewItem).join("")}
+        </div>
+      ` : `
+        <div class="empty-state">当前筛选下没有待核对题。</div>
+      `}
+    </section>
+  `;
+  body.querySelector("[data-pending-review-exam-type]")?.addEventListener("change", (event) => {
+    config.examType = event.target.value || "";
+    void loadPendingReviewItems(config, overlay);
+  });
+  body.querySelector("[data-pending-review-topic]")?.addEventListener("change", (event) => {
+    config.topic = event.target.value || "";
+    void loadPendingReviewItems(config, overlay);
+  });
+  body.querySelectorAll("[data-pending-review-open]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.pendingReviewOpen || "";
+      if (questionId) void openSystemQuestionDrawer(questionId);
+    });
+  });
+  body.querySelectorAll("[data-pending-review-ai], [data-pending-review-correct], [data-pending-review-incorrect]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const method = button.dataset.pendingReviewAi !== undefined ? "ai" : "manual";
+      const finalStatus = button.dataset.pendingReviewCorrect !== undefined
+        ? "correct"
+        : (button.dataset.pendingReviewIncorrect !== undefined ? "incorrect" : "");
+      const item = config.items.find((candidate) => (
+        String(candidate.attempt_id || "") === String(button.dataset.attemptId || "")
+        && String(candidate.question_id || "") === String(button.dataset.questionId || "")
+      )) || {};
+      if (method === "manual" && !confirmPendingReviewManualGrade(item, finalStatus)) {
+        return;
+      }
+      void gradePendingReviewItem(config, overlay, button, method, finalStatus);
+    });
+  });
+}
+
+async function loadPendingReviewItems(config, overlay) {
+  config.loading = true;
+  config.error = "";
+  renderPendingReviewModal(overlay, config);
+  const params = new URLSearchParams({
+    user_id: currentMaterialsUserId(),
+    subject: config.subject || "math",
+    exam_type: config.examType || "",
+    limit: "50",
+  });
+  if (config.topic) params.set("topic", config.topic);
+  try {
+    const data = await fetchJson(`/api/materials/system/pending-review-items?${params.toString()}`);
+    const pendingReview = data.pending_review || {};
+    config.items = Array.isArray(pendingReview.items) ? pendingReview.items : [];
+    config.total = Number(pendingReview.total || config.items.length || 0);
+    config.topicOptions = Array.isArray(pendingReview.topic_options) ? pendingReview.topic_options : [];
+  } catch (error) {
+    config.items = [];
+    config.total = 0;
+    config.topicOptions = [];
+    config.error = error.message;
+  } finally {
+    config.loading = false;
+    renderPendingReviewModal(overlay, config);
+  }
+}
+
+function openPendingReviewModal(options = {}) {
+  const { overlay } = createSystemWorkflowOverlay("待核对名单", "只列出需要人工或 AI 判分的非选择题。选择题按标准答案自动判分，不进入这里。");
+  const config = {
+    subject: options.subject || reviewTasksState.filters.subject || systemState.subject || "math",
+    examType: options.examType || systemState.examType || "",
+    topic: options.topic || "",
+    items: [],
+    total: 0,
+    topicOptions: [],
+    loading: false,
+    error: "",
+  };
+  renderPendingReviewModal(overlay, config);
+  void loadPendingReviewItems(config, overlay);
+}
+
+async function gradePendingReviewItem(config, overlay, button, judgeMethod, finalStatus) {
+  const attemptId = button?.dataset.attemptId || "";
+  const questionId = button?.dataset.questionId || "";
+  if (!attemptId || !questionId || button.disabled) return;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.classList.add("is-loading");
+  button.setAttribute("aria-busy", "true");
+  button.textContent = judgeMethod === "ai" ? "正在评分..." : "正在确认...";
+  try {
+    const payload = judgeMethod === "ai"
+      ? { judge_method: "ai" }
+      : {
+          judge_method: "manual",
+          final_status: finalStatus,
+          judge_confidence: 1,
+          judge_reason: finalStatus === "correct" ? "人工确认正确。" : "人工确认错误。",
+          manual_override: true,
+        };
+    await fetchJson(`/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}/items/${encodeURIComponent(questionId)}/grade?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setSystemSaveStatus("saved", "待核对结果已更新");
+    await loadPendingReviewItems(config, overlay);
+    await loadReviewLearningInsights({ silent: true });
+    await loadReviewTasks({ silent: true });
+  } catch (error) {
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    button.removeAttribute("aria-busy");
+    button.textContent = originalText;
+    setSystemSaveStatus("error", `待核对更新失败：${error.message}`);
+  }
+}
+
 function practiceSetQuestionIds(practiceSet = {}, fallbackQuestions = []) {
   const ids = Array.isArray(practiceSet.question_ids) ? practiceSet.question_ids : [];
   const fallbackIds = Array.isArray(fallbackQuestions)
@@ -1763,6 +2399,25 @@ function practiceSetQuestionIds(practiceSet = {}, fallbackQuestions = []) {
 
 function practiceAttemptId(practiceAttempt = {}) {
   return practiceAttempt.practice_attempt_id || practiceAttempt.attempt_id || practiceAttempt.id || "";
+}
+
+function latestSubmittedPracticeAttempt(practiceAttempts = []) {
+  const attempts = Array.isArray(practiceAttempts) ? practiceAttempts : [];
+  return attempts
+    .filter((attempt) => attempt && (attempt.status === "submitted" || attempt.submitted_at))
+    .sort((left, right) => String(right.submitted_at || right.started_at || "").localeCompare(String(left.submitted_at || left.started_at || "")))[0] || null;
+}
+
+function practiceAttemptSummaryText(practiceAttempt = {}) {
+  const summary = practiceAttempt.summary || {};
+  const total = Number(summary.total || 0);
+  const correct = Number(summary.correct || 0);
+  const incorrect = Number(summary.incorrect || 0);
+  const pending = Number(summary.pending_review || summary.needs_review || 0);
+  if (!total) {
+    return "暂无可汇总结果";
+  }
+  return `${total} 题 · 正确 ${correct} · 错误 ${incorrect} · 待核对 ${pending}`;
 }
 
 function practiceQuestionAnswerType(question = {}) {
@@ -1789,6 +2444,9 @@ function practiceAnswerTextValue(value = "") {
     if (Object.prototype.hasOwnProperty.call(value, "content")) {
       return practiceAnswerTextValue(value.content);
     }
+    if (Object.prototype.hasOwnProperty.call(value, "markdown")) {
+      return practiceAnswerTextValue(value.markdown);
+    }
     if (Object.prototype.hasOwnProperty.call(value, "answer")) {
       return practiceAnswerTextValue(value.answer);
     }
@@ -1807,6 +2465,9 @@ function practiceAnswerValue(answer = {}) {
     }
     if (Object.prototype.hasOwnProperty.call(answer, "content")) {
       return practiceAnswerTextValue(answer.content);
+    }
+    if (Object.prototype.hasOwnProperty.call(answer, "markdown")) {
+      return practiceAnswerTextValue(answer.markdown);
     }
     if (Object.prototype.hasOwnProperty.call(answer, "answer")) {
       return practiceAnswerTextValue(answer.answer);
@@ -1837,13 +2498,18 @@ function practiceAttemptResultForQuestion(practiceAttempt = {}, questionId) {
   return results[questionId] || {};
 }
 
+function practiceAttemptFinalStatus(result = {}) {
+  return result.final_status || result.result || result.status || result.correctness || "unknown";
+}
+
 function practiceAttemptResultLabel(result = {}) {
-  const value = result.result || result.status || result.correctness || "";
+  const value = practiceAttemptFinalStatus(result);
   const labels = {
     correct: "正确",
     incorrect: "错误",
     partial: "部分正确",
     pending: "待批改",
+    pending_review: "待核对",
     needs_review: "待核对",
     needs_grading: "待评分",
     unanswered: "未作答",
@@ -1853,12 +2519,13 @@ function practiceAttemptResultLabel(result = {}) {
 }
 
 function practiceResultStatusClass(result = {}) {
-  const value = result.result || result.status || result.correctness || "unknown";
+  const value = practiceAttemptFinalStatus(result);
   const classes = {
     correct: "practice-result-status correct",
     incorrect: "practice-result-status incorrect",
     partial: "practice-result-status needs_review",
     pending: "practice-result-status needs_review",
+    pending_review: "practice-result-status needs_review",
     needs_review: "practice-result-status needs_review",
     needs_grading: "practice-result-status needs_grading",
     unanswered: "practice-result-status unanswered",
@@ -1877,6 +2544,19 @@ function practiceQuestionStandardAnswer(question = {}, result = {}) {
     || question.correct_answer
     || ""
   );
+}
+
+function practiceResultCanUseAiGrade(question = {}, result = {}) {
+  const answerType = result.answer_type || practiceQuestionAnswerType(question);
+  const finalStatus = practiceAttemptFinalStatus(result);
+  return ["blank", "solution"].includes(answerType) && finalStatus !== "unanswered";
+}
+
+function practiceResultFeedbackMarkdown(result = {}) {
+  return [
+    result.judge_reason,
+    result.ai_feedback ? `AI 反馈：${result.ai_feedback}` : "",
+  ].filter(Boolean).join("\n\n");
 }
 
 const PRACTICE_CHOICE_KEYS = ["A", "B", "C", "D"];
@@ -2197,17 +2877,41 @@ function renderPracticeAttemptResult(overlay, practiceSet, questions = [], pract
         <button type="button" class="small-button" data-practice-retry-placeholder>再次练习</button>
       </div>
     </section>
+    ${renderPracticeAttemptInsights(practiceAttempt)}
+    <div class="practice-result-focus-message" data-practice-result-focus-message hidden></div>
     <section class="practice-result-table" aria-label="练习结果">
       ${questionIds.map((questionId, index) => {
         const question = questionMap.get(questionId) || fallbackQuestions.find((item) => item.question_id === questionId) || { question_id: questionId };
         const result = practiceAttemptResultForQuestion(practiceAttempt, questionId);
         const userAnswer = practiceAnswerValue(answers[questionId]);
         const standardAnswer = practiceQuestionStandardAnswer(question, result);
+        const feedback = practiceResultFeedbackMarkdown(result);
+        const finalStatus = practiceAttemptFinalStatus(result);
+        const topics = Array.isArray(question.topics) ? question.topics.map((topic) => String(topic || "")) : [];
+        const personal = systemUserState(questionId);
+        const nextMastery = personal.mastery_status === "mastered" ? "learning" : "mastered";
         return `
-          <article class="practice-result-row">
+          <article
+            class="practice-result-row"
+            data-practice-result-row
+            data-practice-result-question-id="${escapeHtml(questionId)}"
+            data-practice-result-status="${escapeHtml(finalStatus)}"
+            data-practice-result-topics="${escapeHtml(topics.join("||"))}"
+          >
             <header>
               <strong>${index + 1}. ${escapeHtml(systemQuestionTitle(question) || questionId)}</strong>
-              <span class="${escapeHtml(practiceResultStatusClass(result))}">${escapeHtml(practiceAttemptResultLabel(result))}</span>
+              <div class="practice-result-row-head-actions">
+                <span class="${escapeHtml(practiceResultStatusClass(result))}">${escapeHtml(practiceAttemptResultLabel(result))}</span>
+                <details class="practice-question-menu practice-result-menu" data-practice-result-menu>
+                  <summary aria-label="单题操作">...</summary>
+                  <div class="practice-question-menu-panel">
+                    <button type="button" class="small-button" data-practice-result-toggle-favorite="${escapeHtml(questionId)}">${personal.is_favorite ? "取消收藏" : "收藏"}</button>
+                    <button type="button" class="small-button" data-practice-result-toggle-wrong="${escapeHtml(questionId)}">${personal.in_wrong_book ? "移出错题" : "加入错题"}</button>
+                    <button type="button" class="small-button" data-practice-result-toggle-mastery="${escapeHtml(questionId)}" data-next-mastery="${escapeHtml(nextMastery)}">${personal.mastery_status === "mastered" ? "改为学习中" : "标记已掌握"}</button>
+                    <button type="button" class="small-button" data-practice-result-add-review="${escapeHtml(questionId)}">加入复习规划</button>
+                  </div>
+                </details>
+              </div>
             </header>
             <div class="practice-result-columns">
               <div>
@@ -2219,17 +2923,32 @@ function renderPracticeAttemptResult(overlay, practiceSet, questions = [], pract
                 <div class="system-markdown">${renderSystemMarkdown(standardAnswer || "暂无标准答案")}</div>
               </div>
             </div>
+            ${feedback ? `<div class="practice-result-feedback system-markdown">${renderSystemMarkdown(feedback)}</div>` : ""}
             <div class="practice-result-actions">
               <button type="button" class="small-button" data-practice-result-question="${escapeHtml(questionId)}">查看题目详情</button>
+              ${practiceResultCanUseAiGrade(question, result) ? `<button type="button" class="small-button" data-practice-ai-grade="${escapeHtml(questionId)}">AI 判分</button>` : ""}
             </div>
           </article>
         `;
       }).join("") || '<div class="empty-state">本次练习暂无结果。</div>'}
     </section>
   `;
-  body.scrollTop = 0;
+  if (Number.isFinite(options.restoreScrollTop)) {
+    restoreWorkflowBodyScroll(body, options.restoreScrollTop);
+  } else {
+    body.scrollTop = 0;
+  }
   body.querySelector("[data-practice-retry-placeholder]")?.addEventListener("click", () => {
     window.alert("再次练习将在后续版本开放");
+  });
+  body.querySelectorAll("[data-practice-next-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      applyPracticeResultFocus(body, {
+        type: button.dataset.practiceNextAction || "",
+        status: button.dataset.practiceNextStatus || "",
+        topic: button.dataset.practiceNextTopic || "",
+      });
+    });
   });
   body.querySelectorAll("[data-practice-result-question]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2239,6 +2958,223 @@ function renderPracticeAttemptResult(overlay, practiceSet, questions = [], pract
       void openSystemQuestionDrawer(button.dataset.practiceResultQuestion);
     });
   });
+  body.querySelectorAll("[data-practice-ai-grade]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.practiceAiGrade;
+      const question = questionMap.get(questionId)
+        || fallbackQuestions.find((item) => item.question_id === questionId)
+        || { question_id: questionId };
+      void requestPracticeAiGrade(practiceAttempt, question, overlay, practiceSet, questions, options, button);
+    });
+  });
+  body.querySelectorAll("[data-practice-result-toggle-favorite]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.practiceResultToggleFavorite || "";
+      const personal = systemUserState(questionId);
+      void savePracticeResultQuestionState(questionId, { is_favorite: !personal.is_favorite }, overlay, practiceSet, questions, practiceAttempt, options);
+    });
+  });
+  body.querySelectorAll("[data-practice-result-toggle-wrong]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.practiceResultToggleWrong || "";
+      const personal = systemUserState(questionId);
+      void savePracticeResultQuestionState(questionId, { in_wrong_book: !personal.in_wrong_book }, overlay, practiceSet, questions, practiceAttempt, options);
+    });
+  });
+  body.querySelectorAll("[data-practice-result-toggle-mastery]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.practiceResultToggleMastery || "";
+      const masteryStatus = button.dataset.nextMastery || "mastered";
+      void savePracticeResultQuestionState(questionId, { mastery_status: masteryStatus }, overlay, practiceSet, questions, practiceAttempt, options);
+    });
+  });
+  body.querySelectorAll("[data-practice-result-add-review]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const questionId = button.dataset.practiceResultAddReview || "";
+      const question = questionMap.get(questionId)
+        || fallbackQuestions.find((item) => item.question_id === questionId)
+        || { question_id: questionId };
+      openSystemReviewModal(question);
+    });
+  });
+}
+
+function applyPracticeResultFocus(body, action = {}) {
+  if (!body) return;
+  const rows = Array.from(body.querySelectorAll("[data-practice-result-row]"));
+  const status = action.status || "";
+  const topic = action.topic || "";
+  let matched = rows;
+  if (status) {
+    const acceptedStatuses = status === "incorrect" ? ["incorrect", "partial"] : [status];
+    matched = rows.filter((row) => acceptedStatuses.includes(row.dataset.practiceResultStatus || ""));
+  }
+  if (topic) {
+    matched = rows.filter((row) => (row.dataset.practiceResultTopics || "").split("||").includes(topic));
+  }
+  rows.forEach((row) => {
+    const isMatch = matched.includes(row);
+    row.classList.toggle("is-emphasized", isMatch && matched.length > 0);
+    row.classList.toggle("is-dimmed", !isMatch && matched.length > 0);
+  });
+  const message = body.querySelector("[data-practice-result-focus-message]");
+  if (message) {
+    message.hidden = false;
+    message.textContent = matched.length
+      ? `已定位 ${matched.length} 道相关题`
+      : "当前结果里暂无匹配题目";
+  }
+  matched[0]?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function savePracticeResultQuestionState(questionId, patch, overlay, practiceSet, questions = [], practiceAttempt = {}, options = {}) {
+  if (!questionId) return;
+  const body = overlay?.querySelector(".system-workflow-body");
+  const currentScrollTop = body ? body.scrollTop : 0;
+  const previousState = { ...systemUserState(questionId) };
+  updateSystemQuestionPersonalState(questionId, patch);
+  renderPracticeAttemptResult(overlay, practiceSet, questions, practiceAttempt, {
+    ...options,
+    restoreScrollTop: currentScrollTop,
+  });
+  try {
+    await saveSystemQuestionState(questionId, patch, {
+      renderDrawer: false,
+      userId: currentMaterialsUserId(),
+    });
+  } catch (error) {
+    hydrateSystemQuestionPersonalState(questionId, previousState);
+    renderPracticeAttemptResult(overlay, practiceSet, questions, practiceAttempt, {
+      ...options,
+      restoreScrollTop: currentScrollTop,
+    });
+    handleSystemQuestionStateSaveError(questionId, error, previousState);
+  }
+}
+
+function restoreWorkflowBodyScroll(body, scrollTop) {
+  if (!body || !Number.isFinite(scrollTop)) return;
+  window.requestAnimationFrame(() => {
+    body.scrollTop = scrollTop;
+  });
+}
+
+function setPracticeAiGradeButtonLoading(button, loading) {
+  if (!button) return;
+  if (loading) {
+    button.dataset.originalLabel = button.textContent || "AI 判分";
+    button.textContent = "正在评分...";
+    button.disabled = true;
+    button.classList.add("is-loading");
+    button.setAttribute("aria-busy", "true");
+    return;
+  }
+  button.textContent = button.dataset.originalLabel || "AI 判分";
+  button.disabled = false;
+  button.classList.remove("is-loading");
+  button.removeAttribute("aria-busy");
+}
+
+function renderPracticeAttemptInsights(practiceAttempt = {}) {
+  const insights = practiceAttempt.insights && typeof practiceAttempt.insights === "object"
+    ? practiceAttempt.insights
+    : {};
+  const summary = insights.summary && typeof insights.summary === "object" ? insights.summary : {};
+  const topicImpacts = Array.isArray(insights.topic_impacts) ? insights.topic_impacts : [];
+  const questionImpacts = Array.isArray(insights.question_impacts) ? insights.question_impacts : [];
+  const nextActions = Array.isArray(insights.next_actions) ? insights.next_actions : [];
+  const hasRecord = insights.record_status || Object.keys(summary).length || topicImpacts.length || questionImpacts.length;
+  const metrics = [
+    ["正确", summary.correct],
+    ["错误", summary.incorrect],
+    ["部分正确", summary.partial],
+    ["待核对", summary.pending_review],
+    ["未作答", summary.unanswered],
+  ].filter(([, value]) => Number(value || 0) > 0);
+  return `
+    <section class="practice-record-insights ${hasRecord ? "" : "muted"}" data-practice-record-insights>
+      <header>
+        <div>
+          <strong>学习记录</strong>
+          <p>${escapeHtml(insights.headline || "本次提交会沉淀到练习记录、单题状态和知识点统计。")}</p>
+        </div>
+        <span class="status-pill ${hasRecord ? "mastered" : "learning"}">${hasRecord ? "已记录" : "待记录"}</span>
+      </header>
+      <div class="practice-record-metrics">
+        ${(metrics.length ? metrics : [["已提交", 1]]).map(([label, value]) => `
+          <span>${escapeHtml(label)} <strong>${escapeHtml(String(value || ""))}</strong></span>
+        `).join("")}
+      </div>
+      ${topicImpacts.length ? `
+        <div class="practice-record-section">
+          <h4>影响到的知识点</h4>
+          <div class="practice-record-chip-list">
+            ${topicImpacts.map((item) => `
+              <span>${escapeHtml(item.topic || "未命名知识点")} · 本次错/待核对 ${escapeHtml(String(item.wrong_count || 0))}/${escapeHtml(String(item.attempt_count || 0))}</span>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+      ${nextActions.length ? `
+        <div class="practice-record-section">
+          <h4>下一步</h4>
+          <div class="practice-record-chip-list action">
+            ${nextActions.map((item) => {
+              const actionType = item.type || "";
+              const actionStatus = item.status
+                || (actionType === "review_wrong" ? "incorrect" : "")
+                || (actionType === "confirm_grading" ? "pending_review" : "");
+              const actionTopic = item.topic
+                || (actionType === "topic_review" ? String(item.label || "").replace(/^优先复习\s*/, "") : "");
+              return `
+                <button
+                  type="button"
+                  class="practice-record-action-chip"
+                  data-practice-next-action="${escapeHtml(actionType)}"
+                  data-practice-next-status="${escapeHtml(actionStatus)}"
+                  data-practice-next-topic="${escapeHtml(actionTopic)}"
+                >
+                  ${escapeHtml(item.label || "")}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
+async function requestPracticeAiGrade(practiceAttempt, question, overlay, practiceSet, questions = [], options = {}, button = null) {
+  const attemptId = practiceAttemptId(practiceAttempt);
+  const questionId = question?.question_id || "";
+  if (!attemptId || !questionId) return;
+  if (button?.disabled) return;
+  const body = overlay?.querySelector(".system-workflow-body");
+  const currentScrollTop = body ? body.scrollTop : 0;
+  setPracticeAiGradeButtonLoading(button, true);
+  setSystemSaveStatus("saving", "AI 判分中...");
+  try {
+    const data = await fetchJson(`/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}/items/${encodeURIComponent(questionId)}/grade?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ judge_method: "ai" }),
+    });
+    const gradedAttempt = mergePracticeAttempt(practiceAttempt, data.practice_attempt || data);
+    const detail = await fetchPracticeAttemptDetail(attemptId);
+    const detailAttempt = {
+      ...mergePracticeAttempt(gradedAttempt, detail?.practice_attempt || {}),
+      insights: detail.insights || gradedAttempt.insights || {},
+    };
+    setSystemSaveStatus("saved", "AI 判分结果已更新");
+    renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt, {
+      ...options,
+      restoreScrollTop: currentScrollTop,
+    });
+  } catch (error) {
+    setPracticeAiGradeButtonLoading(button, false);
+    setSystemSaveStatus("error", `AI 判分失败：${error.message}`);
+  }
 }
 
 async function savePracticeAttemptAnswers(practiceAttempt, answers) {
@@ -2259,6 +3195,48 @@ async function savePracticeAttemptAnswers(practiceAttempt, answers) {
   }
 }
 
+async function fetchPracticeAttemptDetail(attemptId) {
+  if (!attemptId) return null;
+  return fetchJson(`/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+}
+
+async function openPracticeAttemptResultById(attemptId) {
+  if (!attemptId) return;
+  const detail = await fetchPracticeAttemptDetail(attemptId);
+  const practiceAttempt = detail?.practice_attempt || {};
+  const practiceSetId = practiceAttempt.practice_set_id || "";
+  let practiceSet = { set_id: practiceSetId, title: "练习结果", question_ids: Object.keys(practiceAttempt.results || {}) };
+  if (practiceSetId) {
+    try {
+      const setData = await fetchJson(`/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+      practiceSet = setData.practice_set || setData || practiceSet;
+    } catch {
+      // The attempt record is still enough to show a result shell.
+    }
+  }
+  const questionIds = practiceSetQuestionIds(practiceSet, []);
+  const questions = await Promise.all(
+    questionIds.map(async (questionId) => {
+      try {
+        return await fetchJson(systemQuestionDetailUrl(questionId));
+      } catch {
+        return { question_id: questionId };
+      }
+    })
+  );
+  const { overlay } = createSystemWorkflowOverlay("练习作答", "查看已提交练习的判分结果。");
+  renderPracticeAttemptResult(
+    overlay,
+    practiceSet,
+    questions,
+    {
+      ...practiceAttempt,
+      insights: detail?.insights || practiceAttempt.insights || {},
+    },
+    { fallbackQuestions: questions },
+  );
+}
+
 async function submitPracticeAttempt(practiceAttempt, overlay, practiceSet, questions = [], options = {}) {
   const attemptId = practiceAttemptId(practiceAttempt);
   if (!attemptId) return;
@@ -2269,8 +3247,13 @@ async function submitPracticeAttempt(practiceAttempt, overlay, practiceSet, ques
       method: "POST",
     });
     const submittedAttempt = mergePracticeAttempt(practiceAttempt, data.practice_attempt || data);
+    const detail = await fetchPracticeAttemptDetail(attemptId);
+    const detailAttempt = {
+      ...mergePracticeAttempt(submittedAttempt, detail?.practice_attempt || {}),
+      insights: detail.insights || submittedAttempt.insights || {},
+    };
     setSystemSaveStatus("saved", "练习已提交");
-    renderPracticeAttemptResult(overlay, practiceSet, questions, submittedAttempt, options);
+    renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt, options);
   } catch (error) {
     setSystemSaveStatus("error", `练习提交失败：${error.message}`);
   }
@@ -2315,6 +3298,9 @@ function renderSystemPracticeSetDetail(overlay, practiceSet, questions = [], opt
   const questionMap = new Map(questions.map((question) => [question.question_id, question]));
   const title = practiceSet.title || practiceSet.name || "同类训练练习单";
   const firstQuestion = questionMap.get(questionIds[0]) || fallbackQuestions.find((item) => item.question_id === questionIds[0]) || {};
+  const latestAttempt = latestSubmittedPracticeAttempt(options.practiceAttempts);
+  const latestAttemptId = practiceAttemptId(latestAttempt || {});
+  const latestAttemptDate = latestAttempt?.submitted_at ? String(latestAttempt.submitted_at).slice(0, 10) : "";
   body.innerHTML = `
     <section class="system-workflow-result">
       <div>
@@ -2330,6 +3316,15 @@ function renderSystemPracticeSetDetail(overlay, practiceSet, questions = [], opt
         <button type="button" class="small-button" data-practice-detail-close>关闭</button>
       </div>
     </section>
+    ${latestAttemptId ? `
+      <section class="practice-latest-result" data-practice-latest-result>
+        <div>
+          <strong>最近练习结果</strong>
+          <p>${escapeHtml(practiceAttemptSummaryText(latestAttempt))}${latestAttemptDate ? ` · ${escapeHtml(latestAttemptDate)}` : ""}</p>
+        </div>
+        <button type="button" class="small-button dark-button" data-practice-latest-result-open="${escapeHtml(latestAttemptId)}">查看最近结果</button>
+      </section>
+    ` : ""}
     <section class="practice-detail-paper" data-practice-detail-paper>
       <button type="button" class="small-button practice-detail-back-button" data-practice-detail-return>返回</button>
       <div class="practice-detail-paper-head">
@@ -2372,6 +3367,20 @@ function renderSystemPracticeSetDetail(overlay, practiceSet, questions = [], opt
   body.querySelector("[data-practice-detail-close]")?.addEventListener("click", closeSystemWorkflowModal);
   body.querySelector("[data-practice-start-attempt]")?.addEventListener("click", () => {
     void openPracticeAttempt(practiceSet, questions, { fallbackQuestions });
+  });
+  body.querySelector("[data-practice-latest-result-open]")?.addEventListener("click", async (event) => {
+    const attemptId = event.currentTarget?.dataset?.practiceLatestResultOpen || latestAttemptId;
+    if (!attemptId) return;
+    try {
+      const detail = await fetchPracticeAttemptDetail(attemptId);
+      const detailAttempt = {
+        ...mergePracticeAttempt(latestAttempt || {}, detail?.practice_attempt || {}),
+        insights: detail?.insights || latestAttempt?.insights || {},
+      };
+      renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt, { fallbackQuestions });
+    } catch (error) {
+      setSystemSaveStatus("error", `练习结果加载失败：${error.message}`);
+    }
   });
   body.querySelectorAll("[data-practice-detail-return]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2508,9 +3517,12 @@ async function openSystemPracticeSetDetail(practiceSet, options = {}) {
   }
   try {
     let detail = practiceSet || {};
+    let practiceAttempts = [];
     if (practiceSetId) {
       const data = await fetchJson(`/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
       detail = data.practice_set || data;
+      const attemptData = await fetchJson(`/api/materials/system/practice-attempts?practice_set_id=${encodeURIComponent(practiceSetId)}&user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+      practiceAttempts = Array.isArray(attemptData.practice_attempts) ? attemptData.practice_attempts : [];
     }
     const ids = practiceSetQuestionIds(detail, fallbackQuestions);
     const questions = await Promise.all(
@@ -2522,7 +3534,7 @@ async function openSystemPracticeSetDetail(practiceSet, options = {}) {
         }
       })
     );
-    renderSystemPracticeSetDetail(overlay, detail, questions, { fallbackQuestions });
+    renderSystemPracticeSetDetail(overlay, detail, questions, { fallbackQuestions, practiceAttempts });
   } catch (error) {
     if (body) {
       body.innerHTML = `<div class="empty-state">练习单加载失败：${escapeHtml(error.message)}</div>`;
@@ -2667,6 +3679,41 @@ async function saveSystemReviewTask(question, config, overlay) {
   }
 }
 
+async function loadSystemQuestionLearningSnapshot(questionId) {
+  if (!questionId) return {};
+  const data = await fetchJson(`/api/materials/system/questions/${encodeURIComponent(questionId)}/learning-snapshot?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+  return data.snapshot || {};
+}
+
+function renderSystemQuestionLearningSnapshot(snapshot = {}) {
+  const attempts = Array.isArray(snapshot.recent_attempts) ? snapshot.recent_attempts : [];
+  const attemptCount = Number(snapshot.attempt_count || 0);
+  const latestStatus = snapshot.latest_status || "";
+  const latestDate = snapshot.latest_practiced_at ? String(snapshot.latest_practiced_at).slice(0, 10) : "";
+  return `
+    <section class="system-learning-history" data-system-learning-history>
+      <header>
+        <h4>练习记录</h4>
+        <span class="status-pill ${attemptCount ? "mastered" : "learning"}">${attemptCount ? `${attemptCount} 次` : "暂无"}</span>
+      </header>
+      <div class="system-learning-history-metrics">
+        <span>正确 <strong>${escapeHtml(String(snapshot.correct_count || 0))}</strong></span>
+        <span>错误 <strong>${escapeHtml(String(snapshot.incorrect_count || 0))}</strong></span>
+        <span>待核对 <strong>${escapeHtml(String(snapshot.pending_review_count || 0))}</strong></span>
+        ${snapshot.wrong_streak ? `<span>连续错 <strong>${escapeHtml(String(snapshot.wrong_streak))}</strong></span>` : ""}
+      </div>
+      ${latestStatus ? `<p>最近一次：${escapeHtml(practiceAttemptResultLabel({ final_status: latestStatus }))}${latestDate ? ` · ${escapeHtml(latestDate)}` : ""}</p>` : "<p>提交练习后，这里会显示单题历史、错题次数和最近状态。</p>"}
+      ${attempts.length ? `
+        <div class="system-learning-history-list">
+          ${attempts.map((item) => `
+            <span>${escapeHtml(String(item.submitted_at || "").slice(0, 10) || "未记录日期")} · ${escapeHtml(practiceAttemptResultLabel({ final_status: item.status }))}</span>
+          `).join("")}
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
 function renderSystemQuestionDrawer(question) {
   if (!systemQuestionDrawer) return;
   const personal = systemUserState(question.question_id);
@@ -2700,6 +3747,9 @@ function renderSystemQuestionDrawer(question) {
         ${personal.review_due_at ? `<span class="status-pill review">复习 ${escapeHtml(String(personal.review_due_at).slice(0, 10))}</span>` : ""}
       </div>
     </section>
+    <div data-system-learning-history>
+      ${renderSystemQuestionLearningSnapshot(question.learning_snapshot || {})}
+    </div>
     <section class="system-drawer-section">
       <h4>题目详情</h4>
       <div class="system-detail-meta">
@@ -2772,6 +3822,29 @@ function renderSystemQuestionDrawer(question) {
         });
     }, 360);
   });
+  void loadSystemQuestionLearningSnapshot(question.question_id)
+    .then((snapshot) => {
+      if (!systemQuestionDrawer || systemState.selectedQuestionId !== question.question_id) return;
+      const target = systemQuestionDrawer.querySelector("[data-system-learning-history]");
+      if (target) {
+        target.innerHTML = renderSystemQuestionLearningSnapshot(snapshot);
+      }
+      if (systemState.selectedQuestion && systemState.selectedQuestion.question_id === question.question_id) {
+        systemState.selectedQuestion.learning_snapshot = snapshot;
+      }
+    })
+    .catch(() => {
+      if (!systemQuestionDrawer || systemState.selectedQuestionId !== question.question_id) return;
+      const target = systemQuestionDrawer.querySelector("[data-system-learning-history]");
+      if (target) {
+        target.innerHTML = `
+          <section class="system-learning-history" data-system-learning-history>
+            <header><h4>练习记录</h4><span class="status-pill learning">加载失败</span></header>
+            <p>暂时无法读取这道题的练习记录。</p>
+          </section>
+        `;
+      }
+    });
 }
 
 async function openSystemQuestionDrawer(questionId) {
@@ -2911,6 +3984,36 @@ function buildReviewTaskQuery() {
   return params.toString();
 }
 
+function buildReviewLearningInsightsQuery() {
+  const params = new URLSearchParams();
+  params.set("user_id", currentMaterialsUserId());
+  params.set("limit", "5");
+  if (reviewTasksState.filters.subject) {
+    params.set("subject", reviewTasksState.filters.subject);
+  }
+  return params.toString();
+}
+
+async function loadReviewLearningInsights(options = {}) {
+  if (!reviewLearningInsights) return;
+  if (!options.silent) {
+    reviewTasksState.insightsLoading = true;
+    reviewTasksState.insightsError = "";
+    renderReviewLearningInsights();
+  }
+  try {
+    const data = await fetchJson(`/api/materials/system/learning-insights?${buildReviewLearningInsightsQuery()}`);
+    reviewTasksState.learningInsights = data.insights || {};
+    reviewTasksState.insightsError = "";
+  } catch (error) {
+    reviewTasksState.learningInsights = null;
+    reviewTasksState.insightsError = error.message;
+  } finally {
+    reviewTasksState.insightsLoading = false;
+    renderReviewLearningInsights();
+  }
+}
+
 async function loadReviewTasks(options = {}) {
   if (!reviewTaskList) return;
   if (!options.silent) {
@@ -3027,6 +4130,7 @@ function renderReviewTaskCard(task) {
   const completed = status === "completed" || status === "done";
   const targetType = String(task.target_type || "");
   const sourceMeta = task.source_meta && typeof task.source_meta === "object" ? task.source_meta : {};
+  const learningReasons = Array.isArray(task.learning_reasons) ? task.learning_reasons : [];
   const sourceText = [
     task.subject,
     task.library_name,
@@ -3046,6 +4150,11 @@ function renderReviewTaskCard(task) {
           ${sourceText ? `<span>${escapeHtml(sourceText)}</span>` : ""}
         </div>
         ${note ? `<p>${escapeHtml(note)}</p>` : ""}
+        ${learningReasons.length ? `
+          <div class="review-task-reasons" aria-label="复习原因">
+            ${learningReasons.map((reason) => `<span>${escapeHtml(reason.label || "")}</span>`).join("")}
+          </div>
+        ` : ""}
       </div>
       ${renderReviewTaskActions(id, status)}
     </article>
@@ -3062,6 +4171,120 @@ function renderReviewTaskSection(title, tasks) {
       ${tasks.length ? tasks.map(renderReviewTaskCard).join("") : '<div class="empty-state">暂无任务</div>'}
     </section>
   `;
+}
+
+function learningTopicReasonTags(topic) {
+  return renderPriorityReasonTags(topic?.priority_reasons || []);
+}
+
+function renderReviewLearningInsights() {
+  if (!reviewLearningInsights) return;
+  if (reviewTasksState.insightsLoading) {
+    reviewLearningInsights.className = "review-learning-insights empty-state";
+    reviewLearningInsights.textContent = "正在读取学习记录...";
+    return;
+  }
+  if (reviewTasksState.insightsError) {
+    reviewLearningInsights.className = "review-learning-insights empty-state";
+    reviewLearningInsights.textContent = `学习洞察加载失败：${reviewTasksState.insightsError}`;
+    return;
+  }
+  const insights = reviewTasksState.learningInsights || {};
+  const summary = insights.summary && typeof insights.summary === "object" ? insights.summary : {};
+  const reviewSummary = insights.review_summary && typeof insights.review_summary === "object" ? insights.review_summary : {};
+  const weakTopics = Array.isArray(insights.weak_topics) ? insights.weak_topics : [];
+  const nextActions = Array.isArray(insights.next_actions) ? insights.next_actions : [];
+  const hasData = Number(summary.question_attempt_count || 0) > 0 || weakTopics.length || Number(reviewSummary.total || 0) > 0;
+  if (!hasData) {
+    reviewLearningInsights.className = "review-learning-insights muted";
+    reviewLearningInsights.innerHTML = `
+      <header>
+        <div>
+          <h4>学习概览</h4>
+          <p>还没有可分析的练习记录。完成一次练习后，这里会显示错题、待核对题和薄弱知识点。</p>
+        </div>
+        <span class="status-pill learning">待积累</span>
+      </header>
+    `;
+    return;
+  }
+  const metrics = [
+    ["练习", summary.practice_attempt_count || 0],
+    ["题次", summary.question_attempt_count || 0],
+    ["正确", summary.correct_count || 0],
+    ["错误", Number(summary.incorrect_count || 0) + Number(summary.partial_count || 0)],
+    ["待核对题", summary.pending_review_question_count || summary.pending_review_count || 0],
+    ["到期", reviewSummary.due_count || 0],
+  ];
+  reviewLearningInsights.className = "review-learning-insights";
+  reviewLearningInsights.innerHTML = `
+    <header>
+      <div>
+        <h4>学习概览</h4>
+        <p>${escapeHtml(reviewTasksState.filters.subject ? "当前学科的练习记录与复习任务摘要。" : "全部学科的练习记录与复习任务摘要。")}</p>
+      </div>
+      <span class="status-pill mastered">已同步</span>
+    </header>
+    <div class="review-learning-metrics">
+      ${metrics.map(([label, value]) => `<span>${escapeHtml(label)} <strong>${escapeHtml(String(value))}</strong></span>`).join("")}
+    </div>
+    ${weakTopics.length ? `
+      <section class="review-learning-block">
+        <h4>薄弱知识点 Top ${weakTopics.length}</h4>
+        <div class="review-learning-topic-list">
+          ${weakTopics.map((topic) => `
+            <article
+              class="review-learning-topic"
+              tabindex="0"
+              role="button"
+              data-learning-topic-card
+              data-learning-topic="${escapeHtml(topic.topic || "")}"
+              aria-label="查看知识点处理：${escapeHtml(topic.topic || "未命名知识点")}"
+            >
+              <strong>${escapeHtml(topic.topic || "未命名知识点")}</strong>
+              <span>优先级：${escapeHtml(learningPriorityLabel(topic.priority_score))}</span>
+              <p>共练 ${escapeHtml(String(topic.attempt_count || 0))} 次：错题 ${escapeHtml(String(topic.wrong_count || 0))} 次，待核对 ${escapeHtml(String(topic.pending_review_count || 0))} 次，未答 ${escapeHtml(String(topic.unanswered_count || 0))} 次，判断可信度：${escapeHtml(learningConfidenceLabel(topic.confidence))}</p>
+              ${learningTopicReasonTags(topic)}
+              <span class="learning-topic-card-action">查看处理</span>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    ` : ""}
+    ${nextActions.length ? `
+      <section class="review-learning-block">
+        <h4>下一步建议</h4>
+        <div class="review-learning-actions">
+          ${nextActions.map((action) => `
+            <button
+              type="button"
+              class="review-insight-action"
+              data-review-insight-action="${escapeHtml(action.type || "")}"
+              data-review-insight-status="${escapeHtml(action.status || "")}"
+              data-review-insight-topic="${escapeHtml(action.topic || "")}"
+            >
+              ${escapeHtml(action.label || "")}
+            </button>
+          `).join("")}
+        </div>
+      </section>
+    ` : ""}
+  `;
+}
+
+function learningPriorityLabel(value) {
+  const score = Number(value || 0);
+  if (score >= 0.75) return "很高";
+  if (score >= 0.55) return "高";
+  if (score >= 0.35) return "中";
+  return "低";
+}
+
+function learningConfidenceLabel(value) {
+  const confidence = Number(value || 0);
+  if (confidence >= 0.85) return "高";
+  if (confidence >= 0.5) return "中";
+  return "低";
 }
 
 function renderReviewTasksLegacy() {
@@ -3127,6 +4350,7 @@ async function patchReviewTask(taskId, patch, successMessage) {
     });
     setReviewTasksStatus("saved", successMessage);
     await loadReviewTasks({ silent: true });
+    await loadReviewLearningInsights({ silent: true });
   } catch (error) {
     setReviewTasksStatus("error", `复习任务更新失败：${error.message}`);
   }
@@ -3141,6 +4365,7 @@ async function deleteReviewTask(taskId) {
     });
     setReviewTasksStatus("saved", "复习任务已删除");
     await loadReviewTasks({ silent: true });
+    await loadReviewLearningInsights({ silent: true });
   } catch (error) {
     setReviewTasksStatus("error", `复习任务删除失败：${error.message}`);
   }
@@ -3215,6 +4440,53 @@ function handleReviewTaskAction(event) {
   if (button.dataset.reviewTaskDelete) {
     void deleteReviewTask(taskId);
   }
+}
+
+function handleReviewInsightAction(event) {
+  const button = event.target.closest("[data-review-insight-action]");
+  if (!button) {
+    const topicCard = event.target.closest("[data-learning-topic-card]");
+    if (topicCard && reviewLearningInsights?.contains(topicCard)) {
+      openLearningTopicPanel(topicCard.dataset.learningTopic || "");
+    }
+    return;
+  }
+  const action = button.dataset.reviewInsightAction || "";
+  if (action === "review_due") {
+    const insights = reviewTasksState.learningInsights || {};
+    const reviewSummary = insights.review_summary || {};
+    const nextGroup = Number(reviewSummary.overdue_count || 0) > 0 ? "overdue" : "today";
+    if (reviewDateGroupFilter) reviewDateGroupFilter.value = nextGroup;
+    reviewTasksState.filters.dateGroup = nextGroup;
+    void loadReviewTasks();
+    setReviewTasksStatus("saved", "已定位到期复习任务");
+    return;
+  }
+  if (action === "topic_review") {
+    const topic = button.dataset.reviewInsightTopic || "";
+    if (reviewKeywordFilter) reviewKeywordFilter.value = topic;
+    if (reviewDateGroupFilter) reviewDateGroupFilter.value = "";
+    reviewTasksState.filters.keyword = topic;
+    reviewTasksState.filters.dateGroup = "";
+    void loadReviewTasks();
+    setReviewTasksStatus("saved", topic ? `已按知识点「${topic}」筛选任务` : "已定位知识点任务");
+    return;
+  }
+  if (action === "review_wrong") {
+    openWrongQuestionPoolModal();
+    return;
+  }
+  if (action === "confirm_grading") {
+    openPendingReviewModal();
+  }
+}
+
+function handleReviewInsightKeydown(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const topicCard = event.target.closest("[data-learning-topic-card]");
+  if (!topicCard || !reviewLearningInsights?.contains(topicCard)) return;
+  event.preventDefault();
+  openLearningTopicPanel(topicCard.dataset.learningTopic || "");
 }
 
 async function openSystemPracticeSetPrintable(practiceSet, options = {}) {
@@ -3301,6 +4573,7 @@ function setActivePage(pageId) {
     setMaterialsMode(activeMaterialsMode);
   }
   if (nextPageId === "plan") {
+    void loadReviewLearningInsights();
     void loadReviewTasks();
   }
 }
@@ -4602,10 +5875,13 @@ document.querySelectorAll("[data-system-action]").forEach((button) => {
 });
 
 reviewTasksRefreshButton?.addEventListener("click", () => {
+  void loadReviewLearningInsights();
   void loadReviewTasks();
 });
 
 reviewTaskList?.addEventListener("click", handleReviewTaskAction);
+reviewLearningInsights?.addEventListener("click", handleReviewInsightAction);
+reviewLearningInsights?.addEventListener("keydown", handleReviewInsightKeydown);
 
 function bindReviewTaskFilters() {
   const refresh = () => {
@@ -4613,6 +5889,7 @@ function bindReviewTaskFilters() {
     reviewTasksState.filters.targetType = reviewTargetTypeFilter?.value || "";
     reviewTasksState.filters.dateGroup = reviewDateGroupFilter?.value || "";
     reviewTasksState.filters.keyword = reviewKeywordFilter?.value.trim() || "";
+    void loadReviewLearningInsights();
     void loadReviewTasks();
   };
   [reviewSubjectFilter, reviewTargetTypeFilter, reviewDateGroupFilter].forEach((element) => {

@@ -90,16 +90,23 @@ def _refresh_exercise_structure_summary(report: dict[str, Any], problem_groups: 
         for group in problem_groups
         if isinstance(group.get("problem_index"), int)
     }
-    missing = (
-        [index for index in range(1, expected_count + 1) if index not in problem_indices]
-        if expected_count
-        else []
-    )
+    applied_targets = {
+        int(item["target_problem_index"])
+        for item in list(repair_report.get("applied") or [])
+        if isinstance(item, dict) and isinstance(item.get("target_problem_index"), int)
+    }
+    if expected_count:
+        missing = [index for index in range(1, expected_count + 1) if index not in problem_indices]
+    else:
+        missing = [
+            int(index)
+            for index in list(updated.get("missing_problem_indices") or [])
+            if isinstance(index, int) and int(index) not in applied_targets
+        ]
     warnings = set(updated.get("warnings") or [])
     if int(repair_report.get("applied_count") or 0) > 0:
         warnings.add("exercise_structure_repaired")
     if missing:
-        warnings.add("exercise_problem_count_below_expected")
         warnings.add("exercise_problem_indices_missing")
     else:
         warnings.discard("exercise_problem_count_below_expected")
@@ -116,6 +123,9 @@ def _refresh_exercise_structure_summary(report: dict[str, Any], problem_groups: 
         elif coverage >= 0.75:
             updated["status"] = "medium"
             updated["confidence"] = max(float(updated.get("confidence") or 0.0), 0.72)
+    elif not missing and len(problem_groups) >= 2:
+        updated["status"] = "high"
+        updated["confidence"] = max(float(updated.get("confidence") or 0.0), 0.9)
     updated["warnings"] = sorted(warnings)
     return updated
 
@@ -944,9 +954,14 @@ class MaterialIngestionService:
                     warning_count=len(exercise_structure_report.get("warnings") or []),
                 )
                 stage_started = time.perf_counter()
+                has_repair_candidates = bool(
+                    exercise_structure_report.get("missing_problem_indices")
+                    or exercise_structure_report.get("sequence_gap_candidates")
+                    or exercise_structure_report.get("tail_problem_candidate")
+                )
                 repair_client = (
                     build_deepseek_structure_repair_client_from_env()
-                    if exercise_structure_report.get("missing_problem_indices")
+                    if has_repair_candidates
                     else None
                 )
                 repair_result = repair_exercise_structure(

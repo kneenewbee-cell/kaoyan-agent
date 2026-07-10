@@ -51,7 +51,7 @@ class SystemQuestionLibraryTest(unittest.TestCase):
 
             for result in (
                 library.list_questions(subject="english", exam_type="math1"),
-                library.list_questions(subject="math", exam_type="math2"),
+                library.list_questions(subject="math", exam_type="math4"),
             ):
                 self.assertEqual(
                     result,
@@ -67,6 +67,41 @@ class SystemQuestionLibraryTest(unittest.TestCase):
                         "items": [],
                     },
                 )
+
+    def test_lists_math2_and_math3_question_collections(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_root = self._make_raw_root(Path(tmp))
+            self._add_exam_question(
+                raw_root,
+                exam_type="math2",
+                year=2099,
+                question_number=1,
+                topic="二重积分",
+            )
+            self._add_exam_question(
+                raw_root,
+                exam_type="math3",
+                year=2098,
+                question_number=2,
+                topic="概率分布",
+            )
+            library = SystemQuestionLibrary(raw_root=raw_root)
+
+            math2 = library.list_questions(subject="math", exam_type="math2", page_size=10)
+            math3 = library.list_questions(subject="math", exam_type="math3", page_size=10)
+            all_math = library.list_questions(subject="math", exam_type="", page_size=10)
+
+            self.assertEqual(math2["total"], 1)
+            self.assertEqual(math2["items"][0]["question_id"], "kaoyan_math2_2099_q001")
+            self.assertEqual(math2["items"][0]["exam_type_label"], "数二")
+            self.assertEqual(math2["items"][0]["library_name"], "数二历年真题")
+            self.assertEqual(math3["total"], 1)
+            self.assertEqual(math3["items"][0]["question_id"], "kaoyan_math3_2098_q002")
+            self.assertEqual(math3["items"][0]["exam_type_label"], "数三")
+            self.assertEqual(math3["items"][0]["library_name"], "数三历年真题")
+            self.assertIn("kaoyan_math1_2099_q001", [item["question_id"] for item in all_math["items"]])
+            self.assertIn("kaoyan_math2_2099_q001", [item["question_id"] for item in all_math["items"]])
+            self.assertIn("kaoyan_math3_2098_q002", [item["question_id"] for item in all_math["items"]])
 
     def test_topic_filter_matches_part_of_any_topic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -765,6 +800,63 @@ class SystemQuestionLibraryTest(unittest.TestCase):
                 encoding="utf-8",
             )
         return tmp
+
+    def _add_exam_question(
+        self,
+        raw_root: Path,
+        *,
+        exam_type: str,
+        year: int,
+        question_number: int,
+        topic: str,
+    ) -> None:
+        year_dir = raw_root / "math" / "exam_papers" / exam_type / str(year)
+        questions_dir = year_dir / "questions"
+        questions_dir.mkdir(parents=True)
+        question_id = f"kaoyan_{exam_type}_{year}_q{question_number:03d}"
+        row = {
+            "question_id": question_id,
+            "exam_id": f"kaoyan_{exam_type}_{year}",
+            "exam_type": exam_type,
+            "year": year,
+            "question_number": question_number,
+            "question_type": "single_choice",
+            "module": "高等数学",
+            "topics": [topic],
+            "difficulty": "unknown",
+            "card_path": f"questions/q{question_number:03d}.md",
+            "assets": [],
+            "answer": "A",
+            "explanation": "解析。",
+        }
+        (year_dir / "questions.jsonl").write_text(
+            json.dumps(row, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (questions_dir / f"q{question_number:03d}.md").write_text(
+            "\n".join(
+                [
+                    "---",
+                    f"question_id: {question_id}",
+                    f"year: {year}",
+                    "---",
+                    "",
+                    "## 题目",
+                    "",
+                    f"{exam_type} 测试题。",
+                    "",
+                    "## 标准答案",
+                    "",
+                    "A",
+                    "",
+                    "## 解析",
+                    "",
+                    "解析。",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
 
 
 if __name__ == "__main__":
