@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 复习规划闭环草图</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dfe4ea;
+      --panel: #ffffff;
+      --paper: #f5f7f8;
+      --wash: #f3efe4;
+      --nav: #132236;
+      --nav-soft: #1c2f48;
+      --green: #147c63;
+      --green-soft: #e4f3ee;
+      --gold: #d0ab5a;
+      --blue: #2f67d8;
+      --red: #b94848;
+      --red-soft: #fff0ef;
+      --radius: 8px;
+      --shadow: 0 24px 80px rgba(28, 37, 54, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(90deg, var(--wash) 0, #f7f8fb 42%, #eef3f8 100%);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: var(--radius);
+      padding: 9px 14px;
+      font-weight: 700;
+    }
+
+    button.primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    button.dark {
+      background: #101a2d;
+      border-color: #101a2d;
+      color: #fff;
+    }
+
+    button.ghost {
+      background: #f8fafc;
+    }
+
+    button.danger {
+      color: var(--red);
+      background: var(--red-soft);
+      border-color: #f1c7c4;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(47, 103, 216, 0.28);
+      outline-offset: 2px;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+    }
+
+    .sidebar {
+      background: linear-gradient(180deg, #0e1b2b, #17283e);
+      color: #fff;
+      padding: 26px 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand-kicker {
+      font-size: 12px;
+      letter-spacing: 4px;
+      color: #d7bd74;
+      margin-bottom: 12px;
+    }
+
+    .brand-title {
+      font-size: 32px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    .sidebar p {
+      color: #cbd5e1;
+      line-height: 1.7;
+      margin: 0 0 24px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 10px;
+    }
+
+    .nav button {
+      width: 100%;
+      text-align: left;
+      background: var(--nav-soft);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.08);
+      padding: 13px 16px;
+      font-weight: 800;
+    }
+
+    .nav button.active {
+      background: rgba(20, 124, 99, 0.42);
+      border-color: var(--gold);
+      box-shadow: inset 4px 0 0 var(--gold);
+    }
+
+    .side-note {
+      margin-top: 26px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius);
+      padding: 15px;
+      background: rgba(255,255,255,.04);
+      color: #d7dee8;
+      line-height: 1.65;
+    }
+
+    main {
+      padding: 30px 34px 56px;
+      max-width: 1180px;
+      width: 100%;
+    }
+
+    .eyebrow {
+      color: #c3a15b;
+      letter-spacing: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 4px 0 12px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .tabs, .chips, .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      background: #fff;
+      border: 1px solid var(--line);
+      color: #334155;
+    }
+
+    .tab.active {
+      color: #fff;
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 70px rgba(20, 29, 44, 0.08);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .panel-title h2, .panel-title h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .sync {
+      color: var(--green);
+      background: var(--green-soft);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: #11634f;
+      padding: 6px 10px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .chip.neutral {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .layout-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .suggestion-box {
+      min-height: 116px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .topic-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .topic-card {
+      border: 1px solid #d7dee8;
+      border-radius: var(--radius);
+      background: #f8fbfc;
+      padding: 12px;
+      min-height: 116px;
+    }
+
+    .topic-card strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .topic-card p {
+      margin: 5px 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .task-section {
+      margin-top: 16px;
+    }
+
+    .task-section h3 {
+      display: flex;
+      justify-content: space-between;
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .task-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 8px;
+    }
+
+    .task-card p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .46);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 26px;
+      z-index: 20;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .dialog {
+      width: min(980px, 92vw);
+      max-height: 88vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--line);
+    }
+
+    .dialog.wide {
+      width: min(1120px, 94vw);
+    }
+
+    .dialog-head {
+      position: sticky;
+      top: 0;
+      background: rgba(255,255,255,.96);
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 1px solid var(--line);
+      padding: 18px 20px;
+    }
+
+    .dialog-head h2 {
+      margin: 4px 0;
+      font-size: 24px;
+    }
+
+    .dialog-body {
+      padding: 20px;
+    }
+
+    .stepper {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .step {
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .step.active {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .check {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .check input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+    }
+
+    .draft-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 14px;
+      border-radius: var(--radius);
+      border: 1px solid #b9d6ce;
+      background: #eef8f5;
+      margin-bottom: 14px;
+      color: #155e50;
+      font-weight: 800;
+    }
+
+    .day-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .day-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--line);
+      font-weight: 900;
+    }
+
+    .plan-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid #edf1f5;
+      align-items: start;
+    }
+
+    .plan-item:last-child { border-bottom: 0; }
+    .plan-item input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+      margin-top: 4px;
+    }
+
+    .plan-item strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+
+    .plan-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,.96);
+    }
+
+    .result-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .result-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #fff;
+    }
+
+    .ok {
+      color: var(--green);
+      background: var(--green-soft);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-weight: 900;
+    }
+
+    .skip {
+      color: #946200;
+      background: #fff6df;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-weight: 900;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 940px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      main { padding: 22px 16px; }
+      .layout-two, .filters, .check-grid, .topic-grid { grid-template-columns: 1fr; }
+      .task-card, .plan-item { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand-kicker">KAOYAN AGENT</div>
+      <div class="brand-title">考研助手</div>
+      <p>资料库、复习规划和练习记录分开展示。AI 规划只生成草案，确认后才写入任务。</p>
+      <div class="nav">
+        <button>考研问答</button>
+        <button>资料库</button>
+        <button class="active">复习规划</button>
+        <button>院校查询</button>
+      </div>
+      <div class="side-note">
+        设计重点：设置时间范围、生成草案、用户确认、写入任务、返回复习规划形成闭环。
+      </div>
+    </aside>
+
+    <main>
+      <div class="eyebrow">PLAN</div>
+      <div class="topbar">
+        <div>
+          <h1>复习规划</h1>
+          <div class="tabs">
+            <button class="tab active">复习工作台</button>
+            <button class="tab">练习记录</button>
+          </div>
+        </div>
+        <button class="dark" id="openPlanTop">AI 生成规划</button>
+      </div>
+
+      <section class="panel">
+        <div class="panel-title">
+          <div>
+            <h2>学习概览</h2>
+            <div style="color: var(--muted); margin-top: 4px;">全部学科的练习记录与复习任务摘要。</div>
+          </div>
+          <span class="sync">已同步</span>
+        </div>
+        <div class="chips">
+          <span class="chip">练习 9</span>
+          <span class="chip">草稿 28</span>
+          <span class="chip">题次 45</span>
+          <span class="chip">正确 12</span>
+          <span class="chip">错题 16</span>
+          <span class="chip">待核对 0</span>
+          <span class="chip">到期 2</span>
+        </div>
+      </section>
+
+      <section class="panel layout-two">
+        <div class="suggestion-box">
+          <div class="panel-title">
+            <h3>下一步建议</h3>
+          </div>
+          <div class="actions">
+            <button>处理 2 个到期复习</button>
+            <button>继续 28 份未提交练习</button>
+            <button>复习 16 道错题</button>
+            <button class="primary" id="openPlanMain">AI 生成规划</button>
+          </div>
+        </div>
+        <div class="suggestion-box">
+          <div class="panel-title">
+            <h3>薄弱知识点 Top 3</h3>
+            <button class="ghost">查看全部</button>
+          </div>
+          <div class="topic-grid">
+            <article class="topic-card">
+              <strong>导数应用</strong>
+              <p>共练 10 次：错题 9 次，待核对 0 次。</p>
+              <span class="chip">近期风险</span>
+            </article>
+            <article class="topic-card">
+              <strong>极值与最值</strong>
+              <p>共练 10 次：错题 8 次，判断可信度高。</p>
+              <span class="chip">历史错题 8 次</span>
+            </article>
+            <article class="topic-card">
+              <strong>二重积分</strong>
+              <p>共练 12 次：错题 9 次，适合专项回收。</p>
+              <span class="chip">专项练习</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <label>学科
+          <select>
+            <option>全部学科</option>
+            <option>数学</option>
+            <option>政治</option>
+            <option>英语</option>
+            <option>408</option>
+          </select>
+        </label>
+        <label>任务类型
+          <select>
+            <option>全部类型</option>
+            <option>单题</option>
+            <option>练习单</option>
+            <option>知识点</option>
+          </select>
+        </label>
+        <label>时间状态
+          <select>
+            <option>全部</option>
+            <option>逾期</option>
+            <option>今日</option>
+            <option>未来</option>
+            <option>已完成</option>
+            <option>已取消</option>
+          </select>
+        </label>
+        <label>关键词
+          <input value="导数应用" aria-label="关键词">
+        </label>
+      </section>
+
+      <section class="panel task-section">
+        <h3><span>逾期</span><span>2</span></h3>
+        <article class="task-card">
+          <div>
+            <strong>2025 数一 Q6 同类训练</strong>
+            <p>到期：2026-07-08 · 练习单 · 来自同类训练</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button>
+            <button>完成</button>
+            <button>推迟</button>
+            <button>取消</button>
+          </div>
+        </article>
+        <article class="task-card">
+          <div>
+            <strong>2025 数一 Q2 复习</strong>
+            <p>到期：2026-07-08 · 单题 · 错了很多次</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button>
+            <button>完成</button>
+            <button>推迟</button>
+            <button>取消</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel task-section" id="futureTasks">
+        <h3><span>未来</span><span id="futureCount">1</span></h3>
+        <article class="task-card">
+          <div>
+            <strong>2025 数一 Q1 复习</strong>
+            <p>到期：2026-08-08 · 单题 · 必须做</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button>
+            <button>完成</button>
+            <button>推迟</button>
+            <button>取消</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <section class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <header class="dialog-head">
+        <div>
+          <div class="eyebrow">AI REVIEW PLAN</div>
+          <h2 id="dialogTitle">AI 生成规划</h2>
+          <div id="dialogDesc" style="color: var(--muted);">先设置范围，AI 只生成草案，不会自动写入任务。</div>
+          <div class="stepper">
+            <span class="step active" data-step-pill="settings">1 设置范围</span>
+            <span class="step" data-step-pill="draft">2 草案确认</span>
+            <span class="step" data-step-pill="result">3 写入结果</span>
+          </div>
+        </div>
+        <button id="dialogBack">返回</button>
+      </header>
+
+      <div class="dialog-body" id="settingsView">
+        <section class="panel">
+          <div class="filters">
+            <label>学科
+              <select id="planSubject">
+                <option>数学</option>
+                <option>全部学科</option>
+                <option>政治</option>
+                <option>英语</option>
+                <option>408</option>
+              </select>
+            </label>
+            <label>目标
+              <select id="planGoal">
+                <option>补弱 + 错题回收</option>
+                <option>清理待核对</option>
+                <option>冲刺复盘</option>
+                <option>保持节奏</option>
+              </select>
+            </label>
+            <label>开始日期
+              <input id="startDate" type="date" value="2026-07-14">
+            </label>
+            <label>结束日期
+              <input id="endDate" type="date" value="2026-07-20">
+            </label>
+            <label>每天学习时长
+              <select id="dailyMinutes">
+                <option>60 分钟</option>
+                <option>30 分钟</option>
+                <option>90 分钟</option>
+                <option>120 分钟</option>
+              </select>
+            </label>
+            <label>任务密度
+              <select>
+                <option>正常</option>
+                <option>轻量</option>
+                <option>密集</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h3>纳入规划的数据</h3>
+            <span class="sync">只读画像</span>
+          </div>
+          <div class="check-grid">
+            <label class="check"><input type="checkbox" checked> 逾期/今日复习任务</label>
+            <label class="check"><input type="checkbox" checked> 高频错题</label>
+            <label class="check"><input type="checkbox" checked> 待核对题</label>
+            <label class="check"><input type="checkbox" checked> 薄弱知识点</label>
+            <label class="check"><input type="checkbox" checked> 未提交练习</label>
+            <label class="check"><input type="checkbox"> 已收藏但未掌握</label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h3>AI 将读取的压缩候选池</h3>
+          </div>
+          <div class="chips">
+            <span class="chip">薄弱知识点 Top 10</span>
+            <span class="chip">错题 Top 30</span>
+            <span class="chip">待核对 Top 20</span>
+            <span class="chip">复习任务 Top 20</span>
+            <span class="chip">草稿 Top 8</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="dialog-body hidden" id="draftView">
+        <div class="draft-meta">
+          <span id="draftRange">数学 · 2026-07-14 至 2026-07-20 · 每天 60 分钟</span>
+          <span>草案不会自动写入</span>
+        </div>
+
+        <section class="day-card">
+          <div class="day-head">
+            <span>2026-07-14 周二</span>
+            <span>预计 55 分钟</span>
+          </div>
+          <article class="plan-item">
+            <input type="checkbox" checked data-plan-check>
+            <div>
+              <strong>处理逾期：2025 数一 Q6 同类训练</strong>
+              <p>原因：逾期任务，且关联向量组薄弱项。写入时如同日已有同练习单任务，会自动跳过。</p>
+            </div>
+            <span class="pill">练习单 · 30 分钟</span>
+          </article>
+          <article class="plan-item">
+            <input type="checkbox" checked data-plan-check>
+            <div>
+              <strong>复习错题：2006 数一 Q10</strong>
+              <p>原因：连续错 4 次，多元函数极值，是当前错题池优先项。</p>
+            </div>
+            <span class="pill">单题 · 15 分钟</span>
+          </article>
+          <article class="plan-item">
+            <input type="checkbox" data-plan-check>
+            <div>
+              <strong>清理待核对：2024 数一 Q11</strong>
+              <p>原因：填空题本地无法确认，建议 AI 判分或人工确认后再影响统计。</p>
+            </div>
+            <span class="pill">待核对 · 10 分钟</span>
+          </article>
+        </section>
+
+        <section class="day-card">
+          <div class="day-head">
+            <span>2026-07-15 周三</span>
+            <span>预计 60 分钟</span>
+          </div>
+          <article class="plan-item">
+            <input type="checkbox" checked data-plan-check>
+            <div>
+              <strong>专项复习：导数应用</strong>
+              <p>原因：历史错题 11 次，近期风险高。系统知识点库未完善前先作为 topic 任务保存。</p>
+            </div>
+            <span class="pill">知识点 · 25 分钟</span>
+          </article>
+          <article class="plan-item">
+            <input type="checkbox" checked data-plan-check>
+            <div>
+              <strong>生成错题练习：导数应用 Top 5</strong>
+              <p>原因：同知识点错题集中，适合生成一张可提交的错题练习单。</p>
+            </div>
+            <span class="pill">练习单 · 35 分钟</span>
+          </article>
+        </section>
+      </div>
+
+      <div class="dialog-body hidden" id="resultView">
+        <section class="panel">
+          <div class="panel-title">
+            <div>
+              <h3>写入复习规划完成</h3>
+              <div style="color: var(--muted); margin-top: 4px;">本次创建 4 个任务，跳过 1 个重复任务。</div>
+            </div>
+            <span class="sync">已写入</span>
+          </div>
+          <div class="result-list">
+            <div class="result-row"><span class="ok">创建</span><strong>2026-07-14 · 2006 数一 Q10 复习</strong><span>单题</span></div>
+            <div class="result-row"><span class="ok">创建</span><strong>2026-07-15 · 导数应用专项复习</strong><span>知识点</span></div>
+            <div class="result-row"><span class="ok">创建</span><strong>2026-07-15 · 导数应用错题练习</strong><span>练习单</span></div>
+            <div class="result-row"><span class="ok">创建</span><strong>2026-07-16 · 二重积分错题回收</strong><span>练习单</span></div>
+            <div class="result-row"><span class="skip">跳过</span><strong>2025 数一 Q6 同类训练</strong><span>同日已有任务</span></div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="sticky-actions">
+        <div id="footerHint">设置好范围后生成草案。</div>
+        <div class="actions">
+          <button id="secondaryAction">返回复习规划</button>
+          <button class="primary" id="primaryAction">生成草案</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    const overlay = document.getElementById("overlay");
+    const dialog = document.getElementById("dialog");
+    const settingsView = document.getElementById("settingsView");
+    const draftView = document.getElementById("draftView");
+    const resultView = document.getElementById("resultView");
+    const primaryAction = document.getElementById("primaryAction");
+    const secondaryAction = document.getElementById("secondaryAction");
+    const dialogBack = document.getElementById("dialogBack");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogDesc = document.getElementById("dialogDesc");
+    const footerHint = document.getElementById("footerHint");
+    const draftRange = document.getElementById("draftRange");
+    const startDate = document.getElementById("startDate");
+    const endDate = document.getElementById("endDate");
+    const dailyMinutes = document.getElementById("dailyMinutes");
+    const futureTasks = document.getElementById("futureTasks");
+    const futureCount = document.getElementById("futureCount");
+
+    let currentStep = "settings";
+    let wroteTasks = false;
+
+    function showOverlay() {
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+      showStep("settings");
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+
+    function updatePills(step) {
+      document.querySelectorAll("[data-step-pill]").forEach((pill) => {
+        pill.classList.toggle("active", pill.dataset.stepPill === step);
+      });
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      settingsView.classList.toggle("hidden", step !== "settings");
+      draftView.classList.toggle("hidden", step !== "draft");
+      resultView.classList.toggle("hidden", step !== "result");
+      updatePills(step);
+
+      if (step === "settings") {
+        dialog.classList.remove("wide");
+        dialogTitle.textContent = "AI 生成规划";
+        dialogDesc.textContent = "先设置范围，AI 只生成草案，不会自动写入任务。";
+        primaryAction.textContent = "生成草案";
+        secondaryAction.textContent = "返回复习规划";
+        footerHint.textContent = "设置好范围后生成草案。";
+      }
+
+      if (step === "draft") {
+        dialog.classList.add("wide");
+        dialogTitle.textContent = "AI 规划草案";
+        dialogDesc.textContent = "勾选要写入的任务，确认后才会创建复习任务。";
+        primaryAction.textContent = "写入复习规划";
+        secondaryAction.textContent = "返回设置";
+        draftRange.textContent = `数学 · ${startDate.value} 至 ${endDate.value} · 每天 ${dailyMinutes.value}`;
+        updateSelectedHint();
+      }
+
+      if (step === "result") {
+        dialog.classList.remove("wide");
+        dialogTitle.textContent = "写入结果";
+        dialogDesc.textContent = "新任务已进入复习规划，重复任务不会再次创建。";
+        primaryAction.textContent = "查看未来任务";
+        secondaryAction.textContent = "继续生成规划";
+        footerHint.textContent = "写入后任务列表会刷新。";
+      }
+    }
+
+    function updateSelectedHint() {
+      const selected = [...document.querySelectorAll("[data-plan-check]")].filter((item) => item.checked).length;
+      footerHint.textContent = `已选 ${selected} 项，预计写入 ${selected} 个任务；后端会自动跳过重复项。`;
+    }
+
+    function writeTasksIntoPage() {
+      if (wroteTasks) return;
+      wroteTasks = true;
+      futureCount.textContent = "5";
+      const fragment = document.createElement("div");
+      fragment.innerHTML = `
+        <article class="task-card" data-ai-written>
+          <div>
+            <strong>2006 数一 Q10 复习</strong>
+            <p>到期：2026-07-14 · AI 规划写入 · 单题</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button><button>完成</button><button>推迟</button><button>取消</button>
+          </div>
+        </article>
+        <article class="task-card" data-ai-written>
+          <div>
+            <strong>导数应用专项复习</strong>
+            <p>到期：2026-07-15 · AI 规划写入 · 知识点</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button><button>完成</button><button>推迟</button><button>取消</button>
+          </div>
+        </article>
+      `;
+      futureTasks.append(...fragment.children);
+    }
+
+    document.getElementById("openPlanTop").addEventListener("click", showOverlay);
+    document.getElementById("openPlanMain").addEventListener("click", showOverlay);
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeOverlay();
+    });
+
+    dialogBack.addEventListener("click", () => {
+      if (currentStep === "settings") closeOverlay();
+      else if (currentStep === "draft") showStep("settings");
+      else showStep("draft");
+    });
+
+    secondaryAction.addEventListener("click", () => {
+      if (currentStep === "settings") closeOverlay();
+      else if (currentStep === "draft") showStep("settings");
+      else showStep("settings");
+    });
+
+    primaryAction.addEventListener("click", () => {
+      if (currentStep === "settings") {
+        showStep("draft");
+        return;
+      }
+      if (currentStep === "draft") {
+        writeTasksIntoPage();
+        showStep("result");
+        return;
+      }
+      if (currentStep === "result") {
+        closeOverlay();
+        futureTasks.scrollIntoView({ behavior: "smooth", block: "start" });
+        futureTasks.animate(
+          [
+            { boxShadow: "0 0 0 0 rgba(47, 103, 216, 0)" },
+            { boxShadow: "0 0 0 6px rgba(47, 103, 216, .24)" },
+            { boxShadow: "0 0 0 0 rgba(47, 103, 216, 0)" }
+          ],
+          { duration: 1200, iterations: 2 }
+        );
+      }
+    });
+
+    document.querySelectorAll("[data-plan-check]").forEach((item) => {
+      item.addEventListener("change", updateSelectedHint);
+    });
+  </script>
+</body>
+</html>

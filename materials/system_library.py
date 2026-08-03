@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,10 @@ QUESTION_TYPE_LABELS = {
 
 
 class SystemQuestionLibrary:
+    _QUESTION_LIST_CACHE: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+    _CACHE_LOCK = threading.RLock()
+    _MAX_CACHE_ENTRIES = 24
+
     def __init__(self, raw_root: Path | None = None) -> None:
         self.raw_root = Path(raw_root) if raw_root is not None else DEFAULT_RAW_ROOT
 
@@ -114,11 +119,7 @@ class SystemQuestionLibrary:
         rows = []
         topic_options: set[str] = set()
         for resolved_exam_type in self._math_exam_types(exam_type):
-            for row, year_dir in self._iter_question_rows(subject, resolved_exam_type):
-                try:
-                    item = self._question_item(row, year_dir)
-                except (OSError, UnicodeDecodeError, ValueError, TypeError):
-                    continue
+            for item in self._cached_question_items(subject, resolved_exam_type):
                 if not self._matches_filters(
                     item,
                     library_name=library_name,
@@ -135,6 +136,39 @@ class SystemQuestionLibrary:
 
         rows.sort(key=lambda item: (-(item.get("year") or 0), item.get("question_number") or 0))
         return rows, sorted(topic_options)
+
+    def _cached_question_items(self, subject: str, exam_type: str) -> list[dict[str, Any]]:
+        cache_key = self._question_list_cache_key(subject, exam_type)
+        with self._CACHE_LOCK:
+            cached = self._QUESTION_LIST_CACHE.get(cache_key)
+            if cached is not None:
+                return [dict(item) for item in cached]
+
+        items: list[dict[str, Any]] = []
+        for row, year_dir in self._iter_question_rows(subject, exam_type):
+            try:
+                items.append(self._question_item(row, year_dir))
+            except (OSError, UnicodeDecodeError, ValueError, TypeError):
+                continue
+
+        with self._CACHE_LOCK:
+            if len(self._QUESTION_LIST_CACHE) >= self._MAX_CACHE_ENTRIES:
+                oldest_key = next(iter(self._QUESTION_LIST_CACHE))
+                self._QUESTION_LIST_CACHE.pop(oldest_key, None)
+            self._QUESTION_LIST_CACHE[cache_key] = [dict(item) for item in items]
+        return [dict(item) for item in items]
+
+    def _question_list_cache_key(self, subject: str, exam_type: str) -> tuple[Any, ...]:
+        base_dir = self.raw_root / subject / "exam_papers" / exam_type
+        signature: list[tuple[str, int, int]] = []
+        if base_dir.exists():
+            for jsonl_path in sorted(base_dir.glob("*/questions.jsonl")):
+                try:
+                    stat = jsonl_path.stat()
+                except OSError:
+                    continue
+                signature.append((str(jsonl_path.resolve()), stat.st_mtime_ns, stat.st_size))
+        return (str(self.raw_root.resolve()), subject, exam_type, tuple(signature))
 
     def get_question(self, question_id: str) -> dict[str, Any]:
         for exam_type in SUPPORTED_MATH_EXAM_TYPES:

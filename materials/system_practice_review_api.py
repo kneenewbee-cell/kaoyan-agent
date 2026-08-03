@@ -5,6 +5,11 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException, Query, Request
 
 from .security import resolve_user_id
+from .system_ai_planner import (
+    DEFAULT_AI_REVIEW_PLAN_MODEL,
+    build_blocked_ai_review_plan_draft,
+    generate_ai_review_plan_draft,
+)
 from .system_practice_review import SystemPracticeReviewStore
 
 
@@ -20,6 +25,58 @@ def _resolve_request_user_id(request: Request, explicit_user_id: str | None = No
 
 def _store() -> SystemPracticeReviewStore:
     return SystemPracticeReviewStore()
+
+
+def _parse_include_types(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw_values = value.split(",")
+    elif isinstance(value, (list, tuple, set)):
+        raw_values = list(value)
+    else:
+        raw_values = [value]
+    parsed: list[str] = []
+    seen: set[str] = set()
+    for raw_value in raw_values:
+        item = str(raw_value or "").strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        parsed.append(item)
+    return parsed
+
+
+def _ai_review_plan_commit_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    body = payload if isinstance(payload, dict) else {}
+    items: list[dict[str, Any]] = []
+    raw_items = body.get("items")
+    if isinstance(raw_items, list):
+        for index, item in enumerate(raw_items):
+            if not isinstance(item, dict):
+                continue
+            copied = dict(item)
+            copied.setdefault("_commit_key", str(index))
+            items.append(copied)
+    else:
+        draft = body.get("draft") if isinstance(body.get("draft"), dict) else {}
+        days = draft.get("days") if isinstance(draft.get("days"), list) else []
+        for day_index, day in enumerate(days):
+            if not isinstance(day, dict):
+                continue
+            day_items = day.get("items") if isinstance(day.get("items"), list) else []
+            for item_index, item in enumerate(day_items):
+                if not isinstance(item, dict):
+                    continue
+                copied = dict(item)
+                copied.setdefault("date", day.get("date") or day.get("label"))
+                copied["_commit_key"] = f"{day_index}:{item_index}"
+                items.append(copied)
+    selected_keys = body.get("selected_item_keys")
+    if isinstance(selected_keys, list):
+        selected = {str(value) for value in selected_keys}
+        items = [item for item in items if str(item.get("_commit_key")) in selected]
+    return items
 
 
 @router.post("/practice-sets")
@@ -63,6 +120,30 @@ async def create_practice_set_from_wrong_pool(
             title=payload.get("title"),
             subject=str(payload.get("subject") or "math"),
             exam_type=str(payload.get("exam_type") or ""),
+            filters=payload.get("filters") if isinstance(payload.get("filters"), dict) else {},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "practice_set": practice_set}
+
+
+@router.post("/practice-sets/from-question-ids")
+async def create_practice_set_from_question_ids(
+    request: Request,
+    payload: dict[str, Any],
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        practice_set = _store().create_practice_set_from_question_ids(
+            uid,
+            question_ids=payload.get("question_ids") or [],
+            title=payload.get("title"),
+            subject=str(payload.get("subject") or "math"),
+            exam_type=str(payload.get("exam_type") or ""),
+            source_type=str(payload.get("source_type") or "question_selection"),
             filters=payload.get("filters") if isinstance(payload.get("filters"), dict) else {},
         )
     except ValueError as exc:
@@ -333,6 +414,122 @@ async def learning_insights(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"ok": True, "user_id": uid, "insights": insights}
+
+
+@router.get("/ai-planning-context")
+async def ai_planning_context(
+    request: Request,
+    user_id: str | None = Query(None),
+    subject: str | None = Query("math"),
+    days: int = Query(7, ge=1, le=30),
+    daily_minutes: int = Query(60, ge=15, le=240),
+    mode: str | None = Query("balanced"),
+    include_types: str | None = Query(None),
+    goal: str | None = Query("补弱"),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    try:
+        context = _store().build_ai_planning_context(
+            uid,
+            subject=subject,
+            days=days,
+            daily_minutes=daily_minutes,
+            goal=goal,
+            mode=mode,
+            include_types=_parse_include_types(include_types),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "context": context}
+
+
+@router.post("/ai-review-plan/draft")
+async def ai_review_plan_draft(
+    request: Request,
+    payload: dict[str, Any] | None = Body(None),
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    body = payload or {}
+    try:
+        context = _store().build_ai_planning_context(
+            uid,
+            subject=body.get("subject") or "math",
+            days=body.get("days") or 7,
+            daily_minutes=body.get("daily_minutes") or 60,
+            mode=body.get("mode") or "balanced",
+            include_types=_parse_include_types(body.get("include_types")),
+            goal=body.get("goal") or "补弱",
+        )
+        model = str(body.get("model") or DEFAULT_AI_REVIEW_PLAN_MODEL).strip() or DEFAULT_AI_REVIEW_PLAN_MODEL
+        readiness = context.get("readiness") if isinstance(context.get("readiness"), dict) else {}
+        if readiness.get("should_call_llm") is False:
+            draft = build_blocked_ai_review_plan_draft(context=context, model=model)
+        else:
+            draft = generate_ai_review_plan_draft(context=context, model=model)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "ok": True,
+        "user_id": uid,
+        "context": context,
+        "draft": draft,
+        "writes_review_tasks": False,
+    }
+
+
+@router.post("/ai-review-plan/commit")
+async def ai_review_plan_commit(
+    request: Request,
+    payload: dict[str, Any] | None = Body(None),
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    body = payload or {}
+    draft = body.get("draft") if isinstance(body.get("draft"), dict) else {}
+    plan_id = body.get("plan_id") or draft.get("plan_id")
+    draft_constraints = draft.get("constraints") if isinstance(draft.get("constraints"), dict) else {}
+    draft_policy = draft.get("policy") if isinstance(draft.get("policy"), dict) else {}
+    plan_mode = body.get("mode") or draft.get("mode") or draft_constraints.get("mode") or draft_policy.get("mode")
+    plan_model = body.get("model") or draft.get("model")
+    plan_source = body.get("source") or draft.get("source")
+    try:
+        items = _ai_review_plan_commit_items(body)
+        result = _store().create_review_tasks_from_ai_plan(
+            uid,
+            plan_id=str(plan_id or ""),
+            items=items,
+            subject=str(body.get("subject") or "math"),
+            daily_minutes=body.get("daily_minutes"),
+            plan_mode=str(plan_mode or ""),
+            plan_model=str(plan_model or ""),
+            plan_source=str(plan_source or ""),
+            plan_batch_title=str(draft.get("title") or draft.get("summary") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "result": result}
+
+
+@router.post("/ai-review-plan/validate")
+async def ai_review_plan_validate(
+    request: Request,
+    payload: dict[str, Any] | None = Body(None),
+    user_id: str | None = Query(None),
+) -> dict[str, Any]:
+    uid = _resolve_request_user_id(request, user_id)
+    body = payload or {}
+    try:
+        items = _ai_review_plan_commit_items(body)
+        validation = _store().validate_ai_review_plan_items(
+            uid,
+            items=items,
+            daily_minutes=body.get("daily_minutes"),
+            subject=str(body.get("subject") or "math"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True, "user_id": uid, "validation": validation}
 
 
 @router.get("/practice-attempts")

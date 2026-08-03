@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 复习规划 v2 看人下菜碟草图</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dfe4ea;
+      --panel: #ffffff;
+      --wash: #f2eee3;
+      --nav: #132236;
+      --nav-soft: #1c2f48;
+      --green: #147c63;
+      --green-soft: #e5f4ee;
+      --gold: #caa95c;
+      --blue: #2f67d8;
+      --red: #b94848;
+      --red-soft: #fff0ef;
+      --surface: #f8fafc;
+      --radius: 8px;
+      --shadow: 0 24px 80px rgba(28, 37, 54, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background: linear-gradient(90deg, var(--wash) 0, #f7f8fb 42%, #eef3f8 100%);
+    }
+
+    button, input, select { font: inherit; }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 9px 14px;
+      background: #fff;
+      color: var(--ink);
+      font-weight: 800;
+    }
+    button.primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+    button.dark {
+      background: #101a2d;
+      border-color: #101a2d;
+      color: #fff;
+    }
+    button.ghost { background: var(--surface); }
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid rgba(47, 103, 216, .25);
+      outline-offset: 2px;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 26px 20px;
+      background: linear-gradient(180deg, #0e1b2b, #17283e);
+      color: #fff;
+    }
+    .brand-kicker {
+      margin-bottom: 12px;
+      color: #d7bd74;
+      font-size: 12px;
+      letter-spacing: 4px;
+    }
+    .brand-title {
+      margin-bottom: 12px;
+      font-size: 32px;
+      font-weight: 900;
+    }
+    .sidebar p {
+      margin: 0 0 24px;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+    .nav {
+      display: grid;
+      gap: 10px;
+    }
+    .nav button {
+      width: 100%;
+      text-align: left;
+      padding: 13px 16px;
+      color: #fff;
+      background: var(--nav-soft);
+      border-color: rgba(255, 255, 255, .08);
+    }
+    .nav button.active {
+      background: rgba(20, 124, 99, .42);
+      border-color: var(--gold);
+      box-shadow: inset 4px 0 0 var(--gold);
+    }
+    .side-note {
+      margin-top: 26px;
+      padding: 15px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.04);
+      color: #d7dee8;
+      line-height: 1.65;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1180px;
+      padding: 30px 34px 56px;
+    }
+    .eyebrow {
+      color: #b99a58;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 4px 0 12px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .tabs, .chips, .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tab.active {
+      color: #fff;
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .panel {
+      margin-bottom: 16px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 70px rgba(20, 29, 44, .08);
+    }
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .panel-title-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .panel-title h2, .panel-title h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .muted {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: #11634f;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .chip.neutral {
+      background: #f1f5f9;
+      color: #475569;
+    }
+    .layout-two {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(360px, 1.05fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .suggestion-box {
+      min-height: 118px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .topic-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .topic-card {
+      min-height: 122px;
+      padding: 12px;
+      border: 1px solid #d7dee8;
+      border-radius: var(--radius);
+      background: #f8fbfc;
+    }
+    .topic-card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+    .topic-card p {
+      margin: 6px 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+    .task-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .task-card p { margin: 6px 0 0; color: var(--muted); }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 26px;
+      background: rgba(15, 23, 42, .48);
+    }
+    .overlay.show { display: flex; }
+    .dialog {
+      width: min(1080px, 94vw);
+      max-height: 88vh;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+    .dialog-head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.96);
+    }
+    .dialog-head h2 {
+      margin: 4px 0;
+      font-size: 24px;
+    }
+    .dialog-body { padding: 20px; }
+    .stepper {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .step {
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .step.active {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .mode-card {
+      min-height: 112px;
+      text-align: left;
+      background: var(--surface);
+      border-color: var(--line);
+    }
+    .mode-card strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+    .mode-card span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .mode-card.active {
+      color: var(--ink);
+      border-color: var(--green);
+      background: var(--green-soft);
+      box-shadow: inset 0 0 0 2px rgba(20, 124, 99, .16);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    label.field {
+      display: grid;
+      gap: 6px;
+      color: #344054;
+      font-weight: 800;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--ink);
+    }
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-weight: 800;
+    }
+    .check input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+    }
+    .check.disabled {
+      color: #94a3b8;
+      background: #f8fafc;
+    }
+    .candidate-panel {
+      display: grid;
+      grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .callout {
+      padding: 14px;
+      border: 1px solid #b9d6ce;
+      border-radius: var(--radius);
+      background: #eef8f5;
+      color: #155e50;
+      line-height: 1.65;
+    }
+    .candidate-list {
+      display: grid;
+      gap: 8px;
+    }
+    .candidate {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .candidate strong { display: block; margin-bottom: 4px; }
+    .candidate p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .pill {
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .pill.green {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .pill.blue {
+      background: #e8f0ff;
+      color: var(--blue);
+    }
+    .draft-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 13px 14px;
+      border: 1px solid #b9d6ce;
+      border-radius: var(--radius);
+      background: #eef8f5;
+      color: #155e50;
+      font-weight: 800;
+    }
+    .day-card {
+      margin-bottom: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .day-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      font-weight: 900;
+    }
+    .plan-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border-bottom: 1px solid #edf1f5;
+    }
+    .plan-item:last-child { border-bottom: 0; }
+    .plan-item input {
+      width: 18px;
+      height: 18px;
+      margin-top: 4px;
+      accent-color: var(--green);
+    }
+    .plan-item strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+    .plan-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .result-list {
+      display: grid;
+      gap: 8px;
+    }
+    .result-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .ok {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-weight: 900;
+    }
+    .skip {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #fff6df;
+      color: #946200;
+      font-weight: 900;
+    }
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,.96);
+    }
+    .hidden { display: none !important; }
+    .pulse {
+      animation: pulseFocus 1.1s ease-in-out 3;
+    }
+    @keyframes pulseFocus {
+      0% { box-shadow: 0 0 0 0 rgba(47,103,216,0); border-color: var(--line); }
+      45% { box-shadow: 0 0 0 9px rgba(47,103,216,.22); border-color: var(--blue); }
+      100% { box-shadow: 0 0 0 0 rgba(47,103,216,0); border-color: var(--line); }
+    }
+
+    @media (max-width: 1020px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      main { padding: 22px 16px; }
+      .layout-two, .candidate-panel, .form-grid, .check-grid { grid-template-columns: 1fr; }
+      .topic-grid, .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .task-card, .plan-item, .candidate, .result-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand-kicker">KAOYAN AGENT</div>
+      <div class="brand-title">考研助手</div>
+      <p>复习规划不是一张固定表单，而是根据用户当前目标选择不同候选池。</p>
+      <div class="nav">
+        <button>考研问答</button>
+        <button>资料库</button>
+        <button class="active">复习规划</button>
+        <button>院校查询</button>
+      </div>
+      <div class="side-note">
+        这版草图重点展示：错题回收、新题启动、补弱优先等模式如何联动候选来源和草案内容。
+      </div>
+    </aside>
+
+    <main>
+      <div class="eyebrow">PLAN</div>
+      <div class="topbar">
+        <div>
+          <h1>复习规划</h1>
+          <div class="tabs">
+            <button class="tab active">复习工作台</button>
+            <button class="tab">练习记录</button>
+          </div>
+        </div>
+        <button class="dark" id="openPlannerTop">AI 生成规划</button>
+      </div>
+
+      <section class="panel">
+        <div class="panel-title">
+          <div>
+            <h2>学习概览</h2>
+            <div class="muted">系统只展示 Top 3 给你看，但 AI 规划会读取更大的压缩候选池。</div>
+          </div>
+          <div class="panel-title-actions">
+            <span class="chip">已同步</span>
+            <button class="ghost" id="openPlannerOverview">让 AI 排计划</button>
+          </div>
+        </div>
+        <div class="chips">
+          <span class="chip">练习 9</span>
+          <span class="chip">草稿 28</span>
+          <span class="chip">正确 12</span>
+          <span class="chip">错题 16</span>
+          <span class="chip">待核对 0</span>
+          <span class="chip">到期 2</span>
+        </div>
+      </section>
+
+      <section class="panel layout-two">
+        <div class="suggestion-box">
+          <div class="panel-title">
+            <h3>下一步建议</h3>
+          </div>
+          <div class="actions">
+            <button>处理 2 个到期复习</button>
+            <button>继续 28 份未提交练习</button>
+            <button>复习 16 道错题</button>
+            <button>确认 3 道待核对题</button>
+          </div>
+        </div>
+        <div class="suggestion-box">
+          <div class="panel-title">
+            <h3>薄弱知识点 Top 3</h3>
+            <span class="chip neutral">界面展示较少</span>
+          </div>
+          <div class="topic-grid">
+            <article class="topic-card">
+              <strong>导数应用</strong>
+              <p>共练 10 次，错误 9 次，判断可信度高。</p>
+              <span class="chip">近期风险</span>
+            </article>
+            <article class="topic-card">
+              <strong>极值与最值</strong>
+              <p>历史错题 8 次，适合错题回收。</p>
+              <span class="chip">历史错题</span>
+            </article>
+            <article class="topic-card">
+              <strong>二重积分</strong>
+              <p>共练 12 次，错误 9 次，适合专项练习。</p>
+              <span class="chip">专项复习</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="futureTasks">
+        <div class="panel-title">
+          <h3>未来任务</h3>
+          <span class="chip neutral" id="futureCount">1</span>
+        </div>
+        <article class="task-card">
+          <div>
+            <strong>2025 数一 Q1 复习</strong>
+            <p>到期：2026-08-08 · 单题 · 必须做</p>
+          </div>
+          <div class="actions">
+            <button class="dark">开始复习</button>
+            <button>完成</button>
+            <button>推迟</button>
+            <button>取消</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <header class="dialog-head">
+        <div>
+          <div class="eyebrow">AI REVIEW PLAN</div>
+          <h2 id="dialogTitle">AI 生成规划</h2>
+          <div class="muted" id="dialogDesc">选择规划模式后，系统会按目标切换候选池。</div>
+          <div class="stepper">
+            <span class="step active" data-step="settings">1 设置范围</span>
+            <span class="step" data-step="draft">2 草案确认</span>
+            <span class="step" data-step="result">3 写入结果</span>
+          </div>
+        </div>
+        <button id="dialogBack">返回</button>
+      </header>
+
+      <div class="dialog-body" id="settingsView">
+        <section class="panel">
+          <div class="panel-title">
+            <div>
+              <h3>规划模式</h3>
+              <div class="muted">模式是主意图，下面的“纳入内容”和候选池会跟着变化。</div>
+            </div>
+          </div>
+          <div class="mode-grid" id="modeGrid">
+            <button class="mode-card active" data-mode="balanced">
+              <strong>均衡推进</strong>
+              <span>到期、错题、薄弱和少量新题一起排。</span>
+            </button>
+            <button class="mode-card" data-mode="weak">
+              <strong>补弱优先</strong>
+              <span>优先围绕薄弱知识点安排。</span>
+            </button>
+            <button class="mode-card" data-mode="wrong">
+              <strong>错题回收</strong>
+              <span>只围绕错题、待核对和到期错题。</span>
+            </button>
+            <button class="mode-card" data-mode="startup">
+              <strong>新题启动</strong>
+              <span>适合没什么历史数据或想开新章节。</span>
+            </button>
+            <button class="mode-card" data-mode="sprint">
+              <strong>考前冲刺</strong>
+              <span>到期、错题、薄弱、收藏综合处理。</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="form-grid">
+            <label class="field">学科
+              <select id="subjectSelect">
+                <option>数学</option>
+                <option>政治</option>
+                <option>英语</option>
+                <option>408</option>
+                <option>全部学科</option>
+              </select>
+            </label>
+            <label class="field">考试范围
+              <select id="examSelect">
+                <option>数学一</option>
+                <option>数学二</option>
+                <option>数学三</option>
+                <option>全部数学库</option>
+              </select>
+            </label>
+            <label class="field">开始日期
+              <input id="startDate" type="date" value="2026-07-14">
+            </label>
+            <label class="field">结束日期
+              <input id="endDate" type="date" value="2026-07-20">
+            </label>
+            <label class="field">每天时长
+              <select id="dailyMinutes">
+                <option>60 分钟</option>
+                <option>30 分钟</option>
+                <option>90 分钟</option>
+                <option>120 分钟</option>
+              </select>
+            </label>
+            <label class="field" id="startupStrategyField">新题启动策略
+              <select id="startupStrategy">
+                <option>基础知识点优先</option>
+                <option>近年真题优先</option>
+                <option>按章节顺序推进</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <div>
+              <h3>纳入内容</h3>
+              <div class="muted" id="includeHint">均衡推进会把多类任务混合，但每天负载不会过重。</div>
+            </div>
+          </div>
+          <div class="check-grid" id="includeGrid"></div>
+        </section>
+
+        <section class="panel candidate-panel">
+          <div>
+            <div class="panel-title">
+              <h3 id="candidateTitle">AI 候选池</h3>
+            </div>
+            <div class="callout" id="candidateExplain">
+              后端给 AI 的不是全部历史，而是按模式压缩后的候选池。
+            </div>
+          </div>
+          <div>
+            <div class="panel-title">
+              <h3>候选预览</h3>
+              <span class="chip neutral" id="candidateCount">Top 30</span>
+            </div>
+            <div class="candidate-list" id="candidateList"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="dialog-body hidden" id="draftView">
+        <div class="draft-meta">
+          <span id="draftRange">数学 · 2026-07-14 至 2026-07-20 · 每天 60 分钟</span>
+          <span id="draftMode">均衡推进草案</span>
+        </div>
+        <div id="draftList"></div>
+      </div>
+
+      <div class="dialog-body hidden" id="resultView">
+        <section class="panel">
+          <div class="panel-title">
+            <div>
+              <h3>写入复习规划完成</h3>
+              <div class="muted">只写入你勾选的任务，重复任务会跳过。</div>
+            </div>
+            <span class="chip">已写入</span>
+          </div>
+          <div class="result-list" id="resultList"></div>
+        </section>
+      </div>
+
+      <footer class="sticky-actions">
+        <div id="footerHint">选择模式后生成草案。</div>
+        <div class="actions" id="footerActions">
+          <button class="primary" id="primaryAction">生成草案</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    const modes = {
+      balanced: {
+        label: "均衡推进",
+        hint: "均衡推进会把到期任务、错题、薄弱知识点和少量新题混合，但每天负载不会过重。",
+        count: "综合 Top 50",
+        candidateTitle: "综合候选池",
+        explain: "后端先按到期、错题、薄弱、新题四类各取 Top-K，再压缩成摘要给 AI。AI 负责组合日程，不直接读取全部原始记录。",
+        includes: [
+          ["due", "到期/逾期任务", true, true],
+          ["wrong", "高频错题", true, true],
+          ["pending", "待核对题", true, true],
+          ["weak", "薄弱知识点", true, true],
+          ["startup", "未开始/未掌握题", true, true],
+          ["drafts", "未提交练习", false, true],
+          ["favorite", "收藏但未掌握", false, true]
+        ],
+        candidates: [
+          ["到期任务", "2025 数一 Q6 同类训练", "逾期 2 天，建议优先处理"],
+          ["错题", "2006 数一 Q10", "连续错 4 次，极值与导数应用"],
+          ["薄弱", "导数应用专项", "错误 9 次，近期风险高"],
+          ["新题", "2025 数一 Q1", "低负载补充，避免只刷旧错题"]
+        ]
+      },
+      weak: {
+        label: "补弱优先",
+        hint: "补弱优先只围绕薄弱知识点及其错题、待核对题安排，新题只作为少量补充。",
+        count: "薄弱 Top 30",
+        candidateTitle: "薄弱候选池",
+        explain: "后端按知识点优先级取 Top-K，再给每个知识点附带代表错题、待核对题、最近练习趋势。",
+        includes: [
+          ["weak", "薄弱知识点", true, true],
+          ["wrong", "相关错题", true, true],
+          ["pending", "相关待核对题", true, true],
+          ["due", "到期/逾期任务", false, true],
+          ["startup", "未开始/未掌握题", false, false],
+          ["drafts", "未提交练习", false, false],
+          ["favorite", "收藏但未掌握", false, true]
+        ],
+        candidates: [
+          ["知识点", "导数应用", "优先级高，错误 9 次"],
+          ["错题", "1996 数一 Q16", "同知识点代表题"],
+          ["知识点", "二重积分", "错误率高，适合专项"],
+          ["待核对", "2024 数一 Q11", "填空题需 AI 或人工确认"]
+        ]
+      },
+      wrong: {
+        label: "错题回收",
+        hint: "错题回收不出现未开始题。它只处理已经暴露过问题的题目和待核对题。",
+        count: "错题 Top 40",
+        candidateTitle: "错题回收候选池",
+        explain: "后端按错题优先级取去重题目，不把未开始题交给 AI。做对会缓慢降优先级，做错会提高但不暴涨。",
+        includes: [
+          ["wrong", "高频错题", true, true],
+          ["pending", "待核对题", true, true],
+          ["due", "到期/逾期错题任务", true, true],
+          ["weak", "错题所属薄弱知识点", false, true],
+          ["startup", "未开始/未掌握题", false, false],
+          ["drafts", "未提交练习", false, false],
+          ["favorite", "收藏但未掌握", false, false]
+        ],
+        candidates: [
+          ["错题", "2006 数一 Q10", "错 4 次，连续错误"],
+          ["错题", "2019 数一 Q2", "近期做错，已收藏"],
+          ["待核对", "2024 数一 Q11", "本地无法确认等价表达"],
+          ["到期", "2025 数一 Q6 同类训练", "来自错题练习单"]
+        ]
+      },
+      startup: {
+        label: "新题启动",
+        hint: "新题启动用于历史数据少或想开启新范围。此时不叫薄弱 Top-K，而叫起步候选。",
+        count: "起步候选 Top 30",
+        candidateTitle: "起步候选池",
+        explain: "如果用户没有历史，后端按考试范围、题库顺序、基础知识点、题型配比和用户偏好预选起步候选，不把全量未开始题塞给 AI。",
+        includes: [
+          ["startup", "未开始/未掌握题", true, true],
+          ["favorite", "收藏但未掌握", false, true],
+          ["weak", "基础知识点范围", false, true],
+          ["due", "到期/逾期任务", false, false],
+          ["wrong", "高频错题", false, false],
+          ["pending", "待核对题", false, false],
+          ["drafts", "未提交练习", false, false]
+        ],
+        candidates: [
+          ["起步", "2025 数一 Q1", "选择题，极限，近年真题"],
+          ["起步", "2025 数一 Q2", "选择题，级数，基础覆盖"],
+          ["起步", "2024 数一 Q11", "填空题，极限，题型补齐"],
+          ["起步", "2023 数一 Q18", "解答题，证明训练"]
+        ]
+      },
+      sprint: {
+        label: "考前冲刺",
+        hint: "考前冲刺优先处理高收益任务，少量新题只作为保持手感。",
+        count: "冲刺 Top 45",
+        candidateTitle: "冲刺候选池",
+        explain: "后端优先到期、错题、薄弱、收藏未掌握，限制新题比例，避免考前任务发散。",
+        includes: [
+          ["due", "到期/逾期任务", true, true],
+          ["wrong", "高频错题", true, true],
+          ["weak", "薄弱知识点", true, true],
+          ["favorite", "收藏但未掌握", true, true],
+          ["pending", "待核对题", false, true],
+          ["startup", "少量未开始题", false, true],
+          ["drafts", "未提交练习", false, false]
+        ],
+        candidates: [
+          ["冲刺", "导数应用错题组", "高频错误，预计 30 分钟"],
+          ["冲刺", "收藏未掌握 5 题", "手动标记强相关"],
+          ["到期", "2025 数一 Q2 复习", "逾期任务"],
+          ["新题", "2025 数一 Q3", "少量保持手感"]
+        ]
+      }
+    };
+
+    const drafts = {
+      balanced: [
+        ["2026-07-14 周二", "55 分钟", [
+          ["到期复习：2025 数一 Q6 同类训练", "处理逾期练习单，避免到期任务继续堆积。", "练习单 · 30 分钟"],
+          ["错题回收：2006 数一 Q10", "连续错题，先安排单题复盘。", "单题 · 15 分钟"],
+          ["新题启动：2025 数一 Q1", "低负载补充新题，保持推进。", "新题 · 10 分钟"]
+        ]],
+        ["2026-07-15 周三", "60 分钟", [
+          ["导数应用专项", "薄弱知识点优先级高，安排专项练习。", "知识点 · 25 分钟"],
+          ["导数应用错题练习单", "用错题池生成可提交练习。", "练习单 · 35 分钟"]
+        ]]
+      ],
+      weak: [
+        ["2026-07-14 周二", "60 分钟", [
+          ["导数应用知识点处理", "先看高优先级薄弱点的错误原因。", "知识点 · 20 分钟"],
+          ["导数应用错题 5 题", "用代表错题巩固，不混入无关新题。", "练习单 · 40 分钟"]
+        ]],
+        ["2026-07-15 周三", "55 分钟", [
+          ["二重积分专项复盘", "错误次数高，适合集中处理。", "知识点 · 25 分钟"],
+          ["二重积分同类训练", "只取同知识点候选题。", "练习单 · 30 分钟"]
+        ]]
+      ],
+      wrong: [
+        ["2026-07-14 周二", "50 分钟", [
+          ["错题池 Top 5 练习单", "只从错题和待核对题生成，不加入未开始题。", "练习单 · 35 分钟"],
+          ["确认 2024 数一 Q11", "待核对题先确认，再影响统计。", "待核对 · 15 分钟"]
+        ]],
+        ["2026-07-15 周三", "45 分钟", [
+          ["2006 数一 Q10 单题复盘", "连续错题单独处理。", "单题 · 20 分钟"],
+          ["2019 数一 Q2 单题复盘", "近期错误，优先级靠前。", "单题 · 25 分钟"]
+        ]]
+      ],
+      startup: [
+        ["2026-07-14 周二", "60 分钟", [
+          ["2025 数一 Q1 起步题", "按近年真题和基础知识点选择。", "新题 · 20 分钟"],
+          ["2025 数一 Q2 起步题", "题型配比中的选择题部分。", "新题 · 20 分钟"],
+          ["2024 数一 Q11 起步题", "填空题补齐，避免只做选择题。", "新题 · 20 分钟"]
+        ]],
+        ["2026-07-15 周三", "60 分钟", [
+          ["基础积分 5 题练习单", "从未开始题中按基础知识点取样。", "练习单 · 40 分钟"],
+          ["回看错题池入口", "如果期间做错，后续自动转入错题逻辑。", "检查 · 20 分钟"]
+        ]]
+      ],
+      sprint: [
+        ["2026-07-14 周二", "60 分钟", [
+          ["逾期任务清理", "先处理到期风险。", "任务 · 20 分钟"],
+          ["高频错题 5 题", "考前先收高收益错题。", "练习单 · 40 分钟"]
+        ]],
+        ["2026-07-15 周三", "60 分钟", [
+          ["收藏未掌握 5 题", "用户手动标记说明主观重要。", "练习单 · 35 分钟"],
+          ["薄弱知识点快查", "只看摘要和代表题。", "知识点 · 25 分钟"]
+        ]]
+      ]
+    };
+
+    const overlay = document.getElementById("overlay");
+    const settingsView = document.getElementById("settingsView");
+    const draftView = document.getElementById("draftView");
+    const resultView = document.getElementById("resultView");
+    const includeGrid = document.getElementById("includeGrid");
+    const includeHint = document.getElementById("includeHint");
+    const candidateTitle = document.getElementById("candidateTitle");
+    const candidateExplain = document.getElementById("candidateExplain");
+    const candidateCount = document.getElementById("candidateCount");
+    const candidateList = document.getElementById("candidateList");
+    const startupStrategyField = document.getElementById("startupStrategyField");
+    const draftList = document.getElementById("draftList");
+    const draftMode = document.getElementById("draftMode");
+    const draftRange = document.getElementById("draftRange");
+    const startDate = document.getElementById("startDate");
+    const endDate = document.getElementById("endDate");
+    const dailyMinutes = document.getElementById("dailyMinutes");
+    const footerHint = document.getElementById("footerHint");
+    const footerActions = document.getElementById("footerActions");
+    const primaryAction = document.getElementById("primaryAction");
+    const dialogBack = document.getElementById("dialogBack");
+    const resultList = document.getElementById("resultList");
+    const futureTasks = document.getElementById("futureTasks");
+    const futureCount = document.getElementById("futureCount");
+
+    let currentMode = "balanced";
+    let currentStep = "settings";
+    let wroteTasks = false;
+
+    function openPlanner() {
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+      showStep("settings");
+      renderMode();
+    }
+
+    function closePlanner() {
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+
+    function renderMode() {
+      const mode = modes[currentMode];
+      document.querySelectorAll(".mode-card").forEach((button) => {
+        button.classList.toggle("active", button.dataset.mode === currentMode);
+      });
+      includeHint.textContent = mode.hint;
+      candidateTitle.textContent = mode.candidateTitle;
+      candidateExplain.textContent = mode.explain;
+      candidateCount.textContent = mode.count;
+      startupStrategyField.classList.toggle("hidden", currentMode !== "startup");
+
+      includeGrid.innerHTML = "";
+      mode.includes.forEach(([key, label, checked, enabled]) => {
+        const item = document.createElement("label");
+        item.className = "check" + (enabled ? "" : " disabled");
+        item.innerHTML = `<input type="checkbox" ${checked ? "checked" : ""} ${enabled ? "" : "disabled"} data-include="${key}"> ${label}`;
+        includeGrid.appendChild(item);
+      });
+
+      candidateList.innerHTML = "";
+      mode.candidates.forEach(([type, title, reason]) => {
+        const row = document.createElement("article");
+        row.className = "candidate";
+        row.innerHTML = `
+          <span class="pill green">${type}</span>
+          <div><strong>${title}</strong><p>${reason}</p></div>
+          <span class="pill">候选</span>
+        `;
+        candidateList.appendChild(row);
+      });
+    }
+
+    function updateSteps() {
+      document.querySelectorAll("[data-step]").forEach((item) => {
+        item.classList.toggle("active", item.dataset.step === currentStep);
+      });
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      settingsView.classList.toggle("hidden", step !== "settings");
+      draftView.classList.toggle("hidden", step !== "draft");
+      resultView.classList.toggle("hidden", step !== "result");
+      updateSteps();
+
+      footerActions.innerHTML = "";
+      if (step === "settings") {
+        footerHint.textContent = "先选模式，再生成草案。";
+        const button = document.createElement("button");
+        button.className = "primary";
+        button.textContent = "生成草案";
+        button.addEventListener("click", () => {
+          renderDraft();
+          showStep("draft");
+        });
+        footerActions.appendChild(button);
+      }
+      if (step === "draft") {
+        footerHint.textContent = "只写入勾选项，重复任务会跳过。";
+        const regen = document.createElement("button");
+        regen.textContent = "重新生成";
+        regen.addEventListener("click", renderDraft);
+        const write = document.createElement("button");
+        write.className = "primary";
+        write.textContent = "写入复习规划";
+        write.addEventListener("click", () => {
+          renderResult();
+          showStep("result");
+        });
+        footerActions.append(regen, write);
+      }
+      if (step === "result") {
+        footerHint.textContent = "新任务已写入未来任务区。";
+        const again = document.createElement("button");
+        again.textContent = "继续生成规划";
+        again.addEventListener("click", () => showStep("settings"));
+        const view = document.createElement("button");
+        view.className = "primary";
+        view.textContent = "查看未来任务";
+        view.addEventListener("click", () => {
+          closePlanner();
+          futureTasks.scrollIntoView({ behavior: "smooth", block: "start" });
+          futureTasks.classList.remove("pulse");
+          void futureTasks.offsetWidth;
+          futureTasks.classList.add("pulse");
+        });
+        footerActions.append(again, view);
+      }
+    }
+
+    function renderDraft() {
+      const mode = modes[currentMode];
+      draftMode.textContent = `${mode.label}草案`;
+      draftRange.textContent = `数学 · ${startDate.value} 至 ${endDate.value} · 每天 ${dailyMinutes.value}`;
+      draftList.innerHTML = "";
+
+      drafts[currentMode].forEach(([date, minutes, items]) => {
+        const day = document.createElement("section");
+        day.className = "day-card";
+        day.innerHTML = `<div class="day-head"><span>${date}</span><span>预计 ${minutes}</span></div>`;
+        items.forEach(([title, reason, tag]) => {
+          const article = document.createElement("article");
+          article.className = "plan-item";
+          article.innerHTML = `
+            <input type="checkbox" checked data-plan-check>
+            <div><strong>${title}</strong><p>${reason}</p></div>
+            <span class="pill blue">${tag}</span>
+          `;
+          day.appendChild(article);
+        });
+        draftList.appendChild(day);
+      });
+    }
+
+    function renderResult() {
+      resultList.innerHTML = "";
+      const checkedItems = [...document.querySelectorAll("[data-plan-check]")].filter((item) => item.checked);
+      checkedItems.slice(0, 4).forEach((item, index) => {
+        const title = item.closest(".plan-item").querySelector("strong").textContent;
+        const tag = item.closest(".plan-item").querySelector(".pill").textContent;
+        const row = document.createElement("div");
+        row.className = "result-row";
+        row.innerHTML = `<span class="ok">创建</span><strong>${title}</strong><span>${tag}</span>`;
+        resultList.appendChild(row);
+        addFutureTask(title, tag, index);
+      });
+      const skip = document.createElement("div");
+      skip.className = "result-row";
+      skip.innerHTML = `<span class="skip">跳过</span><strong>同日重复任务</strong><span>避免重复规划</span>`;
+      resultList.appendChild(skip);
+    }
+
+    function addFutureTask(title, tag, index) {
+      if (wroteTasks && index > 0) return;
+      if (index === 0) wroteTasks = true;
+      const article = document.createElement("article");
+      article.className = "task-card";
+      article.innerHTML = `
+        <div><strong>${title}</strong><p>到期：2026-07-${14 + index} · AI 规划写入 · ${tag}</p></div>
+        <div class="actions"><button class="dark">开始复习</button><button>完成</button><button>推迟</button><button>取消</button></div>
+      `;
+      futureTasks.appendChild(article);
+      const count = Number(futureCount.textContent || "1") + 1;
+      futureCount.textContent = String(count);
+    }
+
+    document.getElementById("openPlannerTop").addEventListener("click", openPlanner);
+    document.getElementById("openPlannerOverview").addEventListener("click", openPlanner);
+    document.getElementById("modeGrid").addEventListener("click", (event) => {
+      const button = event.target.closest(".mode-card");
+      if (!button) return;
+      currentMode = button.dataset.mode;
+      renderMode();
+    });
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closePlanner();
+    });
+    dialogBack.addEventListener("click", () => {
+      if (currentStep === "settings") closePlanner();
+      else if (currentStep === "draft") showStep("settings");
+      else showStep("draft");
+    });
+  </script>
+</body>
+</html>

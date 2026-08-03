@@ -44,6 +44,25 @@ class SystemQuestionLibraryTest(unittest.TestCase):
                 ["/api/materials/system/assets/math1/2099/images/q001.png"],
             )
 
+    def test_reuses_question_list_preview_cache_across_library_instances(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            raw_root = self._make_raw_root(Path(tmp))
+            read_card_calls: list[str] = []
+            original_read_text = Path.read_text
+
+            def counting_read_text(path: Path, *args: object, **kwargs: object) -> str:
+                if path.name == "q001.md":
+                    read_card_calls.append(str(path))
+                return original_read_text(path, *args, **kwargs)
+
+            with patch.object(Path, "read_text", counting_read_text):
+                first = SystemQuestionLibrary(raw_root=raw_root).list_questions(subject="math", exam_type="math1")
+                second = SystemQuestionLibrary(raw_root=raw_root).list_questions(subject="math", exam_type="math1")
+
+            self.assertEqual(first["total"], 1)
+            self.assertEqual(second["total"], 1)
+            self.assertEqual(len(read_card_calls), 1)
+
     def test_returns_complete_empty_shape_for_unsupported_subject_or_exam_type(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             raw_root = self._make_raw_root(Path(tmp))

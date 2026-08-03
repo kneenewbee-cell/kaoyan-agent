@@ -9,6 +9,8 @@ const md = window.markdownit({
     throwOnError: false,
   },
 });
+const systemMarkdownRenderCache = new Map();
+const SYSTEM_MARKDOWN_RENDER_CACHE_LIMIT = 240;
 
 const pages = {
   chat: document.querySelector("#chatPage"),
@@ -78,6 +80,7 @@ const systemSearchInput = document.querySelector("#systemSearchInput");
 const systemStatusSummary = document.querySelector("#systemStatusSummary");
 const systemSaveStatus = document.querySelector("#systemSaveStatus");
 const reviewTasksRefreshButton = document.querySelector("#reviewTasksRefreshButton");
+const reviewAiPlanButton = document.querySelector("#reviewAiPlanButton");
 const reviewTasksStatus = document.querySelector("#reviewTasksStatus");
 const reviewLearningInsights = document.querySelector("#reviewLearningInsights");
 const reviewTaskList = document.querySelector("#reviewTaskList");
@@ -153,6 +156,18 @@ const reviewTasksState = {
   },
 };
 
+const REVIEW_TASK_SECTION_DEFAULT_COLLAPSED = Object.freeze({
+  overdue: false,
+  today: false,
+  future: false,
+  completed: true,
+  cancelled: true,
+});
+
+const reviewTaskSectionCollapsed = {
+  ...REVIEW_TASK_SECTION_DEFAULT_COLLAPSED,
+};
+
 let systemQuestionsRequestSeq = 0;
 let systemStatusSummaryRequestSeq = 0;
 let systemNoteSaveTimer = 0;
@@ -165,6 +180,53 @@ const DEFAULT_MATERIALS_SUBJECT = "math";
 const ACTIVE_PAGE_STORAGE_KEY = "kaoyan_agent_active_page";
 const MATERIALS_MODE_STORAGE_KEY = "kaoyan_agent_materials_mode";
 const MATERIALS_USER_ID_STORAGE_KEY = "kaoyan_agent_materials_user_id";
+const DEFAULT_AI_REVIEW_PLAN_MODEL = "deepseek-v4-flash";
+const AI_REVIEW_PLAN_MODES = [
+  {
+    value: "balanced",
+    label: "均衡推进",
+    hint: "错题、薄弱点、到期任务和少量新题一起排，适合日常稳定推进。",
+    candidateTitle: "均衡候选池",
+    candidateCountLabel: "综合候选 Top 40",
+  },
+  {
+    value: "weak",
+    label: "补弱优先",
+    hint: "围绕薄弱知识点、相关错题和待核对题安排，新题只作为少量补充。",
+    candidateTitle: "薄弱候选池",
+    candidateCountLabel: "薄弱 Top 30",
+  },
+  {
+    value: "wrong",
+    label: "错题回收",
+    hint: "只处理已经暴露过问题的错题、待核对题和到期错题任务，不混入未开始题。",
+    candidateTitle: "错题回收候选池",
+    candidateCountLabel: "错题 Top 40",
+  },
+  {
+    value: "startup",
+    label: "新题启动",
+    hint: "用于历史数据少或想开启新范围。这里不叫薄弱 Top-K，而叫起步候选。",
+    candidateTitle: "起步候选池",
+    candidateCountLabel: "起步候选 Top 30",
+  },
+  {
+    value: "sprint",
+    label: "考前冲刺",
+    hint: "优先处理到期、错题、薄弱和收藏未掌握，限制新题比例，避免任务发散。",
+    candidateTitle: "冲刺候选池",
+    candidateCountLabel: "冲刺 Top 45",
+  },
+];
+const AI_REVIEW_PLAN_INCLUDE_OPTIONS = [
+  { value: "due_tasks", label: "到期/逾期任务", modes: ["balanced", "weak", "wrong", "sprint"], defaults: ["balanced", "wrong", "sprint"] },
+  { value: "wrong_questions", label: "高频错题", modes: ["balanced", "weak", "wrong", "sprint"], defaults: ["balanced", "weak", "wrong", "sprint"] },
+  { value: "pending_review", label: "待核对题", modes: ["balanced", "weak", "wrong", "sprint"], defaults: ["balanced", "weak", "wrong"] },
+  { value: "weak_topics", label: "薄弱知识点", modes: ["balanced", "weak", "wrong", "startup", "sprint"], defaults: ["balanced", "weak", "sprint"] },
+  { value: "unstarted", label: "未开始/未掌握题", modes: ["balanced", "weak", "startup", "sprint"], defaults: ["startup"] },
+  { value: "draft_attempts", label: "未提交练习", modes: ["balanced", "weak", "sprint"], defaults: ["balanced"] },
+  { value: "favorite_unmastered", label: "收藏但未掌握", modes: ["balanced", "weak", "startup", "sprint"], defaults: ["sprint"] },
+];
 const SYSTEM_MASTERY_VALUES = ["not_started", "learning", "mastered"];
 const SYSTEM_DEFAULT_PERSONAL_STATE = Object.freeze({
   mastery_status: "not_started",
@@ -999,6 +1061,77 @@ function renderSystemMarkdown(value) {
   return template.innerHTML;
 }
 
+function renderCachedSystemMarkdown(value) {
+  const key = String(value || "");
+  if (!key.trim()) {
+    return renderSystemMarkdown(key);
+  }
+  if (systemMarkdownRenderCache.has(key)) {
+    return systemMarkdownRenderCache.get(key);
+  }
+  const html = renderSystemMarkdown(key);
+  systemMarkdownRenderCache.set(key, html);
+  if (systemMarkdownRenderCache.size > SYSTEM_MARKDOWN_RENDER_CACHE_LIMIT) {
+    const oldestKey = systemMarkdownRenderCache.keys().next().value;
+    systemMarkdownRenderCache.delete(oldestKey);
+  }
+  return html;
+}
+
+function compactSystemQuestionPreviewText(value, fallback = "暂无题干预览") {
+  const text = String(value || "")
+    .replace(/!\[[^\]]*]\([^)]+\)/g, "")
+    .replace(/`([^`\n]+)`/g, "$1")
+    .replace(/\${1,2}/g, "")
+    .replace(/\\begin\{[^}]+}/g, "")
+    .replace(/\\end\{[^}]+}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || fallback;
+}
+
+function renderScheduledSystemQuestionPreview(preview) {
+  if (!preview || preview.dataset.rendered === "true") {
+    return;
+  }
+  const markdown = preview.dataset.markdown || "";
+  preview.innerHTML = renderCachedSystemMarkdown(markdown || "暂无题干预览");
+  preview.dataset.rendered = "true";
+  preview.removeAttribute("data-markdown");
+}
+
+function createSystemQuestionPreviewObserver() {
+  if (typeof IntersectionObserver === "undefined") {
+    return null;
+  }
+  return new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting && entry.intersectionRatio <= 0) {
+        return;
+      }
+      renderScheduledSystemQuestionPreview(entry.target);
+      observer.unobserve(entry.target);
+    });
+  }, {
+    root: null,
+    rootMargin: "420px 0px",
+    threshold: 0.01,
+  });
+}
+
+function scheduleSystemQuestionPreviewRender(preview, markdown) {
+  if (!preview) {
+    return;
+  }
+  preview.dataset.markdown = markdown || "暂无题干预览";
+  preview.dataset.rendered = "false";
+  if (!systemQuestionPreviewObserver) {
+    window.requestAnimationFrame(() => renderScheduledSystemQuestionPreview(preview));
+    return;
+  }
+  systemQuestionPreviewObserver.observe(preview);
+}
+
 function renderSystemAssetFallback(question) {
   const markdown = question?.question_markdown || question?.preview || "";
   if (systemMarkdownHasImages(markdown)) return "";
@@ -1012,6 +1145,8 @@ function renderSystemQuestionMarkdown(question) {
     ${renderSystemAssetFallback(question)}
   `;
 }
+
+const systemQuestionPreviewObserver = createSystemQuestionPreviewObserver();
 
 function stripPracticeChoiceLeadIn(value = "") {
   const lines = String(value || "").split("\n");
@@ -1096,6 +1231,7 @@ function renderSystemQuestionList() {
   }
 
   systemQuestionList.className = "system-question-list";
+  const fragment = document.createDocumentFragment();
   items.forEach((item) => {
     const personal = systemUserState(item.question_id);
     const card = document.createElement("article");
@@ -1146,7 +1282,9 @@ function renderSystemQuestionList() {
 
     const preview = document.createElement("p");
     preview.className = "system-question-preview";
-    preview.innerHTML = renderSystemMarkdown(item.preview || "暂无题干预览");
+    preview.dataset.rendered = "false";
+    preview.textContent = compactSystemQuestionPreviewText(item.preview, "暂无题干预览");
+    scheduleSystemQuestionPreviewRender(preview, item.preview || "暂无题干预览");
 
     const topics = document.createElement("div");
     topics.className = "system-topic-list";
@@ -1198,8 +1336,9 @@ function renderSystemQuestionList() {
     body.appendChild(footer);
     card.appendChild(checkbox);
     card.appendChild(body);
-    systemQuestionList.appendChild(card);
+    fragment.appendChild(card);
   });
+  systemQuestionList.appendChild(fragment);
   renderSystemPagination();
   updateSystemBatchActionState();
 }
@@ -1335,8 +1474,9 @@ function systemWorkflowKeydownHandler(overlay, close) {
   };
 }
 
-function createSystemWorkflowOverlay(title, subtitle) {
+function createSystemWorkflowOverlay(title, subtitle, options = {}) {
   closeSystemWorkflowModal();
+  const headerActionLabel = options.headerActionLabel || "关闭";
   const overlay = document.createElement("div");
   overlay.className = "system-workflow-overlay";
   overlay.innerHTML = `
@@ -1347,7 +1487,7 @@ function createSystemWorkflowOverlay(title, subtitle) {
           <h3 id="systemWorkflowTitle">${escapeHtml(title)}</h3>
           ${subtitle ? `<p class="helper-text">${escapeHtml(subtitle)}</p>` : ""}
         </div>
-        <button type="button" class="small-button" data-system-workflow-close>关闭</button>
+        <button type="button" class="small-button" data-system-workflow-close>${escapeHtml(headerActionLabel)}</button>
       </header>
       <div class="system-workflow-body"></div>
     </section>
@@ -1356,11 +1496,18 @@ function createSystemWorkflowOverlay(title, subtitle) {
     document.removeEventListener("keydown", onKeyDown);
     overlay.remove();
   };
+  const runHeaderAction = () => {
+    if (typeof options.onHeaderAction === "function") {
+      options.onHeaderAction({ overlay, close });
+      return;
+    }
+    close();
+  };
   const onKeyDown = systemWorkflowKeydownHandler(overlay, close);
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
-  overlay.querySelector("[data-system-workflow-close]")?.addEventListener("click", close);
+  overlay.querySelector("[data-system-workflow-close]")?.addEventListener("click", runHeaderAction);
   document.addEventListener("keydown", onKeyDown);
   document.body.appendChild(overlay);
   return { overlay, close };
@@ -2019,7 +2166,17 @@ async function loadWrongQuestionPool(config, overlay) {
 }
 
 function openWrongQuestionPoolModal(options = {}) {
-  const { overlay } = createSystemWorkflowOverlay("错题池", "筛选错题，默认选择优先级最高的 5 道，生成可追踪的错题练习单。");
+  const workflowOptions = options.returnToTopic
+    ? {
+        headerActionLabel: "返回",
+        onHeaderAction: ({ close }) => {
+          const topic = options.returnToTopic;
+          close();
+          openLearningTopicPanel(topic);
+        },
+      }
+    : {};
+  const { overlay } = createSystemWorkflowOverlay("错题池", "筛选错题，默认选择优先级最高的 5 道，生成可追踪的错题练习单。", workflowOptions);
   const config = {
     subject: options.subject || reviewTasksState.filters.subject || systemState.subject || "math",
     examType: options.examType || systemState.examType || "",
@@ -2099,6 +2256,12 @@ function learningTopicByName(topicName) {
   return weakTopics.find((item) => String(item.topic || "") === String(topicName || "")) || null;
 }
 
+function scrollReviewTaskListIntoView() {
+  if (!reviewTaskList) return false;
+  reviewTaskList.scrollIntoView({ behavior: "smooth", block: "start" });
+  return true;
+}
+
 function openLearningTopicPanel(topicName) {
   const topic = learningTopicByName(topicName) || { topic: topicName };
   const title = String(topic.topic || "未命名知识点");
@@ -2129,13 +2292,13 @@ function openLearningTopicPanel(topicName) {
       <div class="system-workflow-actions">
         <button type="button" class="small-button dark-button" data-topic-panel-wrong>复习相关错题</button>
         <button type="button" class="small-button" data-topic-panel-pending>核对相关题</button>
-        <button type="button" class="small-button" data-topic-panel-filter>筛选复习任务</button>
+        <button type="button" class="small-button" data-topic-panel-filter>筛选下方复习任务</button>
       </div>
     </section>
   `;
   body.querySelector("[data-topic-panel-wrong]")?.addEventListener("click", () => {
     close();
-    openWrongQuestionPoolModal({ topic: title, riskType: "wrong" });
+    openWrongQuestionPoolModal({ topic: title, riskType: "wrong", returnToTopic: title });
   });
   body.querySelector("[data-topic-panel-pending]")?.addEventListener("click", () => {
     close();
@@ -2145,8 +2308,10 @@ function openLearningTopicPanel(topicName) {
     close();
     if (reviewKeywordFilter) reviewKeywordFilter.value = title;
     reviewTasksState.filters.keyword = title;
-    void loadReviewTasks();
-    setReviewTasksStatus("saved", `已按知识点「${title}」筛选复习任务`);
+    void loadReviewTasks().then(() => {
+      scrollReviewTaskListIntoView();
+    });
+    setReviewTasksStatus("saved", `已在下方复习任务列表筛选「${title}」`);
   });
 }
 
@@ -2195,6 +2360,19 @@ function confirmPendingReviewManualGrade(item = {}, finalStatus = "") {
   );
 }
 
+function pendingReviewCorrectActionHtml(item = {}, attemptId = "", questionId = "") {
+  const aiStatus = String(item.ai_status || "not_used");
+  const safeAttemptId = escapeHtml(attemptId);
+  const safeQuestionId = escapeHtml(questionId);
+  if (aiStatus === "correct") {
+    return `<button type="button" class="small-button" data-pending-review-correct data-attempt-id="${safeAttemptId}" data-question-id="${safeQuestionId}">采纳AI判定为正确</button>`;
+  }
+  if (aiStatus === "incorrect" || aiStatus === "partial") {
+    return `<button type="button" class="small-button" data-pending-review-correct-override data-attempt-id="${safeAttemptId}" data-question-id="${safeQuestionId}">仍认为正确</button>`;
+  }
+  return "";
+}
+
 function renderPendingReviewItem(item) {
   const attemptId = item.attempt_id || "";
   const questionId = item.question_id || "";
@@ -2227,7 +2405,7 @@ function renderPendingReviewItem(item) {
       <div class="pending-review-actions">
         <button type="button" class="small-button" data-pending-review-open="${escapeHtml(questionId)}">查看题目</button>
         <button type="button" class="small-button" data-pending-review-ai data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">AI 判分</button>
-        <button type="button" class="small-button" data-pending-review-correct data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">确认正确</button>
+        ${pendingReviewCorrectActionHtml(item, attemptId, questionId)}
         <button type="button" class="small-button" data-pending-review-incorrect data-attempt-id="${escapeHtml(attemptId)}" data-question-id="${escapeHtml(questionId)}">确认错误</button>
       </div>
     </article>
@@ -2290,16 +2468,25 @@ function renderPendingReviewModal(overlay, config) {
       if (questionId) void openSystemQuestionDrawer(questionId);
     });
   });
-  body.querySelectorAll("[data-pending-review-ai], [data-pending-review-correct], [data-pending-review-incorrect]").forEach((button) => {
+  body.querySelectorAll("[data-pending-review-ai], [data-pending-review-correct], [data-pending-review-correct-override], [data-pending-review-incorrect]").forEach((button) => {
     button.addEventListener("click", () => {
       const method = button.dataset.pendingReviewAi !== undefined ? "ai" : "manual";
-      const finalStatus = button.dataset.pendingReviewCorrect !== undefined
+      const finalStatus = button.dataset.pendingReviewCorrect !== undefined || button.dataset.pendingReviewCorrectOverride !== undefined
         ? "correct"
         : (button.dataset.pendingReviewIncorrect !== undefined ? "incorrect" : "");
       const item = config.items.find((candidate) => (
         String(candidate.attempt_id || "") === String(button.dataset.attemptId || "")
         && String(candidate.question_id || "") === String(button.dataset.questionId || "")
       )) || {};
+      if (button.dataset.pendingReviewCorrectOverride !== undefined) {
+        const reason = window.prompt("AI/本地判分不支持正确，请写一句你认为正确的理由：", "");
+        if (!reason || !reason.trim()) {
+          return;
+        }
+        button.dataset.judgeReason = `人工仍认为正确：${reason.trim()}`;
+      } else {
+        delete button.dataset.judgeReason;
+      }
       if (method === "manual" && !confirmPendingReviewManualGrade(item, finalStatus)) {
         return;
       }
@@ -2356,6 +2543,8 @@ async function gradePendingReviewItem(config, overlay, button, judgeMethod, fina
   const attemptId = button?.dataset.attemptId || "";
   const questionId = button?.dataset.questionId || "";
   if (!attemptId || !questionId || button.disabled) return;
+  const judgeReason = button?.dataset.judgeReason
+    || (finalStatus === "correct" ? "人工确认正确。" : "人工确认错误。");
   const originalText = button.textContent;
   button.disabled = true;
   button.classList.add("is-loading");
@@ -2368,7 +2557,7 @@ async function gradePendingReviewItem(config, overlay, button, judgeMethod, fina
           judge_method: "manual",
           final_status: finalStatus,
           judge_confidence: 1,
-          judge_reason: finalStatus === "correct" ? "人工确认正确。" : "人工确认错误。",
+          judge_reason: judgeReason,
           manual_override: true,
         };
     await fetchJson(`/api/materials/system/practice-attempts/${encodeURIComponent(attemptId)}/items/${encodeURIComponent(questionId)}/grade?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
@@ -3237,6 +3426,122 @@ async function openPracticeAttemptResultById(attemptId) {
   );
 }
 
+function practiceAttemptDraftTitle(attempt = {}) {
+  const sourceMeta = attempt.source_meta && typeof attempt.source_meta === "object" ? attempt.source_meta : {};
+  return (
+    attempt.title
+    || attempt.practice_set_title
+    || sourceMeta.practice_set_title
+    || sourceMeta.source_title
+    || sourceMeta.title
+    || attempt.practice_set_id
+    || "未提交练习"
+  );
+}
+
+function practiceAttemptDraftProgress(attempt = {}) {
+  const answers = practiceAttemptAnswers(attempt);
+  const answeredCount = Object.values(answers).filter((answer) => practiceAnswerValue(answer).trim()).length;
+  const sourceMeta = attempt.source_meta && typeof attempt.source_meta === "object" ? attempt.source_meta : {};
+  const total = Number(attempt.question_count || sourceMeta.question_count || 0);
+  return total > 0 ? `${answeredCount}/${total} 已答` : `${answeredCount} 题已答`;
+}
+
+function practiceAttemptDraftUpdatedAt(attempt = {}) {
+  const raw = attempt.last_saved_at || attempt.started_at || attempt.updated_at || "";
+  return formatPracticeLocalDateTime(raw);
+}
+
+async function fetchPracticeSetForAttempt(attempt = {}) {
+  const practiceSetId = String(attempt.practice_set_id || "");
+  let practiceSet = {
+    set_id: practiceSetId,
+    title: practiceAttemptDraftTitle(attempt),
+    question_ids: Object.keys(practiceAttemptAnswers(attempt)),
+  };
+  if (!practiceSetId) return practiceSet;
+  try {
+    const data = await fetchJson(`/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+    practiceSet = { ...practiceSet, ...(data.practice_set || data || {}) };
+  } catch {
+    // The attempt itself still has enough data to show a recoverable shell.
+  }
+  return practiceSet;
+}
+
+async function continuePracticeDraftAttempt(overlay, draftAttempt) {
+  const body = overlay.querySelector(".system-workflow-body");
+  if (body) {
+    body.innerHTML = '<div class="empty-state">正在恢复未提交练习...</div>';
+  }
+  const attemptId = practiceAttemptId(draftAttempt);
+  const detail = attemptId ? await fetchPracticeAttemptDetail(attemptId) : null;
+  const practiceAttempt = mergePracticeAttempt(draftAttempt, detail?.practice_attempt || {});
+  const practiceSet = await fetchPracticeSetForAttempt(practiceAttempt);
+  const questions = await resolvePracticeAttemptQuestions(practiceSet, [], {});
+  overlay.classList.add("practice-attempt-overlay");
+  overlay.querySelector(".system-workflow-dialog")?.classList.add("practice-attempt-dialog");
+  renderPracticeAttemptDraft(overlay, practiceSet, questions, practiceAttempt, { fallbackQuestions: questions });
+}
+
+async function openPracticeDraftListModal() {
+  const { overlay } = createSystemWorkflowOverlay("未提交练习", "这里显示已经开始但尚未提交的练习草稿。关闭作答不会丢失答案。");
+  const body = overlay.querySelector(".system-workflow-body");
+  if (!body) return;
+  body.innerHTML = '<div class="empty-state">正在读取未提交练习...</div>';
+  try {
+    const data = await fetchJson(`/api/materials/system/practice-attempts?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+    const attempts = Array.isArray(data.practice_attempts) ? data.practice_attempts : [];
+    const drafts = attempts.filter((attempt) => String(attempt.status || "") === "draft");
+    if (!drafts.length) {
+      body.innerHTML = '<div class="empty-state">当前没有未提交练习。开始练习并关闭作答页后，会在这里继续。</div>';
+      return;
+    }
+    body.innerHTML = `
+      <section class="system-workflow-result">
+        <div>
+          <strong>未提交草稿</strong>
+          <p>${escapeHtml(String(drafts.length))} 份练习尚未提交，可以继续作答或稍后处理。</p>
+        </div>
+      </section>
+      <section class="practice-detail-question-list">
+        ${drafts.map((attempt) => {
+          const attemptId = practiceAttemptId(attempt);
+          return `
+            <article class="practice-paper-question">
+              <div class="practice-paper-question-head">
+                <div>
+                  <strong>${escapeHtml(practiceAttemptDraftTitle(attempt))}</strong>
+                  <p>${escapeHtml(practiceAttemptDraftProgress(attempt))} · 最后保存：${escapeHtml(practiceAttemptDraftUpdatedAt(attempt))}</p>
+                </div>
+                <button type="button" class="small-button dark-button" data-practice-draft-continue="${escapeHtml(attemptId)}">继续作答</button>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </section>
+    `;
+    body.querySelectorAll("[data-practice-draft-continue]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const attemptId = button.dataset.practiceDraftContinue || "";
+        const draft = drafts.find((attempt) => practiceAttemptId(attempt) === attemptId);
+        if (!draft || button.disabled) return;
+        button.disabled = true;
+        button.textContent = "正在恢复...";
+        try {
+          await continuePracticeDraftAttempt(overlay, draft);
+        } catch (error) {
+          setSystemSaveStatus("error", `未提交练习恢复失败：${error.message}`);
+          button.disabled = false;
+          button.textContent = "继续作答";
+        }
+      });
+    });
+  } catch (error) {
+    body.innerHTML = `<div class="empty-state">未提交练习读取失败：${escapeHtml(error.message)}</div>`;
+  }
+}
+
 async function submitPracticeAttempt(practiceAttempt, overlay, practiceSet, questions = [], options = {}) {
   const attemptId = practiceAttemptId(practiceAttempt);
   if (!attemptId) return;
@@ -3253,6 +3558,7 @@ async function submitPracticeAttempt(practiceAttempt, overlay, practiceSet, ques
       insights: detail.insights || submittedAttempt.insights || {},
     };
     setSystemSaveStatus("saved", "练习已提交");
+    refreshPracticeRecordsAfterPracticeChange();
     renderPracticeAttemptResult(overlay, practiceSet, questions, detailAttempt, options);
   } catch (error) {
     setSystemSaveStatus("error", `练习提交失败：${error.message}`);
@@ -3282,6 +3588,8 @@ async function openPracticeAttempt(practiceSet, questions = [], options = {}) {
       renderPracticeAttemptResult(overlay, practiceSet, detailQuestions, practiceAttempt, { ...options, fallbackQuestions: detailQuestions });
       return;
     }
+    setSystemSaveStatus("saved", "未提交草稿已保存，可在复习规划的学习概览里继续。");
+    refreshPracticeRecordsAfterPracticeChange();
     renderPracticeAttemptDraft(overlay, practiceSet, detailQuestions, practiceAttempt, { ...options, fallbackQuestions: detailQuestions });
   } catch (error) {
     if (body) {
@@ -3545,7 +3853,22 @@ async function openSystemPracticeSetDetail(practiceSet, options = {}) {
 function defaultReviewDueDate(days = 1) {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return localDateKey(date);
+}
+
+function localDateKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function formatPracticeLocalDateTime(value) {
+  if (!value) return "未记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16).replace("T", " ");
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${localDateKey(date)} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function reviewTaskId(task = {}) {
@@ -4014,6 +4337,12 @@ async function loadReviewLearningInsights(options = {}) {
   }
 }
 
+function refreshPracticeRecordsAfterPracticeChange() {
+  if (!pages.plan?.classList.contains("active")) return;
+  void loadReviewLearningInsights({ silent: true });
+  void loadReviewTasks({ silent: true });
+}
+
 async function loadReviewTasks(options = {}) {
   if (!reviewTaskList) return;
   if (!options.silent) {
@@ -4085,10 +4414,55 @@ function reviewTaskDateGroup(task) {
   }
   const dueDate = reviewTaskDueDate(task);
   if (!dueDate) return "future";
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   if (dueDate < today) return "overdue";
   if (dueDate === today) return "today";
   return "future";
+}
+
+function reviewTaskDateTimestamp(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) return Number.MAX_SAFE_INTEGER;
+  return new Date(`${dateKey}T00:00:00`).getTime();
+}
+
+function reviewTaskCompactDateLabel(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) return "未定";
+  const date = new Date(`${dateKey}T00:00:00`);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function reviewTaskDateGroupLabel(dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey || ""))) return "未设置日期";
+  const date = new Date(`${dateKey}T00:00:00`);
+  const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  return `${dateKey} ${weekdays[date.getDay()]}`;
+}
+
+function groupFutureReviewTasksByDate(tasks) {
+  const grouped = new Map();
+  [...tasks]
+    .sort((left, right) => {
+      const leftDate = reviewTaskDueDate(left) || "";
+      const rightDate = reviewTaskDueDate(right) || "";
+      const byDate = reviewTaskDateTimestamp(leftDate) - reviewTaskDateTimestamp(rightDate);
+      if (byDate !== 0) return byDate;
+      return reviewTaskTitle(left).localeCompare(reviewTaskTitle(right), "zh-Hans-CN");
+    })
+    .forEach((task) => {
+      const dateKey = reviewTaskDueDate(task) || "unscheduled";
+      if (!grouped.has(dateKey)) grouped.set(dateKey, []);
+      grouped.get(dateKey).push(task);
+    });
+  return [...grouped.entries()].map(([dateKey, items]) => ({ dateKey, items }));
+}
+
+function reviewTaskEstimatedMinutes(task) {
+  const parsed = Number(task?.estimated_minutes || task?.minutes || 0);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function futureReviewDateGroupMinutes(items) {
+  return items.reduce((sum, task) => sum + reviewTaskEstimatedMinutes(task), 0);
 }
 
 function groupedReviewTasks() {
@@ -4103,6 +4477,49 @@ function groupedReviewTasks() {
     groups[reviewTaskDateGroup(task)].push(task);
   });
   return groups;
+}
+
+function reviewTaskPlanModeLabel(mode) {
+  const normalized = String(mode || "").trim();
+  const match = AI_REVIEW_PLAN_MODES.find((item) => item.value === normalized);
+  return match?.label || normalized || "AI 规划";
+}
+
+function reviewTaskPlanSourceLabel(source) {
+  const normalized = String(source || "").trim();
+  if (normalized === "llm") return "AI 生成";
+  if (normalized === "fallback") return "规则兜底";
+  if (normalized === "blocked") return "未调用 AI";
+  return normalized || "";
+}
+
+function reviewTaskPlanBatchLabel(task) {
+  const title = String(task?.plan_batch_title || "").trim();
+  if (title) return title;
+  const planId = String(task?.plan_id || "").trim();
+  if (!planId) return "";
+  const shortId = planId.length > 10 ? planId.slice(-10) : planId;
+  return `批次 ${shortId}`;
+}
+
+function renderReviewTaskPlanMeta(task) {
+  const isAiPlanTask = String(task.created_from || "") === "ai_plan" || Boolean(task.plan_id);
+  if (!isAiPlanTask) return "";
+  const chips = ["来自 AI 规划"];
+  const batchLabel = reviewTaskPlanBatchLabel(task);
+  if (batchLabel) chips.push(`规划批次：${batchLabel}`);
+  if (task.plan_mode) chips.push(`${reviewTaskPlanModeLabel(task.plan_mode)}模式`);
+  if (task.plan_model) chips.push(String(task.plan_model));
+  const sourceLabel = reviewTaskPlanSourceLabel(task.plan_source);
+  if (sourceLabel) chips.push(sourceLabel);
+  if (task.estimated_minutes) chips.push(`预计 ${task.estimated_minutes} 分钟`);
+  const reason = String(task.plan_reason || "").trim();
+  return `
+    <div class="review-task-plan-meta" aria-label="AI 规划来源">
+      ${chips.map((chip) => `<span${chip.startsWith("规划批次：") ? ' class="review-task-plan-batch"' : ""}>${escapeHtml(chip)}</span>`).join("")}
+    </div>
+    ${reason ? `<p class="review-task-plan-reason">安排理由：${escapeHtml(reason)}</p>` : ""}
+  `;
 }
 
 function renderReviewTaskActions(id, status) {
@@ -4129,6 +4546,7 @@ function renderReviewTaskCard(task) {
   const note = task.note || task.personal_note || "";
   const completed = status === "completed" || status === "done";
   const targetType = String(task.target_type || "");
+  const isAiPlanTask = String(task.created_from || "") === "ai_plan" || Boolean(task.plan_id);
   const sourceMeta = task.source_meta && typeof task.source_meta === "object" ? task.source_meta : {};
   const learningReasons = Array.isArray(task.learning_reasons) ? task.learning_reasons : [];
   const sourceText = [
@@ -4141,6 +4559,7 @@ function renderReviewTaskCard(task) {
       <div class="review-task-main">
         <div class="review-task-title-row">
           <strong>${escapeHtml(reviewTaskTitle(task))}</strong>
+          ${reviewTaskDateGroup(task) === "future" && reviewTaskDueDate(task) ? `<span class="review-task-date-pill">${escapeHtml(reviewTaskCompactDateLabel(reviewTaskDueDate(task)))}</span>` : ""}
           <span class="status-pill ${completed ? "mastered" : "learning"}">${escapeHtml(reviewTaskStatusLabel(status))}</span>
           <span class="status-pill type">${escapeHtml(reviewTaskTargetTypeLabel(targetType))}</span>
         </div>
@@ -4149,7 +4568,8 @@ function renderReviewTaskCard(task) {
           <span>${escapeHtml(reviewTaskPriorityLabel(priority))}</span>
           ${sourceText ? `<span>${escapeHtml(sourceText)}</span>` : ""}
         </div>
-        ${note ? `<p>${escapeHtml(note)}</p>` : ""}
+        ${!isAiPlanTask && note ? `<p>${escapeHtml(note)}</p>` : ""}
+        ${renderReviewTaskPlanMeta(task)}
         ${learningReasons.length ? `
           <div class="review-task-reasons" aria-label="复习原因">
             ${learningReasons.map((reason) => `<span>${escapeHtml(reason.label || "")}</span>`).join("")}
@@ -4161,16 +4581,111 @@ function renderReviewTaskCard(task) {
   `;
 }
 
-function renderReviewTaskSection(title, tasks) {
+function isReviewTaskSectionCollapsed(group) {
+  const key = String(group || "");
+  if (!key) return false;
+  if (!(key in reviewTaskSectionCollapsed)) {
+    reviewTaskSectionCollapsed[key] = Boolean(REVIEW_TASK_SECTION_DEFAULT_COLLAPSED[key]);
+  }
+  return Boolean(reviewTaskSectionCollapsed[key]);
+}
+
+function reviewTaskSectionToggleLabel(collapsed) {
+  return collapsed ? "展开" : "收起";
+}
+
+function renderReviewTaskSectionHeader(title, tasks, group, collapsed) {
   return `
-    <section class="review-task-section">
-      <header>
+      <header class="review-task-section-header">
         <h4>${escapeHtml(title)}</h4>
-        <span>${tasks.length}</span>
+        <button
+          type="button"
+          class="review-task-section-toggle"
+          data-review-task-section-toggle="${escapeHtml(group)}"
+          aria-expanded="${escapeHtml(String(!collapsed))}"
+        >
+          <span class="review-task-section-count">${escapeHtml(String(tasks.length))}</span>
+          <span data-review-task-section-toggle-label>${escapeHtml(reviewTaskSectionToggleLabel(collapsed))}</span>
+        </button>
       </header>
+  `;
+}
+
+function setReviewTaskSectionDomCollapsed(group, collapsed) {
+  if (!reviewTaskList) return;
+  const sections = [...reviewTaskList.querySelectorAll("[data-review-task-group]")];
+  const section = sections.find((item) => item.dataset.reviewTaskGroup === group);
+  if (!section) return;
+  section.classList.toggle("is-collapsed", collapsed);
+  const toggle = section.querySelector("[data-review-task-section-toggle]");
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    const label = toggle.querySelector("[data-review-task-section-toggle-label]");
+    if (label) label.textContent = reviewTaskSectionToggleLabel(collapsed);
+  }
+}
+
+function toggleReviewTaskSection(group) {
+  const key = String(group || "");
+  if (!key) return;
+  reviewTaskSectionCollapsed[key] = !isReviewTaskSectionCollapsed(key);
+  setReviewTaskSectionDomCollapsed(key, reviewTaskSectionCollapsed[key]);
+}
+
+function expandReviewTaskSection(group) {
+  const key = String(group || "");
+  if (!key) return;
+  reviewTaskSectionCollapsed[key] = false;
+  setReviewTaskSectionDomCollapsed(key, false);
+}
+
+function renderFutureReviewTaskSection(title, tasks, group = "") {
+  const dateGroups = groupFutureReviewTasksByDate(tasks);
+  const collapsed = isReviewTaskSectionCollapsed(group);
+  return `
+    <section class="review-task-section review-task-section-future ${collapsed ? "is-collapsed" : ""}" data-review-task-group="${escapeHtml(group)}">
+      ${renderReviewTaskSectionHeader(title, tasks, group, collapsed)}
+      ${tasks.length ? dateGroups.map(({ dateKey, items }, index) => {
+        const minutes = futureReviewDateGroupMinutes(items);
+        return `
+          <details class="review-future-date-group" ${index < 3 ? "open" : ""}>
+            <summary>
+              <span class="review-date-anchor">
+                <strong>${escapeHtml(dateKey === "unscheduled" ? "未设置日期" : reviewTaskDateGroupLabel(dateKey))}</strong>
+                <span class="review-date-count-pill">${escapeHtml(`${items.length} 个任务`)}</span>
+                ${minutes ? `<span class="review-date-load-pill">${escapeHtml(`预计 ${minutes} 分钟`)}</span>` : ""}
+              </span>
+              <span class="review-date-toggle">展开/收起</span>
+            </summary>
+            <div class="review-future-date-list">
+              ${items.map(renderReviewTaskCard).join("")}
+            </div>
+          </details>
+        `;
+      }).join("") : '<div class="empty-state">暂无任务</div>'}
+    </section>
+  `;
+}
+
+function renderReviewTaskSection(title, tasks, group = "") {
+  const collapsed = isReviewTaskSectionCollapsed(group);
+  return `
+    <section class="review-task-section ${collapsed ? "is-collapsed" : ""}" data-review-task-group="${escapeHtml(group)}">
+      ${renderReviewTaskSectionHeader(title, tasks, group, collapsed)}
       ${tasks.length ? tasks.map(renderReviewTaskCard).join("") : '<div class="empty-state">暂无任务</div>'}
     </section>
   `;
+}
+
+function scrollReviewTaskGroupIntoView(group) {
+  expandReviewTaskSection(group);
+  const sections = reviewTaskList ? [...reviewTaskList.querySelectorAll("[data-review-task-group]")] : [];
+  const section = sections.find((item) => item.dataset.reviewTaskGroup === group);
+  if (!section) return false;
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+  section.classList.add("is-focused");
+  window.setTimeout(() => section.classList.remove("is-focused"), 2300);
+  return true;
 }
 
 function learningTopicReasonTags(topic) {
@@ -4194,7 +4709,10 @@ function renderReviewLearningInsights() {
   const reviewSummary = insights.review_summary && typeof insights.review_summary === "object" ? insights.review_summary : {};
   const weakTopics = Array.isArray(insights.weak_topics) ? insights.weak_topics : [];
   const nextActions = Array.isArray(insights.next_actions) ? insights.next_actions : [];
-  const hasData = Number(summary.question_attempt_count || 0) > 0 || weakTopics.length || Number(reviewSummary.total || 0) > 0;
+  const hasData = Number(summary.question_attempt_count || 0) > 0
+    || Number(summary.draft_attempt_count || 0) > 0
+    || weakTopics.length
+    || Number(reviewSummary.total || 0) > 0;
   if (!hasData) {
     reviewLearningInsights.className = "review-learning-insights muted";
     reviewLearningInsights.innerHTML = `
@@ -4208,11 +4726,15 @@ function renderReviewLearningInsights() {
     `;
     return;
   }
+  const wrongRecordCount = Number(summary.incorrect_count || 0) + Number(summary.partial_count || 0);
+  const uniqueWrongQuestionCount = Number(summary.unique_wrong_question_count || 0) || wrongRecordCount;
   const metrics = [
     ["练习", summary.practice_attempt_count || 0],
+    ["草稿", summary.draft_attempt_count || 0],
     ["题次", summary.question_attempt_count || 0],
     ["正确", summary.correct_count || 0],
-    ["错误", Number(summary.incorrect_count || 0) + Number(summary.partial_count || 0)],
+    ["错题", uniqueWrongQuestionCount],
+    ["错误记录", wrongRecordCount],
     ["待核对题", summary.pending_review_question_count || summary.pending_review_count || 0],
     ["到期", reviewSummary.due_count || 0],
   ];
@@ -4225,6 +4747,9 @@ function renderReviewLearningInsights() {
       </div>
       <span class="status-pill mastered">已同步</span>
     </header>
+    <div class="review-learning-header-actions">
+      <button type="button" class="small-button" data-review-ai-plan>让 AI 排计划</button>
+    </div>
     <div class="review-learning-metrics">
       ${metrics.map(([label, value]) => `<span>${escapeHtml(label)} <strong>${escapeHtml(String(value))}</strong></span>`).join("")}
     </div>
@@ -4302,11 +4827,11 @@ function renderReviewTasksLegacy() {
   const groups = groupedReviewTasks();
   reviewTaskList.className = "review-task-list";
   reviewTaskList.innerHTML = [
-    renderReviewTaskSection("逾期", groups.overdue),
-    renderReviewTaskSection("今日", groups.today),
-    renderReviewTaskSection("未来", groups.future),
-    renderReviewTaskSection("已完成 / 已取消", groups.completed),
-    renderReviewTaskSection("已取消", groups.cancelled),
+    renderReviewTaskSection("逾期", groups.overdue, "overdue"),
+    renderReviewTaskSection("今日", groups.today, "today"),
+    renderReviewTaskSection("未来", groups.future, "future"),
+    renderReviewTaskSection("已完成 / 已取消", groups.completed, "completed"),
+    renderReviewTaskSection("已取消", groups.cancelled, "cancelled"),
   ].join("");
 }
 
@@ -4325,11 +4850,11 @@ function renderReviewTasks() {
   const groups = groupedReviewTasks();
   reviewTaskList.className = "review-task-list";
   reviewTaskList.innerHTML = [
-    renderReviewTaskSection("逾期", groups.overdue),
-    renderReviewTaskSection("今日", groups.today),
-    renderReviewTaskSection("未来", groups.future),
-    renderReviewTaskSection("已完成", groups.completed),
-    renderReviewTaskSection("已取消", groups.cancelled),
+    renderReviewTaskSection("逾期", groups.overdue, "overdue"),
+    renderReviewTaskSection("今日", groups.today, "today"),
+    renderFutureReviewTaskSection("未来", groups.future, "future"),
+    renderReviewTaskSection("已完成", groups.completed, "completed"),
+    renderReviewTaskSection("已取消", groups.cancelled, "cancelled"),
   ].join("");
 }
 
@@ -4353,6 +4878,22 @@ async function patchReviewTask(taskId, patch, successMessage) {
     await loadReviewLearningInsights({ silent: true });
   } catch (error) {
     setReviewTasksStatus("error", `复习任务更新失败：${error.message}`);
+  }
+}
+
+async function markReviewTaskStarted(task) {
+  const taskId = reviewTaskId(task);
+  if (!taskId) return null;
+  try {
+    const data = await fetchJson(`/api/materials/system/review-tasks/${encodeURIComponent(taskId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback_action: "started" }),
+    });
+    return data.review_task || data;
+  } catch (error) {
+    setReviewTasksStatus("error", `复习开始记录失败：${error.message}`);
+    return null;
   }
 }
 
@@ -4403,11 +4944,16 @@ function openReviewTaskPostponeDialog(task) {
       return;
     }
     close();
-    void patchReviewTask(taskId, { status: "pending", due_at: dueAt }, "复习任务已推迟");
+    void patchReviewTask(taskId, { status: "pending", due_at: dueAt, feedback_action: "postponed" }, "复习任务已推迟");
   });
 }
 
 function handleReviewTaskAction(event) {
+  const sectionToggle = event.target.closest("[data-review-task-section-toggle]");
+  if (sectionToggle && reviewTaskList?.contains(sectionToggle)) {
+    toggleReviewTaskSection(sectionToggle.dataset.reviewTaskSectionToggle);
+    return;
+  }
   const button = event.target.closest("[data-review-task-open], [data-review-task-complete], [data-review-task-postpone], [data-review-task-cancel], [data-review-task-restore], [data-review-task-delete]");
   if (!button) return;
   const taskId = button.dataset.reviewTaskOpen
@@ -4422,7 +4968,7 @@ function handleReviewTaskAction(event) {
     return;
   }
   if (button.dataset.reviewTaskComplete) {
-    void patchReviewTask(taskId, { status: "completed", completed_at: new Date().toISOString() }, "复习任务已完成");
+    void patchReviewTask(taskId, { status: "completed", completed_at: new Date().toISOString(), feedback_action: "completed" }, "复习任务已完成");
     return;
   }
   if (button.dataset.reviewTaskPostpone) {
@@ -4430,11 +4976,11 @@ function handleReviewTaskAction(event) {
     return;
   }
   if (button.dataset.reviewTaskCancel) {
-    void patchReviewTask(taskId, { status: "cancelled" }, "复习任务已取消");
+    void patchReviewTask(taskId, { status: "cancelled", feedback_action: "cancelled" }, "复习任务已取消");
     return;
   }
   if (button.dataset.reviewTaskRestore) {
-    void patchReviewTask(taskId, { status: "pending" }, "复习任务已恢复");
+    void patchReviewTask(taskId, { status: "pending", feedback_action: "restored" }, "复习任务已恢复");
     return;
   }
   if (button.dataset.reviewTaskDelete) {
@@ -4442,7 +4988,964 @@ function handleReviewTaskAction(event) {
   }
 }
 
+function aiReviewPlanConstraints() {
+  return {
+    subject: reviewTasksState.filters.subject || "math",
+    days: 7,
+    daily_minutes: 60,
+    goal: "补弱优先",
+  };
+}
+
+function aiReviewPlanQuery(constraints) {
+  return new URLSearchParams({
+    user_id: currentMaterialsUserId(),
+    subject: constraints.subject,
+    days: String(constraints.days),
+    daily_minutes: String(constraints.daily_minutes),
+    goal: constraints.goal,
+  });
+}
+
+function aiPlanCountBadge(label, value) {
+  return `<span><strong>${escapeHtml(String(value || 0))}</strong>${escapeHtml(label)}</span>`;
+}
+
+function aiReviewPlanModeConfig(mode) {
+  return AI_REVIEW_PLAN_MODES.find((item) => item.value === mode) || AI_REVIEW_PLAN_MODES[0];
+}
+
+function aiReviewPlanDefaultMode(context = {}) {
+  const summary = context.summary || {};
+  const wrongCount = Number(summary.unique_wrong_question_count || summary.incorrect_count || 0);
+  const practiceCount = Number(summary.practice_attempt_count || 0);
+  if (!practiceCount && !wrongCount) return "startup";
+  if (wrongCount >= 5) return "wrong";
+  return "balanced";
+}
+
+function aiReviewPlanDefaultIncludes(mode) {
+  return AI_REVIEW_PLAN_INCLUDE_OPTIONS
+    .filter((item) => item.modes.includes(mode) && item.defaults.includes(mode))
+    .map((item) => item.value);
+}
+
+function aiReviewPlanIncludeLabels(values = []) {
+  const selected = new Set(values);
+  return AI_REVIEW_PLAN_INCLUDE_OPTIONS
+    .filter((item) => selected.has(item.value))
+    .map((item) => item.label);
+}
+
+const AI_REVIEW_PLAN_INCLUDE_CANDIDATE_GROUPS = {
+  due_tasks: {
+    candidateKeys: ["review_tasks"],
+    limitKeys: ["ai_review_task_limit"],
+  },
+  wrong_questions: {
+    candidateKeys: ["wrong_questions"],
+    limitKeys: ["ai_wrong_question_limit"],
+  },
+  pending_review: {
+    candidateKeys: ["pending_review_items"],
+    limitKeys: ["ai_pending_review_limit"],
+  },
+  weak_topics: {
+    candidateKeys: ["weak_topics"],
+    limitKeys: ["ai_weak_topic_limit"],
+  },
+  unstarted: {
+    candidateKeys: ["unstarted_questions", "startup_candidates"],
+    limitKeys: ["ai_unstarted_question_limit", "ai_startup_candidate_limit"],
+  },
+  draft_attempts: {
+    candidateKeys: ["draft_attempts"],
+    limitKeys: ["ai_draft_attempt_limit"],
+  },
+  favorite_unmastered: {
+    candidateKeys: ["favorite_unmastered"],
+    limitKeys: ["ai_favorite_unmastered_limit"],
+  },
+};
+
+function aiReviewPlanCandidateArrayCount(candidates, key) {
+  const value = candidates?.[key];
+  return Array.isArray(value) ? value.length : 0;
+}
+
+function aiReviewPlanCandidateLimitTotal(limits, keys = []) {
+  return keys.reduce((sum, key) => {
+    const value = Number(limits?.[key] || 0);
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+}
+
+function aiReviewPlanCandidateAvailability(state, context = {}) {
+  const selected = Array.isArray(state.includeTypes) ? state.includeTypes : [];
+  const candidates = context.ai_candidates || {};
+  const limits = context.limits || {};
+  const policy = context.policy || {};
+  const ignoredTypes = new Set(Array.isArray(policy.ignored_requested_types) ? policy.ignored_requested_types : []);
+  return selected.map((value) => {
+    const option = AI_REVIEW_PLAN_INCLUDE_OPTIONS.find((item) => item.value === value);
+    const group = AI_REVIEW_PLAN_INCLUDE_CANDIDATE_GROUPS[value] || { candidateKeys: [], limitKeys: [] };
+    const count = group.candidateKeys.reduce((sum, key) => sum + aiReviewPlanCandidateArrayCount(candidates, key), 0);
+    const limit = aiReviewPlanCandidateLimitTotal(limits, group.limitKeys);
+    const ignored = group.candidateKeys.some((key) => ignoredTypes.has(key));
+    const enabled = option ? option.modes.includes(state.mode) : true;
+    return {
+      value,
+      label: option?.label || value,
+      count,
+      limit,
+      ignored,
+      enabled,
+    };
+  });
+}
+
+function renderAiReviewPlanCandidateAvailability(state, context = {}) {
+  const rows = aiReviewPlanCandidateAvailability(state, context);
+  if (!rows.length) return "";
+  const emptyRows = rows.filter((row) => row.enabled && !row.ignored && row.count <= 0);
+  const rowMarkup = rows.map((row) => {
+    const disabled = !row.enabled || row.ignored;
+    const className = disabled ? "disabled" : row.count > 0 ? "ok" : "empty";
+    const detail = disabled
+      ? "当前模式未纳入"
+      : `可用 ${row.count} / 送 AI 上限 ${row.limit || row.count}`;
+    return `
+      <span class="ai-plan-availability-chip ${className}">
+        <strong>${escapeHtml(row.label)}</strong>
+        <em>${escapeHtml(detail)}</em>
+      </span>
+    `;
+  }).join("");
+  return `
+    <div class="ai-plan-availability">
+      <div class="ai-plan-meta">
+        <strong>本次可用候选</strong>
+        <span>送 AI 上限只控制输入规模，最终题量按每日时长生成</span>
+      </div>
+      <div class="ai-plan-availability-list">${rowMarkup}</div>
+      ${emptyRows.length ? `<p class="ai-plan-availability-empty">已勾选但暂无候选：${escapeHtml(emptyRows.map((row) => row.label).join("、"))}。这类内容不会出现在本次 AI 草案里。</p>` : ""}
+    </div>
+  `;
+}
+
+function formatPriorityScore(value) {
+  const score = Number(value || 0);
+  if (!Number.isFinite(score)) return "0";
+  return score.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function aiReviewPlanCandidateRows(mode, context = {}) {
+  const candidates = context.ai_candidates || {};
+  const weakTopics = Array.isArray(candidates.weak_topics) ? candidates.weak_topics : [];
+  const wrongQuestions = Array.isArray(candidates.wrong_questions) ? candidates.wrong_questions : [];
+  const pendingItems = Array.isArray(candidates.pending_review_items) ? candidates.pending_review_items : [];
+  const reviewTasks = Array.isArray(candidates.review_tasks) ? candidates.review_tasks : [];
+  const draftAttempts = Array.isArray(candidates.draft_attempts) ? candidates.draft_attempts : [];
+  if (mode === "startup") {
+    return [
+      { type: "起步", title: "按考试范围预选基础题", reason: "历史数据不足时，后端按数一/数二/数三、题库顺序、基础知识点和题型配比抽样。" },
+      { type: "起步", title: "未开始/未掌握题", reason: "只给 AI 压缩后的起步候选，不把全量未开始题塞进提示词。" },
+      { type: "起步", title: "收藏但未掌握", reason: "用户手动标记会提高候选优先级。" },
+    ];
+  }
+  const rows = [];
+  weakTopics.slice(0, mode === "wrong" ? 1 : 3).forEach((topic) => {
+    rows.push({
+      type: "知识点",
+      title: topic.topic || "薄弱知识点",
+      reason: `优先级 ${formatPriorityScore(topic.priority_score)}，错题 ${Number(topic.wrong_count || topic.incorrect_count || 0)} 次，待核对 ${Number(topic.pending_review_count || 0)} 次。`,
+    });
+  });
+  wrongQuestions.slice(0, 3).forEach((question) => {
+    rows.push({
+      type: "错题",
+      title: question.title || systemQuestionTitle(question),
+      reason: question.reason || `优先级 ${formatPriorityScore(question.priority_score)}，适合回收。`,
+    });
+  });
+  pendingItems.slice(0, 2).forEach((item) => {
+    rows.push({
+      type: "待核对",
+      title: item.title || item.question_title || "待核对题",
+      reason: "本地无法确认等价表达，需要 AI 或人工确认。",
+    });
+  });
+  reviewTasks.slice(0, 2).forEach((task) => {
+    rows.push({
+      type: "任务",
+      title: task.title || task.task_title || "复习任务",
+      reason: task.due_at ? `到期：${task.due_at}` : "已加入复习规划。",
+    });
+  });
+  draftAttempts.slice(0, 1).forEach((draft) => {
+    rows.push({
+      type: "草稿",
+      title: draft.title || draft.practice_set_title || "未提交练习",
+      reason: "已有作答草稿，可继续完成或稍后处理。",
+    });
+  });
+  if (!rows.length) {
+    rows.push({ type: "候选", title: "暂无足够历史数据", reason: "可以切换到新题启动，使用起步候选生成计划。" });
+  }
+  return rows.slice(0, 6);
+}
+
+function aiReviewPlanCandidateExplain(mode) {
+  if (mode === "wrong") {
+    return "错题回收候选只来自错题、待核对题和到期错题任务；未开始题会被禁用，避免目标混杂。";
+  }
+  if (mode === "startup") {
+    return "起步候选用于冷启动或新范围：后端按考试范围、题库结构顺序、基础知识点、题型配比和用户偏好预选候选。";
+  }
+  if (mode === "weak") {
+    return "薄弱候选优先按知识点风险排序，再带上代表错题、待核对题和近期趋势。";
+  }
+  if (mode === "sprint") {
+    return "冲刺候选限制新题比例，优先到期、错题、薄弱和收藏未掌握内容。";
+  }
+  return "均衡候选会压缩读取到期任务、错题、薄弱点、草稿和少量新题，避免把全量历史直接丢给 AI。";
+}
+
+function aiReviewPlanStateFromContext(constraints, context) {
+  const mode = aiReviewPlanDefaultMode(context);
+  return {
+    ...constraints,
+    mode,
+    includeTypes: aiReviewPlanDefaultIncludes(mode),
+    context,
+  };
+}
+
+function renderAiReviewPlanStepper(step) {
+  const steps = [
+    ["settings", "设置范围"],
+    ["draft", "生成草案"],
+    ["result", "确认结果"],
+  ];
+  return `<div class="ai-plan-stepper">${steps.map(([value, label]) => `
+    <span class="${value === step ? "active" : ""}">${escapeHtml(label)}</span>
+  `).join("")}</div>`;
+}
+
+function renderAiReviewPlanSettings(body, state) {
+  const context = state.context || {};
+  const summary = context.summary || {};
+  const reviewSummary = context.review_summary || {};
+  const limits = context.limits || {};
+  const candidates = context.ai_candidates || {};
+  const weakTopics = Array.isArray(candidates.weak_topics) ? candidates.weak_topics : [];
+  const wrongQuestions = Array.isArray(candidates.wrong_questions) ? candidates.wrong_questions : [];
+  const pendingItems = Array.isArray(candidates.pending_review_items) ? candidates.pending_review_items : [];
+  const reviewTasks = Array.isArray(candidates.review_tasks) ? candidates.review_tasks : [];
+  const draftAttempts = Array.isArray(candidates.draft_attempts) ? candidates.draft_attempts : [];
+  const readiness = context.readiness || {};
+  const candidateSummary = context.candidate_summary || {};
+  const readinessStatus = String(readiness.status || "unknown");
+  const readinessLabel = {
+    ready: "可生成",
+    weak: "数据偏少",
+    blocked: "暂不建议生成",
+  }[readinessStatus] || "未评估";
+  const readinessReason = readiness.reason || "后端会先检查当前模式是否有足够候选，再决定是否调用 AI。";
+  const filteredTotal = Number(candidateSummary.filtered_total || 0);
+  const rawTotal = Number(candidateSummary.raw_total || 0);
+  const mode = aiReviewPlanModeConfig(state.mode);
+  const includeSet = new Set(state.includeTypes || []);
+  const includeOptionsMarkup = AI_REVIEW_PLAN_INCLUDE_OPTIONS.map((item) => {
+    const enabled = item.modes.includes(state.mode);
+    const checked = enabled && includeSet.has(item.value);
+    return `
+      <label class="ai-plan-include-card${enabled ? "" : " disabled"}">
+        <input type="checkbox" data-ai-review-plan-include="${escapeHtml(item.value)}" ${checked ? "checked" : ""} ${enabled ? "" : "disabled"}>
+        <span>${escapeHtml(item.label)}</span>
+      </label>
+    `;
+  }).join("");
+  const candidateRows = aiReviewPlanCandidateRows(state.mode, context);
+  body.innerHTML = `
+    <section class="ai-plan-context" data-ai-plan-step="settings">
+      ${renderAiReviewPlanStepper("settings")}
+      <div class="ai-plan-context-grid">
+        ${aiPlanCountBadge("练习", summary.practice_attempt_count)}
+        ${aiPlanCountBadge("题次", summary.question_attempt_count)}
+        ${aiPlanCountBadge("错题", summary.unique_wrong_question_count || summary.incorrect_count)}
+        ${aiPlanCountBadge("待核对", summary.pending_review_question_count || summary.pending_review_count)}
+        ${aiPlanCountBadge("到期任务", reviewSummary.due_count)}
+        ${aiPlanCountBadge("草稿", summary.draft_attempt_count)}
+      </div>
+      <div class="ai-plan-card ai-plan-readiness" data-ai-plan-readiness="${escapeHtml(readinessStatus)}">
+        <div class="ai-plan-meta">
+          <strong>生成可行性：${escapeHtml(readinessLabel)}</strong>
+          <span>候选 ${escapeHtml(String(filteredTotal))}/${escapeHtml(String(rawTotal))} · 核心 ${escapeHtml(String(readiness.core_available || 0))}/${escapeHtml(String(readiness.core_required || 0))}</span>
+        </div>
+        <p>${escapeHtml(readinessReason)}</p>
+      </div>
+      <div class="ai-plan-card">
+        <h4>规划依据范围</h4>
+        <p>页面只展示少量 Top 项；AI 规划会读取更宽的候选池：薄弱知识点 Top ${escapeHtml(String(limits.ai_weak_topic_limit || weakTopics.length))}、错题 Top ${escapeHtml(String(limits.ai_wrong_question_limit || wrongQuestions.length))}、待核对 Top ${escapeHtml(String(limits.ai_pending_review_limit || pendingItems.length))}、任务 Top ${escapeHtml(String(limits.ai_review_task_limit || reviewTasks.length))}、未提交练习 Top ${escapeHtml(String(limits.ai_draft_attempt_limit || draftAttempts.length))}。</p>
+      </div>
+      <div class="ai-plan-card">
+        <h4>规划模式</h4>
+        <div class="ai-plan-mode-grid">
+          ${AI_REVIEW_PLAN_MODES.map((item) => `
+            <button type="button" class="ai-plan-mode-card${item.value === state.mode ? " active" : ""}" data-ai-review-plan-mode="${escapeHtml(item.value)}">
+              <strong>${escapeHtml(item.label)}</strong>
+              <span>${escapeHtml(item.hint)}</span>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+      <div class="ai-plan-card">
+        <h4>纳入内容</h4>
+        <p>${escapeHtml(mode.hint)}</p>
+        <div class="ai-plan-include-grid">${includeOptionsMarkup}</div>
+      </div>
+      <div class="ai-plan-card">
+        <div class="ai-plan-meta">
+          <strong>${escapeHtml(mode.candidateTitle)}</strong>
+          <span>${escapeHtml(mode.candidateCountLabel)}</span>
+        </div>
+        <p>${escapeHtml(aiReviewPlanCandidateExplain(state.mode))}</p>
+        <div class="ai-plan-candidate-list">
+          ${candidateRows.map((row) => `
+            <article class="ai-plan-candidate">
+              <span>${escapeHtml(row.type)}</span>
+              <div>
+                <strong>${escapeHtml(row.title)}</strong>
+                <p>${escapeHtml(row.reason)}</p>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </div>
+      <div class="ai-plan-card">
+        <h4>计划约束</h4>
+        <div class="ai-plan-form-grid">
+          <label>规划天数
+            <input type="number" min="1" max="21" value="${escapeHtml(String(state.days || 7))}" data-ai-review-plan-days>
+          </label>
+          <label>每天时长（分钟）
+            <input type="number" min="10" max="240" step="5" value="${escapeHtml(String(state.daily_minutes || 60))}" data-ai-review-plan-minutes>
+          </label>
+        </div>
+      </div>
+      <div class="system-workflow-actions">
+        <button type="button" class="small-button dark-button" data-ai-review-plan-draft>生成 AI 草案</button>
+      </div>
+    </section>
+  `;
+}
+
+function aiReviewPlanDraftItems(payload) {
+  const draft = payload?.draft || {};
+  const days = Array.isArray(draft.days) ? draft.days : [];
+  const items = [];
+  days.forEach((day, dayIndex) => {
+    const dayItems = Array.isArray(day.items) ? day.items : [];
+    dayItems.forEach((item, itemIndex) => {
+      if (!item || typeof item !== "object") return;
+      const key = `${dayIndex}:${itemIndex}`;
+      items.push({
+        key,
+        date: day.date || day.label || "",
+        item: { ...item, date: item.date || day.date || day.label || "", _commit_key: key },
+      });
+    });
+  });
+  return items;
+}
+
+function selectedAiReviewPlanItems(body, payload) {
+  const draftItems = aiReviewPlanDraftItems(payload);
+  const byKey = new Map(draftItems.map((entry) => [entry.key, entry.item]));
+  const selectedEntries = [...body.querySelectorAll("[data-ai-review-plan-item-checkbox]:checked")]
+    .map((input) => {
+      const key = input.dataset.aiReviewPlanItemCheckbox;
+      const row = input.closest("[data-ai-review-plan-item]");
+      if (!key || !row || row.dataset.aiReviewPlanRemoved === "true") return null;
+      const baseItem = byKey.get(key);
+      if (!baseItem) return null;
+      const item = { ...baseItem, _commit_key: key };
+      const dateValue = row.querySelector("[data-ai-review-plan-item-date]")?.value;
+      if (dateValue) {
+        item.date = dateValue;
+        item.due_at = dateValue;
+      }
+      const minutesValue = Number(row.querySelector("[data-ai-review-plan-item-minutes]")?.value || item.estimated_minutes || item.minutes || 0);
+      if (Number.isFinite(minutesValue) && minutesValue > 0) {
+        item.estimated_minutes = Math.round(minutesValue);
+      }
+      return { key, item };
+    })
+    .filter(Boolean);
+  const selectedKeys = selectedEntries.map((entry) => entry.key);
+  return {
+    selected_item_keys: selectedKeys,
+    items: selectedEntries.map((entry) => entry.item),
+  };
+}
+
+function aiReviewPlanEditableDate(value) {
+  const text = String(value || "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+}
+
+function aiReviewPlanItemMinutes(item) {
+  const minutes = Number(item?.estimated_minutes || item?.minutes || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return 30;
+  return Math.max(5, Math.min(240, Math.round(minutes)));
+}
+
+function aiReviewPlanPracticePartLabel(item) {
+  const partIndex = Number(item?.part_index || 0);
+  const partCount = Number(item?.part_count || 0);
+  if (!Number.isFinite(partIndex) || !Number.isFinite(partCount) || partIndex <= 0 || partCount <= 1) {
+    return "";
+  }
+  return `Part ${Math.round(partIndex)}/${Math.round(partCount)}`;
+}
+
+function aiReviewPlanItemLoadMeta(item) {
+  const parts = [];
+  const loadUnits = Number(item?.load_units || 0);
+  const questionCount = Number(item?.question_count || 0);
+  const partLabel = aiReviewPlanPracticePartLabel(item);
+  if (Number.isFinite(loadUnits) && loadUnits > 0) {
+    parts.push(`load ${loadUnits.toFixed(1)}`);
+  }
+  if (Number.isFinite(questionCount) && questionCount > 0) {
+    parts.push(`${Math.round(questionCount)} questions`);
+  }
+  if (partLabel) {
+    parts.push(partLabel);
+  }
+  return parts.length ? `<span class="ai-plan-item-load">${escapeHtml(parts.join(" · "))}</span>` : "";
+}
+
+function aiReviewPlanCandidateLookup(context) {
+  const candidates = context?.ai_candidates && typeof context.ai_candidates === "object" ? context.ai_candidates : {};
+  const lookup = new Map();
+  Object.values(candidates).forEach((items) => {
+    if (!Array.isArray(items)) return;
+    items.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      [
+        "source_id",
+        "candidate_id",
+        "plan_segment_id",
+        "question_id",
+        "task_id",
+        "attempt_id",
+        "set_id",
+        "practice_set_id",
+        "topic",
+      ].forEach((key) => {
+        const value = String(item[key] || "").trim();
+        if (value && !lookup.has(value)) {
+          lookup.set(value, item);
+        }
+      });
+    });
+  });
+  return lookup;
+}
+
+function aiReviewPlanItemSourceIds(item) {
+  const values = [
+    ...(Array.isArray(item?.source_ids) ? item.source_ids : []),
+    ...(Array.isArray(item?.planned_question_ids) ? item.planned_question_ids : []),
+  ];
+  const seen = new Set();
+  return values
+    .map((value) => String(value || "").trim())
+    .filter((value) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
+}
+
+function aiReviewPlanSourceTitle(sourceId, candidate) {
+  const explicitTitle = String(candidate?.title || candidate?.question_title || candidate?.name || "").trim();
+  if (explicitTitle) return explicitTitle;
+  const questionTitle = candidate ? systemQuestionTitle(candidate) : "";
+  return questionTitle || sourceId;
+}
+
+function aiReviewPlanSourceMeta(candidate) {
+  if (!candidate || typeof candidate !== "object") return "";
+  const topics = Array.isArray(candidate.topics)
+    ? candidate.topics.slice(0, 3).join(" / ")
+    : String(candidate.topic || "").trim();
+  const examType = String(candidate.exam_type || "").trim();
+  const parts = [
+    candidate.question_type_label || candidate.question_type || "",
+    candidate.library_name || (examType ? systemExamTypeLabel(examType) : ""),
+    candidate.estimated_minutes ? `${candidate.estimated_minutes} 分钟` : "",
+    topics,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
+function aiReviewPlanSourcePreviewRow({ title, meta, previewId, className = "" }) {
+  return `
+    <li class="${escapeHtml(className)}">
+      <span>
+        <strong>${escapeHtml(title)}</strong>
+        ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+      </span>
+      ${previewId ? `<button type="button" class="small-button" data-ai-review-plan-source-preview="${escapeHtml(previewId)}">预览</button>` : ""}
+    </li>
+  `;
+}
+
+function aiReviewPlanCandidateQuestionRows(sourceId, candidate) {
+  const questions = Array.isArray(candidate?.questions) ? candidate.questions : [];
+  if (!questions.length) return [];
+  return questions
+    .filter((question) => question && typeof question === "object")
+    .map((question) => {
+      const questionId = String(question.question_id || question.id || "").trim();
+      const metaCandidate = {
+        ...candidate,
+        ...question,
+        library_name: question.library_name || candidate.library_name,
+        exam_type: question.exam_type || candidate.exam_type,
+        estimated_minutes: question.estimated_minutes || "",
+      };
+      const answerState = question.answered === true ? "已答" : question.answered === false ? "未答" : "";
+      const meta = [answerState, aiReviewPlanSourceMeta(metaCandidate)].filter(Boolean).join(" · ");
+      return {
+        title: aiReviewPlanSourceTitle(questionId || sourceId, question),
+        meta,
+        previewId: questionId.startsWith("kaoyan_") ? questionId : "",
+        className: "is-child",
+      };
+    });
+}
+
+function aiReviewPlanSourcePreview(item, context) {
+  const sourceIds = aiReviewPlanItemSourceIds(item);
+  if (!sourceIds.length) return "";
+  const lookup = aiReviewPlanCandidateLookup(context);
+  let visibleCount = 0;
+  const rows = sourceIds.map((sourceId) => {
+    const candidate = lookup.get(sourceId);
+    const questionRows = aiReviewPlanCandidateQuestionRows(sourceId, candidate);
+    if (questionRows.length) {
+      visibleCount += questionRows.length;
+      const parentMeta = aiReviewPlanSourceMeta(candidate) || sourceId;
+      const parentTitle = aiReviewPlanSourceTitle(sourceId, candidate);
+      return `
+        ${aiReviewPlanSourcePreviewRow({
+          title: parentTitle,
+          meta: parentMeta,
+          previewId: "",
+          className: "ai-plan-source-preview-parent",
+        })}
+        ${questionRows.map((row) => aiReviewPlanSourcePreviewRow(row)).join("")}
+      `;
+    }
+    const previewId = String(candidate?.question_id || (sourceId.startsWith("kaoyan_") ? sourceId : "")).trim();
+    const meta = aiReviewPlanSourceMeta(candidate);
+    visibleCount += 1;
+    return aiReviewPlanSourcePreviewRow({
+      title: aiReviewPlanSourceTitle(sourceId, candidate),
+      meta: meta || sourceId,
+      previewId,
+    });
+  }).join("");
+  return `
+    <div class="ai-plan-source-preview">
+      <strong>题目预览 · ${escapeHtml(String(visibleCount || sourceIds.length))} 项</strong>
+      <ol class="ai-plan-source-preview-list">${rows}</ol>
+    </div>
+  `;
+}
+
+function renderAiReviewPlanValidation(body, validation) {
+  const target = body.querySelector("[data-ai-review-plan-validation]");
+  if (!target) return;
+  const warnings = Array.isArray(validation?.warnings) ? validation.warnings : [];
+  const rejected = Array.isArray(validation?.rejected) ? validation.rejected : [];
+  const dailyLoad = Array.isArray(validation?.daily_load) ? validation.daily_load : [];
+  const validCount = Number(validation?.valid_count || 0);
+  const rejectedCount = Number(validation?.rejected_count || 0);
+  target.hidden = false;
+  target.classList.toggle("warn", Boolean(warnings.length || rejectedCount));
+  target.classList.toggle("good", Boolean(validCount && !warnings.length && !rejectedCount));
+  target.innerHTML = `
+    <strong>提交前校验：可写入 ${escapeHtml(String(validCount))} 项，拦截 ${escapeHtml(String(rejectedCount))} 项</strong>
+    ${warnings.length ? `<div>${warnings.map((item) => `<p>${escapeHtml(String(item))}</p>`).join("")}</div>` : "<p>所选任务都有可追踪来源，未发现单日超载。</p>"}
+    ${rejected.length ? `<ul>${rejected.map((item) => `<li>${escapeHtml(item.title || "规划项")}：${escapeHtml(item.reason || "未通过校验")}</li>`).join("")}</ul>` : ""}
+    ${dailyLoad.length ? `<div class="ai-plan-load-list">${dailyLoad.map((item) => `<span class="${item.over_limit ? "over" : ""}">${escapeHtml(item.date || "未定日期")} · ${escapeHtml(String(item.minutes || 0))}/${escapeHtml(String(item.limit || "不限"))} 分钟</span>`).join("")}</div>` : ""}
+  `;
+}
+
+function renderAiReviewPlanDraft(body, state, payload) {
+  const draft = payload?.draft || {};
+  const draftContext = payload?.context || state.context || {};
+  const warnings = Array.isArray(draft.warnings) ? draft.warnings : [];
+  const days = Array.isArray(draft.days) ? draft.days : [];
+  const isBlockedDraft = draft.source === "blocked";
+  const sourceLabel = draft.source === "llm" ? "AI 生成" : isBlockedDraft ? "未调用 AI" : "规则兜底";
+  const dayMarkup = days.length
+    ? days.map((day, dayIndex) => {
+      const items = Array.isArray(day.items) ? day.items : [];
+      const itemMarkup = items.length
+        ? items.map((item, itemIndex) => {
+          const key = `${dayIndex}:${itemIndex}`;
+          const minutes = aiReviewPlanItemMinutes(item);
+          const dateValue = aiReviewPlanEditableDate(item.date || day.date || day.label);
+          const sourcePreview = aiReviewPlanSourcePreview(item, draftContext);
+          return `
+            <div class="ai-plan-item" data-ai-review-plan-item="${escapeHtml(key)}">
+              <label class="ai-plan-item-main">
+                <input type="checkbox" data-ai-review-plan-item-checkbox="${escapeHtml(key)}" checked>
+                <span class="ai-plan-item-content">
+                  <strong>${escapeHtml(item.title || item.action || "复习任务")}</strong>
+                  <p>${escapeHtml(item.reason || item.description || "根据当前薄弱项和复习任务生成。")}</p>
+                  <em>${escapeHtml(String(minutes))} 分钟</em>
+                  ${aiReviewPlanItemLoadMeta(item)}
+                </span>
+              </label>
+              ${sourcePreview}
+              <div class="ai-plan-item-controls">
+                <label>日期
+                  <input type="date" data-ai-review-plan-item-date="${escapeHtml(key)}" value="${escapeHtml(dateValue)}">
+                </label>
+                <label>预计分钟
+                  <input type="number" min="5" max="240" step="5" data-ai-review-plan-item-minutes="${escapeHtml(key)}" value="${escapeHtml(String(minutes))}">
+                </label>
+                <button type="button" class="small-button danger-button ghost-danger" data-ai-review-plan-item-remove="${escapeHtml(key)}">删除</button>
+              </div>
+            </div>
+          `;
+        }).join("")
+        : "<p>暂无具体任务。</p>";
+      return `
+        <article class="ai-plan-day">
+          <h4>${escapeHtml(day.date || day.label || "计划日")}</h4>
+          ${itemMarkup}
+        </article>
+      `;
+    }).join("")
+    : `<article class="ai-plan-day"><p>暂未生成具体日程。</p></article>`;
+  const includeLabels = aiReviewPlanIncludeLabels(state.includeTypes || []);
+  body.innerHTML = `
+    <section class="ai-plan-draft" data-ai-plan-step="draft" data-ai-plan-draft-result>
+      ${renderAiReviewPlanStepper("draft")}
+      <div class="ai-plan-meta">
+        <strong>草案结果</strong>
+        <span>${escapeHtml(sourceLabel)} · ${escapeHtml(draft.model || DEFAULT_AI_REVIEW_PLAN_MODEL)} · 需勾选后写入</span>
+      </div>
+      <div class="ai-plan-card">
+        <h4>${escapeHtml(aiReviewPlanModeConfig(state.mode).label)} · ${escapeHtml(String(state.days || 7))} 天</h4>
+        <p>${isBlockedDraft ? "当前模式的数据不足，后端没有调用 AI，也不会写入复习规划。你可以返回设置切换模式、缩短天数或扩大范围。" : `纳入内容：${includeLabels.length ? escapeHtml(includeLabels.join(" / ")) : "未选择"}。默认全选，你可以取消不想加入复习规划的项目。`}</p>
+      </div>
+      ${renderAiReviewPlanCandidateAvailability(state, draftContext)}
+      ${warnings.length ? `<div class="ai-plan-warning">${warnings.map((item) => `<p>${escapeHtml(String(item))}</p>`).join("")}</div>` : ""}
+      <div class="ai-plan-warning" data-ai-review-plan-selection-warning hidden></div>
+      <div class="ai-plan-days">${dayMarkup}</div>
+      <div class="ai-plan-validation" data-ai-review-plan-validation hidden></div>
+      <div class="system-workflow-actions">
+        <button type="button" class="small-button" data-ai-review-plan-back-settings>返回设置</button>
+        <button type="button" class="small-button" data-ai-review-plan-regenerate>重新生成</button>
+        <button type="button" class="small-button dark-button" data-ai-review-plan-commit ${isBlockedDraft ? "disabled" : ""}>校验并加入复习规划</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderAiReviewPlanAccepted(body, state, payload, commitPayload = {}) {
+  const draft = payload?.draft || {};
+  const result = commitPayload?.result || {};
+  const resultRows = Array.isArray(result.results) ? result.results : [];
+  const createdCount = Number(result.created_count || 0);
+  const skippedCount = Number(result.skipped_count || 0);
+  const failedCount = Number(result.failed_count || 0);
+  const rejectedCount = Number(result.rejected_count || 0);
+  const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+  const dailyLoad = Array.isArray(result.daily_load) ? result.daily_load : [];
+  body.innerHTML = `
+    <section class="ai-plan-draft" data-ai-plan-step="result">
+      ${renderAiReviewPlanStepper("result")}
+      <div class="ai-plan-card">
+        <h4>已加入复习规划</h4>
+        <p>新增 ${escapeHtml(String(createdCount))} 项，跳过重复 ${escapeHtml(String(skippedCount))} 项，拦截 ${escapeHtml(String(rejectedCount))} 项，失败 ${escapeHtml(String(failedCount))} 项。重复项不会再次创建，缺少真实来源的任务不会写入。</p>
+      </div>
+      ${warnings.length || dailyLoad.length ? `
+        <div class="ai-plan-validation ${warnings.length ? "warn" : "good"}">
+          <strong>写入校验结果</strong>
+          ${warnings.length ? warnings.map((item) => `<p>${escapeHtml(String(item))}</p>`).join("") : "<p>未发现单日超载或无来源任务。</p>"}
+          ${dailyLoad.length ? `<div class="ai-plan-load-list">${dailyLoad.map((item) => `<span class="${item.over_limit ? "over" : ""}">${escapeHtml(item.date || "未定日期")} · ${escapeHtml(String(item.minutes || 0))}/${escapeHtml(String(item.limit || "不限"))} 分钟</span>`).join("")}</div>` : ""}
+        </div>
+      ` : ""}
+      <div class="ai-plan-days">
+        ${resultRows.length ? resultRows.map((item) => `
+          <div class="ai-plan-item ai-plan-result-item">
+            <span class="ai-plan-item-content">
+              <strong>${escapeHtml(item.title || "复习任务")}</strong>
+              <p>${escapeHtml(item.status === "created" ? "已创建任务" : item.status === "duplicate" ? "已有相同日期的任务，已跳过" : item.status === "rejected" ? item.reason || "提交前校验已拦截" : item.reason || "写入失败")}</p>
+              ${item.due_at ? `<em>${escapeHtml(String(item.due_at).slice(0, 10))}</em>` : ""}
+            </span>
+          </div>
+        `).join("") : "<p>没有写入任何复习任务。</p>"}
+      </div>
+      <div class="system-workflow-actions">
+        <button type="button" class="small-button" data-ai-review-plan-back-draft>返回草案</button>
+        <button type="button" class="small-button dark-button" data-ai-review-plan-back-settings>继续调整</button>
+      </div>
+    </section>
+  `;
+}
+
+async function openAiReviewPlanModal() {
+  const constraints = aiReviewPlanConstraints();
+  let step = "loading";
+  let state = { ...constraints, mode: "balanced", includeTypes: [] };
+  let latestDraft = null;
+  const { overlay, close } = createSystemWorkflowOverlay("AI 生成规划", "先选择规划模式，再生成不会自动写入任务的草案。", {
+    onHeaderAction: () => {
+      if (step === "settings" || step === "loading") {
+        close();
+        return;
+      }
+      if (step === "result" && latestDraft) {
+        step = "draft";
+        setHeaderAction("返回设置");
+        renderAiReviewPlanDraft(body, state, latestDraft);
+        bindDraftEvents();
+        return;
+      }
+      renderSettingsStep();
+    },
+  });
+  const body = overlay.querySelector(".system-workflow-body");
+  if (!body) return;
+  const headerButton = overlay.querySelector("[data-system-workflow-close]");
+  const setHeaderAction = (label) => {
+    if (headerButton) headerButton.textContent = label;
+  };
+  const bindSettingsEvents = () => {
+    body.querySelectorAll("[data-ai-review-plan-mode]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const mode = button.dataset.aiReviewPlanMode || "balanced";
+        state = {
+          ...state,
+          mode,
+          includeTypes: aiReviewPlanDefaultIncludes(mode),
+        };
+        renderSettingsStep();
+      });
+    });
+    body.querySelectorAll("[data-ai-review-plan-include]").forEach((input) => {
+      input.addEventListener("change", () => {
+        state.includeTypes = [...body.querySelectorAll("[data-ai-review-plan-include]:checked")]
+          .map((item) => item.dataset.aiReviewPlanInclude)
+          .filter(Boolean);
+      });
+    });
+    body.querySelector("[data-ai-review-plan-days]")?.addEventListener("input", (event) => {
+      state.days = Math.max(1, Math.min(21, Number(event.target.value || 7)));
+    });
+    body.querySelector("[data-ai-review-plan-minutes]")?.addEventListener("input", (event) => {
+      state.daily_minutes = Math.max(10, Math.min(240, Number(event.target.value || 60)));
+    });
+    body.querySelector("[data-ai-review-plan-draft]")?.addEventListener("click", () => {
+      void generateDraft();
+    });
+  };
+  const renderSettingsStep = () => {
+    step = "settings";
+    setHeaderAction("关闭");
+    renderAiReviewPlanSettings(body, state);
+    bindSettingsEvents();
+  };
+  const bindResultEvents = () => {
+    body.querySelector("[data-ai-review-plan-back-draft]")?.addEventListener("click", () => {
+      step = "draft";
+      setHeaderAction("返回设置");
+      renderAiReviewPlanDraft(body, state, latestDraft);
+      bindDraftEvents();
+    });
+    body.querySelector("[data-ai-review-plan-back-settings]")?.addEventListener("click", renderSettingsStep);
+  };
+  const commitDraft = async () => {
+    if (!latestDraft) return;
+    const selection = selectedAiReviewPlanItems(body, latestDraft);
+    const warning = body.querySelector("[data-ai-review-plan-selection-warning]");
+    if (!selection.items.length) {
+      if (warning) {
+        warning.hidden = false;
+        warning.innerHTML = "<p>请至少勾选一个规划项，再加入复习规划。</p>";
+      }
+      return;
+    }
+    if (warning) {
+      warning.hidden = true;
+      warning.innerHTML = "";
+    }
+    const button = body.querySelector("[data-ai-review-plan-commit]");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "正在校验...";
+    }
+    const requestBody = {
+      plan_id: latestDraft?.draft?.plan_id || "",
+      subject: state.subject || "math",
+      daily_minutes: state.daily_minutes,
+      items: selection.items,
+      selected_item_keys: selection.selected_item_keys,
+      draft: latestDraft?.draft || null,
+    };
+    try {
+      const validationPayload = await fetchJson(`/api/materials/system/ai-review-plan/validate?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      const validation = validationPayload?.validation || {};
+      renderAiReviewPlanValidation(body, validation);
+      if (!validation.can_commit) {
+        if (warning) {
+          warning.hidden = false;
+          warning.innerHTML = "<p>所选规划项都没有可追踪的真实题目或练习单来源，暂不能加入复习规划。</p>";
+        }
+        if (button) {
+          button.disabled = false;
+          button.textContent = "校验并加入复习规划";
+        }
+        return;
+      }
+      if (button) {
+        button.textContent = "正在加入...";
+      }
+      const commitPayload = await fetchJson(`/api/materials/system/ai-review-plan/commit?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      await loadReviewTasks({ silent: true });
+      await loadReviewLearningInsights({ silent: true });
+      step = "result";
+      setHeaderAction("返回草案");
+      renderAiReviewPlanAccepted(body, state, latestDraft, commitPayload);
+      bindResultEvents();
+    } catch (error) {
+      if (warning) {
+        warning.hidden = false;
+        warning.innerHTML = `<p>加入复习规划失败：${escapeHtml(error.message)}</p>`;
+      }
+      if (button) {
+        button.disabled = false;
+        button.textContent = "校验并加入复习规划";
+      }
+    }
+  };
+  const bindDraftEvents = () => {
+    body.querySelector("[data-ai-review-plan-back-settings]")?.addEventListener("click", renderSettingsStep);
+    body.querySelector("[data-ai-review-plan-regenerate]")?.addEventListener("click", () => {
+      void generateDraft();
+    });
+    body.querySelector("[data-ai-review-plan-commit]")?.addEventListener("click", () => {
+      void commitDraft();
+    });
+    body.querySelectorAll("[data-ai-review-plan-source-preview]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const sourceId = button.dataset.aiReviewPlanSourcePreview || "";
+        if (sourceId) {
+          void openSystemQuestionPreview(sourceId);
+        }
+      });
+    });
+    body.querySelectorAll("[data-ai-review-plan-item-remove]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest("[data-ai-review-plan-item]");
+        if (!row) return;
+        row.dataset.aiReviewPlanRemoved = "true";
+        row.remove();
+        const validation = body.querySelector("[data-ai-review-plan-validation]");
+        if (validation) {
+          validation.hidden = true;
+          validation.innerHTML = "";
+        }
+      });
+    });
+    body.querySelectorAll("[data-ai-review-plan-item-checkbox], [data-ai-review-plan-item-date], [data-ai-review-plan-item-minutes]").forEach((control) => {
+      control.addEventListener("change", () => {
+        const validation = body.querySelector("[data-ai-review-plan-validation]");
+        if (validation) {
+          validation.hidden = true;
+          validation.innerHTML = "";
+        }
+      });
+    });
+  };
+  const generateDraft = async () => {
+    step = "draft";
+    setHeaderAction("返回设置");
+    body.innerHTML = `<section class="system-workflow-section"><p>正在生成 AI 规划草案...</p></section>`;
+    try {
+      latestDraft = await fetchJson(`/api/materials/system/ai-review-plan/draft?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: state.subject,
+          days: state.days,
+          daily_minutes: state.daily_minutes,
+          goal: aiReviewPlanModeConfig(state.mode).label,
+          mode: state.mode,
+          include_types: state.includeTypes,
+          model: DEFAULT_AI_REVIEW_PLAN_MODEL,
+        }),
+      });
+      if (latestDraft?.context) {
+        state = { ...state, context: latestDraft.context };
+      }
+      renderAiReviewPlanDraft(body, state, latestDraft);
+      bindDraftEvents();
+    } catch (error) {
+      body.innerHTML = `
+        <section class="ai-plan-warning">
+          <p>AI 规划生成失败：${escapeHtml(error.message)}</p>
+        </section>
+        <div class="system-workflow-actions">
+          <button type="button" class="small-button" data-ai-review-plan-back-settings>返回设置</button>
+          <button type="button" class="small-button dark-button" data-ai-review-plan-regenerate>重试生成</button>
+        </div>
+      `;
+      body.querySelector("[data-ai-review-plan-back-settings]")?.addEventListener("click", renderSettingsStep);
+      body.querySelector("[data-ai-review-plan-regenerate]")?.addEventListener("click", () => {
+        void generateDraft();
+      });
+    }
+  };
+  body.innerHTML = `<section class="system-workflow-section"><p>正在整理学习画像和候选任务...</p></section>`;
+  try {
+    const query = aiReviewPlanQuery(constraints);
+    const data = await fetchJson(`/api/materials/system/ai-planning-context?${query.toString()}`);
+    const context = data.context || data;
+    state = aiReviewPlanStateFromContext(constraints, context);
+    renderSettingsStep();
+  } catch (error) {
+    body.innerHTML = `<section class="ai-plan-warning"><p>AI 规划依据加载失败：${escapeHtml(error.message)}</p></section>`;
+  }
+}
+
 function handleReviewInsightAction(event) {
+  const aiPlanButton = event.target.closest("[data-review-ai-plan]");
+  if (aiPlanButton && reviewLearningInsights?.contains(aiPlanButton)) {
+    void openAiReviewPlanModal();
+    return;
+  }
   const button = event.target.closest("[data-review-insight-action]");
   if (!button) {
     const topicCard = event.target.closest("[data-learning-topic-card]");
@@ -4456,20 +5959,18 @@ function handleReviewInsightAction(event) {
     const insights = reviewTasksState.learningInsights || {};
     const reviewSummary = insights.review_summary || {};
     const nextGroup = Number(reviewSummary.overdue_count || 0) > 0 ? "overdue" : "today";
-    if (reviewDateGroupFilter) reviewDateGroupFilter.value = nextGroup;
-    reviewTasksState.filters.dateGroup = nextGroup;
-    void loadReviewTasks();
+    scrollReviewTaskGroupIntoView(nextGroup);
     setReviewTasksStatus("saved", "已定位到期复习任务");
+    return;
+  }
+  if (action === "continue_draft") {
+    void openPracticeDraftListModal();
     return;
   }
   if (action === "topic_review") {
     const topic = button.dataset.reviewInsightTopic || "";
-    if (reviewKeywordFilter) reviewKeywordFilter.value = topic;
-    if (reviewDateGroupFilter) reviewDateGroupFilter.value = "";
-    reviewTasksState.filters.keyword = topic;
-    reviewTasksState.filters.dateGroup = "";
-    void loadReviewTasks();
-    setReviewTasksStatus("saved", topic ? `已按知识点「${topic}」筛选任务` : "已定位知识点任务");
+    openLearningTopicPanel(topic);
+    setReviewTasksStatus("saved", topic ? `已打开「${topic}」处理面板` : "已打开知识点处理面板");
     return;
   }
   if (action === "review_wrong") {
@@ -4514,12 +6015,77 @@ async function openSystemPracticeSetPrintable(practiceSet, options = {}) {
   showPracticeSetPrintOverlay(detail, questions, { fallbackQuestions });
 }
 
+async function fetchPracticeSetWithQuestions(practiceSetId, fallbackTitle = "") {
+  const data = await fetchJson(`/api/materials/system/practice-sets/${encodeURIComponent(practiceSetId)}?user_id=${encodeURIComponent(currentMaterialsUserId())}`);
+  const practiceSet = data.practice_set || data || {};
+  const detail = { ...practiceSet };
+  if (fallbackTitle && !detail.title && !detail.name) {
+    detail.title = fallbackTitle;
+  }
+  const questionIds = practiceSetQuestionIds(detail, []);
+  const questions = await Promise.all(
+    questionIds.map(async (questionId) => {
+      try {
+        return await fetchJson(systemQuestionDetailUrl(questionId));
+      } catch {
+        return { question_id: questionId };
+      }
+    })
+  );
+  return { practiceSet: detail, questions };
+}
+
+async function openSingleQuestionReviewAttempt(task) {
+  const questionId = String(task?.target_id || task?.source_question_id || "");
+  if (!questionId) return;
+  let question = { question_id: questionId };
+  try {
+    question = await fetchJson(systemQuestionDetailUrl(questionId));
+  } catch {
+    question = { question_id: questionId };
+  }
+  const baseTitle = reviewTaskTitle(task) || systemQuestionTitle(question) || questionId;
+  const title = String(baseTitle).includes("单题复习") ? String(baseTitle) : `${baseTitle} 单题复习`;
+  const payload = {
+    question_ids: [questionId],
+    title,
+    subject: question.subject || task?.subject || systemState.subject || "math",
+    exam_type: question.exam_type || task?.exam_type || systemState.examType || "",
+    source_type: "review_question",
+    filters: {
+      source: "review_task",
+      review_task_id: reviewTaskId(task),
+      target_type: "question",
+    },
+  };
+  const data = await fetchJson(`/api/materials/system/practice-sets/from-question-ids?user_id=${encodeURIComponent(currentMaterialsUserId())}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const practiceSet = data.practice_set || data || {};
+  if (!Array.isArray(practiceSet.question_ids)) {
+    practiceSet.question_ids = [questionId];
+  }
+  await openPracticeAttempt(practiceSet, [question], { fallbackQuestions: [question], reviewTask: task });
+}
+
 async function openReviewTaskSource(task) {
   const targetType = String(task?.target_type || "");
   const targetId = String(task?.target_id || "");
   if (!targetId) return;
+  await markReviewTaskStarted(task);
+  if (targetType === "question") {
+    await openSingleQuestionReviewAttempt(task);
+    return;
+  }
   if (targetType === "practice_set") {
-    await openSystemPracticeSetDetail({ set_id: targetId, title: reviewTaskTitle(task) });
+    const { practiceSet, questions } = await fetchPracticeSetWithQuestions(targetId, reviewTaskTitle(task));
+    await openPracticeAttempt(practiceSet, questions, { fallbackQuestions: questions });
+    return;
+  }
+  if (targetType === "knowledge_point") {
+    openLearningTopicPanel(targetId);
     return;
   }
   setActivePage("materials");
@@ -5877,6 +7443,9 @@ document.querySelectorAll("[data-system-action]").forEach((button) => {
 reviewTasksRefreshButton?.addEventListener("click", () => {
   void loadReviewLearningInsights();
   void loadReviewTasks();
+});
+reviewAiPlanButton?.addEventListener("click", () => {
+  void openAiReviewPlanModal();
 });
 
 reviewTaskList?.addEventListener("click", handleReviewTaskAction);

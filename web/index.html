@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>考研 Agent 助手</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
-  <link rel="stylesheet" href="/static/styles.css?v=20260709-review-workflow-v1" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260803-ai-plan-preview-v2" />
 </head>
 <body>
   <main class="app-shell">
@@ -310,7 +310,10 @@
               <p class="eyebrow">Plan</p>
               <h2>复习规划</h2>
             </div>
-            <button id="reviewTasksRefreshButton" type="button" class="small-button dark-button">刷新</button>
+            <div class="plan-header-actions">
+              <button id="reviewAiPlanButton" type="button" class="small-button dark-button">AI 生成规划</button>
+              <button id="reviewTasksRefreshButton" type="button" class="small-button">刷新</button>
+            </div>
           </header>
 
           <div id="reviewTasksStatus" class="system-save-status" hidden></div>
@@ -381,6 +384,6 @@
   <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath@1.0.0/texmath.min.js"></script>
-  <script src="/static/app.js?v=20260709-review-workflow-v1"></script>
+  <script src="/static/app.js?v=20260803-ai-plan-preview-v2"></script>
 </body>
 </html>

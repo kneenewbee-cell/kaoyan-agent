@@ -111,12 +111,23 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         html = INDEX_HTML.read_text(encoding="utf-8")
         styles = STYLES_CSS.read_text(encoding="utf-8")
 
-        self.assertIn("styles.css?v=20260709-review-workflow-v1", html)
-        self.assertIn("app.js?v=20260709-review-workflow-v1", html)
+        self.assertIn("styles.css?v=20260803-ai-plan-preview-v2", html)
+        self.assertIn("app.js?v=20260803-ai-plan-preview-v2", html)
         self.assertIn(".system-workflow-dialog .small-button", styles)
         self.assertIn(".system-workflow-dialog .dark-button", styles)
         self.assertIn("background: #ffffff;", styles)
         self.assertIn("color: #172033;", styles)
+
+    def test_ai_review_plan_displays_load_and_practice_sheet_parts(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function aiReviewPlanItemLoadMeta", source)
+        self.assertIn("function aiReviewPlanPracticePartLabel", source)
+        self.assertIn("ai-plan-item-load", source)
+        self.assertIn("part_index", source)
+        self.assertIn("load_units", source)
+        self.assertIn(".ai-plan-item-load", styles)
 
     def test_topic_filter_is_select_backed_by_topic_options(self) -> None:
         html = INDEX_HTML.read_text(encoding="utf-8")
@@ -231,6 +242,29 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertLess(source.index("body.appendChild(preview)"), source.index("body.appendChild(footer)"))
         self.assertNotIn("body.appendChild(topics);", source)
         self.assertIn(".system-question-footer", styles)
+
+    def test_system_question_list_scroll_uses_render_containment(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("const fragment = document.createDocumentFragment();", source)
+        self.assertIn("fragment.appendChild(card)", source)
+        self.assertIn("systemQuestionList.appendChild(fragment)", source)
+        self.assertIn("content-visibility: auto;", styles)
+        self.assertIn("contain-intrinsic-size: 252px;", styles)
+        self.assertIn("overscroll-behavior: contain;", styles)
+
+    def test_system_question_preview_defers_formula_rendering_and_caches_markdown(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("const systemMarkdownRenderCache = new Map();", source)
+        self.assertIn("function renderCachedSystemMarkdown(value)", source)
+        self.assertIn("function scheduleSystemQuestionPreviewRender(preview, markdown)", source)
+        self.assertIn("const systemQuestionPreviewObserver = createSystemQuestionPreviewObserver();", source)
+        self.assertIn('preview.dataset.rendered = "false";', source)
+        self.assertIn("preview.textContent = compactSystemQuestionPreviewText(item.preview", source)
+        self.assertIn("scheduleSystemQuestionPreviewRender(preview, item.preview", source)
+        self.assertNotIn('preview.innerHTML = renderSystemMarkdown(item.preview || "', source)
 
     def test_favorited_question_cards_have_persistent_visual_marker(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")
@@ -376,8 +410,58 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         self.assertNotIn("function promptReviewTaskDueDate", source)
         self.assertIn("openReviewTaskPostponeDialog(task)", source)
         self.assertIn("window.confirm", source)
-        self.assertIn("renderReviewTaskSection(\"已完成\", groups.completed)", source)
-        self.assertIn("renderReviewTaskSection(\"已取消\", groups.cancelled)", source)
+        self.assertIn('groups.completed, "completed")', source)
+        self.assertIn('groups.cancelled, "cancelled")', source)
+
+    def test_review_task_card_explains_ai_plan_origin(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function reviewTaskPlanModeLabel", source)
+        self.assertIn("function reviewTaskPlanBatchLabel", source)
+        self.assertIn("function renderReviewTaskPlanMeta", source)
+        self.assertIn("created_from", source)
+        self.assertIn("plan_mode", source)
+        self.assertIn("plan_model", source)
+        self.assertIn("plan_source", source)
+        self.assertIn("plan_id", source)
+        self.assertIn("plan_batch_title", source)
+        self.assertIn("plan_reason", source)
+        self.assertIn("review-task-plan-meta", source)
+        self.assertIn("review-task-plan-batch", source)
+        self.assertIn("review-task-plan-reason", source)
+        self.assertIn(".review-task-plan-meta", styles)
+        self.assertIn(".review-task-plan-batch", styles)
+        self.assertIn(".review-task-plan-reason", styles)
+
+    def test_review_task_start_dispatches_by_target_type_and_records_started(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("async function markReviewTaskStarted", source)
+        self.assertIn('feedback_action: "started"', source)
+        self.assertIn("await markReviewTaskStarted(task);", source)
+        self.assertIn('targetType === "practice_set"', source)
+        self.assertIn("await openPracticeAttempt(", source)
+        self.assertIn('targetType === "knowledge_point"', source)
+        self.assertIn("openLearningTopicPanel(targetId)", source)
+        self.assertIn("openSystemQuestionDrawer(targetId)", source)
+
+    def test_question_review_task_starts_one_question_practice_attempt(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("async function openSingleQuestionReviewAttempt", source)
+        self.assertIn("/api/materials/system/practice-sets/from-question-ids", source)
+        self.assertIn('source_type: "review_question"', source)
+
+        start = source.index("async function openReviewTaskSource")
+        end = source.index("function renderSystemMaterialsSkeleton")
+        task_source = source[start:end]
+        self.assertIn('targetType === "question"', task_source)
+        self.assertIn("await openSingleQuestionReviewAttempt(task);", task_source)
+        self.assertLess(
+            task_source.index('targetType === "question"'),
+            task_source.index("openSystemQuestionDrawer(targetId)"),
+        )
 
     def test_practice_modal_exposes_topic_filter_subset(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")
@@ -652,15 +736,186 @@ class SystemLibraryFrontendTests(unittest.TestCase):
         styles = STYLES_CSS.read_text(encoding="utf-8")
 
         self.assertIn("function openLearningTopicPanel", source)
+        self.assertIn("function scrollReviewTaskListIntoView", source)
         self.assertIn("data-learning-topic-card", source)
         self.assertIn("openPendingReviewModal", source)
         self.assertIn("/api/materials/system/pending-review-items", source)
         self.assertIn("data-pending-review-ai", source)
         self.assertIn("data-pending-review-correct", source)
         self.assertIn("data-pending-review-incorrect", source)
+        self.assertIn("returnToTopic: title", source)
+        self.assertIn("headerActionLabel", source)
+        self.assertIn("onHeaderAction", source)
+        self.assertIn("scrollReviewTaskListIntoView();", source)
         self.assertIn(".learning-topic-panel", styles)
         self.assertIn(".pending-review-list", styles)
         self.assertIn(".pending-review-item", styles)
+
+    def test_pending_review_correct_confirmation_requires_ai_or_reasoned_override(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("pendingReviewCorrectActionHtml", source)
+        self.assertIn("采纳AI判定为正确", source)
+        self.assertIn("仍认为正确", source)
+        self.assertIn("data-pending-review-correct-override", source)
+        self.assertIn("请写一句你认为正确的理由", source)
+        self.assertIn("button.dataset.judgeReason", source)
+
+    def test_learning_overview_surfaces_unsubmitted_practice_drafts(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn('["草稿", summary.draft_attempt_count || 0]', source)
+        self.assertIn('if (action === "continue_draft")', source)
+        self.assertIn("function openPracticeDraftListModal", source)
+        self.assertIn("/api/materials/system/practice-attempts?user_id=", source)
+        self.assertIn("data-practice-draft-continue", source)
+        self.assertIn("未提交草稿已保存", source)
+
+    def test_review_page_exposes_ai_planning_draft_flow(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+        html = INDEX_HTML.read_text(encoding="utf-8")
+
+        self.assertIn('id="reviewAiPlanButton"', html)
+        self.assertIn("const reviewAiPlanButton", source)
+        self.assertIn("data-review-ai-plan", source)
+        self.assertIn("让 AI 排计划", source)
+        next_step_start = source.index("<h4>下一步建议</h4>")
+        next_step_end = source.index("</section>", next_step_start)
+        next_step_markup = source[next_step_start:next_step_end]
+        self.assertNotIn("data-review-ai-plan", next_step_markup)
+        self.assertIn(".plan-header-actions", styles)
+        self.assertIn("function openAiReviewPlanModal", source)
+        self.assertIn("/api/materials/system/ai-planning-context", source)
+        self.assertIn("/api/materials/system/ai-review-plan/draft", source)
+        self.assertIn("deepseek-v4-flash", source)
+        self.assertIn("data-ai-review-plan-draft", source)
+        self.assertIn(".ai-plan-context-grid", styles)
+        self.assertIn("const AI_REVIEW_PLAN_MODES", source)
+        self.assertIn("const AI_REVIEW_PLAN_INCLUDE_OPTIONS", source)
+        self.assertIn("function renderAiReviewPlanSettings", source)
+        self.assertIn("function renderAiReviewPlanDraft", source)
+        self.assertIn("data-ai-review-plan-mode", source)
+        self.assertIn("data-ai-review-plan-include", source)
+        self.assertIn("/api/materials/system/ai-review-plan/commit", source)
+        self.assertIn("/api/materials/system/ai-review-plan/validate", source)
+        self.assertIn("data-ai-review-plan-item-checkbox", source)
+        self.assertIn("data-ai-review-plan-item-date", source)
+        self.assertIn("data-ai-review-plan-item-minutes", source)
+        self.assertIn("data-ai-review-plan-item-remove", source)
+        self.assertIn("data-ai-review-plan-validation", source)
+        self.assertIn("data-ai-review-plan-commit", source)
+        self.assertIn("selected_item_keys", source)
+        self.assertIn("function aiReviewPlanCandidateLookup", source)
+        self.assertIn("function aiReviewPlanCandidateQuestionRows", source)
+        self.assertIn("function aiReviewPlanSourcePreview", source)
+        self.assertIn("candidate.questions", source)
+        self.assertIn("data-ai-review-plan-source-preview", source)
+        self.assertIn("openSystemQuestionPreview(sourceId)", source)
+        self.assertIn(".ai-plan-source-preview", styles)
+        self.assertIn(".ai-plan-source-preview-parent", styles)
+        self.assertIn(".ai-plan-source-preview-list li.is-child", styles)
+        self.assertIn(".ai-plan-source-preview-list", styles)
+        self.assertIn("送 AI 上限", source)
+        self.assertNotIn("实际 ${row.count} / 预算", source)
+        self.assertIn("校验并加入复习规划", source)
+        self.assertIn("提交前校验", source)
+        self.assertIn("加入复习规划", source)
+        self.assertIn("错题回收", source)
+        self.assertIn("新题启动", source)
+        self.assertIn("起步候选", source)
+        self.assertIn(".ai-plan-mode-grid", styles)
+        self.assertIn(".ai-plan-include-grid", styles)
+        self.assertIn("context.readiness", source)
+        self.assertIn("context.candidate_summary", source)
+        self.assertIn("data-ai-plan-readiness", source)
+        self.assertIn('draft.source === "blocked"', source)
+        self.assertIn("function renderAiReviewPlanCandidateAvailability", source)
+        self.assertIn("payload?.context || state.context", source)
+        self.assertIn(".ai-plan-readiness", styles)
+        self.assertIn(".ai-plan-availability", styles)
+        self.assertIn(".ai-plan-availability-chip.empty", styles)
+        self.assertIn(".ai-plan-item-controls", styles)
+        self.assertIn(".ai-plan-validation", styles)
+
+    def test_ai_plan_draft_day_and_item_surfaces_are_visually_distinct(self) -> None:
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        day_start = styles.index(".ai-plan-day {")
+        day_end = styles.index("}", day_start)
+        item_start = styles.index(".ai-plan-item {")
+        item_end = styles.index("}", item_start)
+        day_block = styles[day_start:day_end]
+        item_block = styles[item_start:item_end]
+
+        self.assertIn("background: linear-gradient", day_block)
+        self.assertIn("border-left:", item_block)
+        self.assertIn("background: #ffffff", item_block)
+
+    def test_draft_attempt_timestamps_use_local_display_time(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+
+        self.assertIn("function formatPracticeLocalDateTime", source)
+        self.assertIn("return formatPracticeLocalDateTime(raw);", source)
+        self.assertIn("function localDateKey", source)
+        self.assertIn("return localDateKey(date);", source)
+        self.assertIn("const today = localDateKey();", source)
+        self.assertNotIn('String(raw).slice(0, 16).replace("T", " ")', source)
+        self.assertNotIn("return date.toISOString().slice(0, 10);", source)
+
+    def test_learning_insight_actions_do_not_filter_away_review_sections(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function scrollReviewTaskGroupIntoView", source)
+        self.assertIn('data-review-task-group="${escapeHtml(group)}"', source)
+        self.assertIn("scrollReviewTaskGroupIntoView(nextGroup);", source)
+        self.assertIn("openLearningTopicPanel(topic);", source)
+        self.assertNotIn("reviewTasksState.filters.dateGroup = nextGroup;", source)
+        self.assertNotIn("reviewTasksState.filters.keyword = topic;", source)
+        self.assertIn("animation: reviewTaskFocusPulse", styles)
+        self.assertIn("@keyframes reviewTaskFocusPulse", styles)
+        self.assertIn("rgba(45, 103, 216, 0.22)", styles)
+        self.assertIn("outline: 2px solid rgba(45, 103, 216, 0.78)", styles)
+
+    def test_future_review_tasks_are_grouped_by_due_date(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("function groupFutureReviewTasksByDate", source)
+        self.assertIn("function reviewTaskEstimatedMinutes", source)
+        self.assertIn("function futureReviewDateGroupMinutes", source)
+        self.assertIn("function renderFutureReviewTaskSection", source)
+        self.assertIn('renderFutureReviewTaskSection("未来", groups.future, "future")', source)
+        self.assertIn('index < 3 ? "open" : ""', source)
+        self.assertIn("review-future-date-group", source)
+        self.assertIn("review-date-anchor", source)
+        self.assertIn("review-date-count-pill", source)
+        self.assertIn("review-date-load-pill", source)
+        self.assertIn("review-task-date-pill", source)
+        self.assertIn(".review-future-date-group", styles)
+        self.assertIn(".review-date-anchor", styles)
+        self.assertIn(".review-date-count-pill", styles)
+        self.assertIn(".review-date-load-pill", styles)
+        self.assertIn(".review-task-date-pill", styles)
+
+    def test_review_task_sections_are_collapsible(self) -> None:
+        source = APP_JS.read_text(encoding="utf-8")
+        styles = STYLES_CSS.read_text(encoding="utf-8")
+
+        self.assertIn("reviewTaskSectionCollapsed", source)
+        self.assertIn("function isReviewTaskSectionCollapsed", source)
+        self.assertIn("function toggleReviewTaskSection", source)
+        self.assertIn("function expandReviewTaskSection", source)
+        self.assertIn("data-review-task-section-toggle", source)
+        self.assertIn('aria-expanded="${escapeHtml(String(!collapsed))}"', source)
+        self.assertIn("completed: true", source)
+        self.assertIn("cancelled: true", source)
+        self.assertIn("expandReviewTaskSection(group);", source)
+        self.assertIn("sectionToggle.dataset.reviewTaskSectionToggle", source)
+        self.assertIn(".review-task-section-toggle", styles)
+        self.assertIn(".review-task-section.is-collapsed", styles)
+        self.assertIn(".review-task-section.is-collapsed > :not(.review-task-section-header)", styles)
 
     def test_pending_review_manual_confirmation_warns_on_conflicting_evidence(self) -> None:
         source = APP_JS.read_text(encoding="utf-8")

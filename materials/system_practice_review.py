@@ -12,6 +12,13 @@ from . import user_state
 from .security import ensure_within_base, resolve_user_id, validate_safe_id
 from .system_practice_ai_grader import grade_practice_item_with_ai
 from .system_library import SystemQuestionLibrary
+from .system_review_plan_policy import (
+    assess_ai_review_plan_readiness,
+    build_ai_candidate_limits,
+    build_ai_review_plan_policy,
+    filter_ai_review_plan_candidates,
+)
+from .system_review_plan_load import split_candidate_into_plan_segments
 
 
 PRACTICE_SET_FILENAME = "practice_sets.jsonl"
@@ -170,6 +177,7 @@ class SystemPracticeReviewStore:
         normalized_question_type = self._optional_string(question_type)
         normalized_risk_type = self._normalize_wrong_pool_risk_type(risk_type)
         safe_limit = max(1, min(int(limit or 50), 200))
+        self._materialize_submitted_attempt_items(safe_user_id)
         _, questions = self.library.list_all_questions(subject=normalized_subject, exam_type=normalized_exam_type)
         by_question_id = {str(item.get("question_id") or ""): item for item in questions if item.get("question_id")}
         stats = self._read_records(safe_user_id, USER_QUESTION_STATS_FILENAME, "question_id")
@@ -256,11 +264,15 @@ class SystemPracticeReviewStore:
         normalized_exam_type = self._clean_string(exam_type)
         normalized_topic = self._optional_string(topic)
         safe_limit = max(1, min(int(limit or 50), 200))
+        self._materialize_submitted_attempt_items(safe_user_id)
         records = self._read_records(safe_user_id, PRACTICE_ATTEMPT_ITEM_FILENAME, "attempt_item_id")
         pending_items: list[dict[str, Any]] = []
         topic_options: set[str] = set()
         for record in records:
-            final_status = str(record.get("final_status") or record.get("status") or "")
+            try:
+                final_status = self._normalize_final_status(record.get("final_status") or record.get("status") or "")
+            except ValueError:
+                continue
             if final_status != "pending_review":
                 continue
             source_meta = record.get("source_meta") if isinstance(record.get("source_meta"), dict) else {}
@@ -401,6 +413,75 @@ class SystemPracticeReviewStore:
         self._write_records(safe_user_id, PRACTICE_SET_FILENAME, records)
         return dict(practice_set)
 
+    def create_practice_set_from_question_ids(
+        self,
+        user_id: str,
+        *,
+        question_ids: list[str],
+        title: str | None = None,
+        subject: str = "math",
+        exam_type: str = "",
+        source_type: str = "question_selection",
+        filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        safe_user_id = resolve_user_id(user_id)
+        normalized_subject = self._clean_string(subject) or "math"
+        normalized_exam_type = self._clean_string(exam_type)
+        normalized_source_type = self._clean_string(source_type) or "question_selection"
+        if not isinstance(question_ids, list) or not question_ids:
+            raise ValueError("question_ids must be a non-empty list")
+
+        selected_ids: list[str] = []
+        seen_ids: set[str] = set()
+        for raw_question_id in question_ids:
+            question_id = validate_safe_id(str(raw_question_id), "question_id")
+            if question_id in seen_ids:
+                continue
+            selected_ids.append(question_id)
+            seen_ids.add(question_id)
+        if not selected_ids:
+            raise ValueError("question_ids must be a non-empty list")
+        if len(selected_ids) > 50:
+            raise ValueError("question_ids cannot exceed 50")
+
+        selected_items: list[dict[str, Any]] = []
+        for question_id in selected_ids:
+            selected_items.append(dict(self.library.get_question(question_id)))
+
+        display_items = self._practice_set_display_order(selected_items)
+        display_question_ids = [str(item["question_id"]) for item in display_items]
+        libraries = {str(item.get("library_name") or "") for item in display_items if item.get("library_name")}
+        library_name = next(iter(libraries)) if len(libraries) == 1 else "系统题库"
+        matching_topics = self._union_topics(display_items)
+        first_item = display_items[0] if display_items else {}
+        now = self._utc_now()
+        criteria_filters = filters if isinstance(filters, dict) else {}
+        practice_set = {
+            "set_id": self._new_id("ps"),
+            "user_id": safe_user_id,
+            "source_question_id": display_question_ids[0] if len(display_question_ids) == 1 else "",
+            "source_type": normalized_source_type,
+            "question_ids": display_question_ids,
+            "question_count": len(display_question_ids),
+            "matching_topics": matching_topics,
+            "title": self._clean_string(title) or "单题复习练习单",
+            "created_at": now,
+            "status": "active",
+            "subject": normalized_subject,
+            "exam_type": normalized_exam_type or str(first_item.get("exam_type") or ""),
+            "library_name": library_name,
+            "criteria": {
+                "source": normalized_source_type,
+                "selected_question_ids": display_question_ids,
+                "filters": criteria_filters,
+                "feedback_hook": f"{normalized_source_type}_practice_v1",
+            },
+        }
+        records = self._read_records(safe_user_id, PRACTICE_SET_FILENAME, "set_id")
+        records.append(practice_set)
+        self._write_records(safe_user_id, PRACTICE_SET_FILENAME, records)
+        return dict(practice_set)
+
     def preview_practice_candidates(
         self,
         user_id: str,
@@ -422,7 +503,14 @@ class SystemPracticeReviewStore:
         _, items = self.library.list_all_questions(subject=subject, exam_type=exam_type)
         source = self._find_question(items, safe_source_id)
         if source is None:
-            raise KeyError(f"system question not found: {safe_source_id}")
+            source = self.library.get_question(safe_source_id)
+
+        source_exam_type = str(source.get("exam_type") or exam_type or "")
+        pool_exam_type = "" if normalized_source_scope == "subject" else source_exam_type
+        if pool_exam_type != str(exam_type or "") or self._find_question(items, safe_source_id) is None:
+            _, items = self.library.list_all_questions(subject=subject, exam_type=pool_exam_type)
+        if self._find_question(items, safe_source_id) is None:
+            items = [dict(source), *items]
 
         ranked = self._rank_similar_questions(
             safe_user_id,
@@ -600,6 +688,7 @@ class SystemPracticeReviewStore:
         safe_user_id = resolve_user_id(user_id)
         safe_attempt_id = validate_safe_id(attempt_id, "attempt_id") if attempt_id else None
         safe_question_id = validate_safe_id(question_id, "question_id") if question_id else None
+        self._materialize_submitted_attempt_items(safe_user_id)
         records = self._read_records(safe_user_id, PRACTICE_ATTEMPT_ITEM_FILENAME, "attempt_item_id")
         if safe_attempt_id:
             records = [record for record in records if record.get("attempt_id") == safe_attempt_id]
@@ -795,14 +884,26 @@ class SystemPracticeReviewStore:
         self,
         user_id: str,
         practice_set_id: str | None = None,
+        *,
+        include_result_backfill: bool = False,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         safe_user_id = resolve_user_id(user_id)
         safe_set_id = validate_safe_id(practice_set_id, "practice_set_id") if practice_set_id else None
         records = self._read_records(safe_user_id, PRACTICE_ATTEMPT_FILENAME, "attempt_id")
         if safe_set_id is not None:
             records = [record for record in records if record.get("practice_set_id") == safe_set_id]
-        normalized_records = [self._backfill_practice_attempt_result(record) for record in records]
-        return sorted(normalized_records, key=lambda record: str(record.get("started_at") or ""), reverse=True)
+        if include_result_backfill:
+            records = [self._backfill_practice_attempt_result(record) for record in records]
+        else:
+            records = [dict(record) for record in records]
+        records = sorted(records, key=lambda record: str(record.get("started_at") or ""), reverse=True)
+        safe_offset = max(0, int(offset or 0))
+        if limit is None:
+            return records[safe_offset:]
+        safe_limit = max(1, min(int(limit), 200))
+        return records[safe_offset : safe_offset + safe_limit]
 
     def create_review_task(
         self,
@@ -814,11 +915,32 @@ class SystemPracticeReviewStore:
         due_at: str | None = None,
         priority: int = 2,
         note: str | None = None,
+        subject: str | None = None,
+        created_from: str | None = None,
+        plan_id: str | None = None,
+        plan_mode: str | None = None,
+        plan_model: str | None = None,
+        plan_source: str | None = None,
+        plan_batch_title: str | None = None,
+        plan_reason: str | None = None,
+        plan_item_type: str | None = None,
+        estimated_minutes: Any = None,
+        source_label: str | None = None,
+        source_meta_extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         safe_user_id = resolve_user_id(user_id)
         normalized_target_type = self._normalize_target_type(target_type)
         safe_target_id = validate_safe_id(target_id, "target_id")
         source_meta = self._review_target_metadata(safe_user_id, normalized_target_type, safe_target_id)
+        if isinstance(source_meta_extra, dict):
+            source_meta = {
+                **source_meta,
+                **{
+                    str(key): value
+                    for key, value in source_meta_extra.items()
+                    if str(key).strip()
+                },
+            }
         normalized_due_at = self._optional_string(due_at)
         records = self._read_records(safe_user_id, REVIEW_TASK_FILENAME, "task_id")
         duplicate = self._find_duplicate_review_task(
@@ -840,19 +962,433 @@ class SystemPracticeReviewStore:
             "priority": self._normalize_priority(priority),
             "status": "pending",
             "note": self._clean_string(note),
-            "subject": source_meta.get("subject") or "",
+            "subject": self._clean_string(subject) or source_meta.get("subject") or "",
             "exam_type": source_meta.get("exam_type") or "",
             "library_name": source_meta.get("library_name") or "",
             "source_title": source_meta.get("source_title") or "",
             "source_meta": source_meta,
+            "created_from": self._clean_string(created_from),
+            "source_label": self._clean_string(source_label),
+            "plan_id": self._clean_string(plan_id),
+            "plan_mode": self._clean_string(plan_mode),
+            "plan_model": self._clean_string(plan_model),
+            "plan_source": self._clean_string(plan_source),
+            "plan_batch_title": self._clean_string(plan_batch_title),
+            "plan_reason": self._clean_string(plan_reason),
+            "plan_item_type": self._clean_string(plan_item_type),
+            "estimated_minutes": self._positive_int(estimated_minutes, default=0, minimum=0, maximum=24 * 60)
+            if estimated_minutes not in (None, "")
+            else None,
             "created_at": now,
             "updated_at": now,
+            "started_at": None,
+            "last_review_action": "",
+            "last_review_action_at": None,
+            "feedback_events": [],
             "completed_at": None,
             "cancelled_at": None,
         }
         records.append(review_task)
         self._write_records(safe_user_id, REVIEW_TASK_FILENAME, records)
         return {**review_task, "duplicate": False}
+
+    def create_review_tasks_from_ai_plan(
+        self,
+        user_id: str,
+        *,
+        plan_id: str | None = None,
+        items: list[dict[str, Any]] | None = None,
+        subject: str | None = None,
+        daily_minutes: Any = None,
+        plan_mode: str | None = None,
+        plan_model: str | None = None,
+        plan_source: str | None = None,
+        plan_batch_title: str | None = None,
+    ) -> dict[str, Any]:
+        safe_user_id = resolve_user_id(user_id)
+        if items is None:
+            items = []
+        if not isinstance(items, list):
+            raise ValueError("items must be a list")
+        validation = self.validate_ai_review_plan_items(
+            safe_user_id,
+            items=items,
+            daily_minutes=daily_minutes,
+            subject=subject,
+        )
+        valid_items_by_index = {
+            int(item.get("item_index")): item
+            for item in validation.get("valid_items", [])
+            if isinstance(item.get("item_index"), int)
+        }
+        commit_entries = self._ai_plan_commit_entries(
+            safe_user_id,
+            items,
+            valid_items_by_index,
+            subject=subject,
+        )
+        results: list[dict[str, Any]] = []
+        for entry in commit_entries:
+            index = int(entry["item_index"])
+            item = entry["item"]
+            if not isinstance(item, dict):
+                results.append(
+                    {
+                        "item_index": index,
+                        "title": "",
+                        "status": "failed",
+                        "reason": "invalid ai plan item",
+                    }
+                )
+                continue
+            validation_item = entry.get("validation_item") or valid_items_by_index.get(index)
+            if validation_item is None:
+                rejected = next(
+                    (
+                        record
+                        for record in validation.get("rejected", [])
+                        if record.get("item_index") == index
+                    ),
+                    None,
+                )
+                results.append(
+                    {
+                        "item_index": index,
+                        "title": self._clean_string(item.get("title") or item.get("action")) or "AI 规划复习任务",
+                        "status": "rejected",
+                        "reason": (rejected or {}).get("reason") or "未通过提交前校验",
+                    }
+                )
+                continue
+            title = self._clean_string(item.get("title") or item.get("action")) or "AI 规划复习任务"
+            try:
+                target_type = str(validation_item.get("target_type") or "")
+                target_id = str(validation_item.get("target_id") or "")
+                derived_question_ids = [
+                    str(value)
+                    for value in validation_item.get("derived_practice_question_ids") or []
+                    if str(value).strip()
+                ]
+                if derived_question_ids:
+                    source_type = self._ai_plan_practice_source_type(item)
+                    practice_set = self._get_or_create_ai_plan_practice_set(
+                        safe_user_id,
+                        plan_id=plan_id,
+                        item_index=index,
+                        item=item,
+                        question_ids=derived_question_ids,
+                        title=title,
+                        subject=subject,
+                        source_type=source_type,
+                    )
+                    target_type = "practice_set"
+                    target_id = str(practice_set.get("set_id") or "")
+                due_at = self._optional_string(item.get("due_at") or item.get("date"))
+                reason = self._clean_string(item.get("reason") or item.get("description"))
+                minutes = item.get("estimated_minutes") or item.get("minutes")
+                note_parts = ["AI规划"]
+                if reason:
+                    note_parts.append(reason)
+                if minutes not in (None, ""):
+                    note_parts.append(f"预计 {minutes} 分钟")
+                if plan_id:
+                    note_parts.append(f"plan_id={self._clean_string(plan_id)}")
+                if subject:
+                    note_parts.append(f"subject={self._clean_string(subject)}")
+                source_meta_extra = validation_item.get("source_meta_extra")
+                review_task = self.create_review_task(
+                    safe_user_id,
+                    target_type=target_type,
+                    target_id=target_id,
+                    title=title,
+                    due_at=due_at,
+                    priority=item.get("priority", 2),
+                    note="；".join(note_parts),
+                    subject=subject,
+                    created_from="ai_plan",
+                    source_label="AI规划",
+                    plan_id=plan_id,
+                    plan_mode=plan_mode,
+                    plan_model=plan_model,
+                    plan_source=plan_source,
+                    plan_batch_title=plan_batch_title,
+                    plan_reason=reason,
+                    plan_item_type=str(item.get("type") or ""),
+                    estimated_minutes=minutes,
+                    source_meta_extra=source_meta_extra if isinstance(source_meta_extra, dict) else None,
+                )
+                status = "duplicate" if review_task.get("duplicate") else "created"
+                results.append(
+                    {
+                        "item_index": index,
+                        "title": title,
+                        "status": status,
+                        "task_id": review_task.get("task_id"),
+                        "target_type": review_task.get("target_type"),
+                        "target_id": review_task.get("target_id"),
+                        "due_at": review_task.get("due_at"),
+                        "merged_item_indexes": list(entry.get("merged_item_indexes") or []),
+                        "merged_count": int(entry.get("merged_count") or 0),
+                        "review_task": review_task,
+                    }
+                )
+            except (ValueError, KeyError, FileNotFoundError) as exc:
+                results.append(
+                    {
+                        "item_index": index,
+                        "title": title,
+                        "status": "failed",
+                        "reason": str(exc),
+                    }
+                )
+        return {
+            "plan_id": self._clean_string(plan_id),
+            "plan_mode": self._clean_string(plan_mode),
+            "plan_model": self._clean_string(plan_model),
+            "plan_source": self._clean_string(plan_source),
+            "created_count": sum(1 for item in results if item.get("status") == "created"),
+            "skipped_count": sum(1 for item in results if item.get("status") == "duplicate"),
+            "failed_count": sum(1 for item in results if item.get("status") == "failed"),
+            "rejected_count": sum(1 for item in results if item.get("status") == "rejected"),
+            "warnings": validation.get("warnings", []),
+            "daily_load": validation.get("daily_load", []),
+            "results": results,
+        }
+
+    def _ai_plan_commit_entries(
+        self,
+        safe_user_id: str,
+        items: list[dict[str, Any]],
+        valid_items_by_index: dict[int, dict[str, Any]],
+        *,
+        subject: str | None = None,
+    ) -> list[dict[str, Any]]:
+        practice_groups: dict[tuple[str, str], list[tuple[int, dict[str, Any], dict[str, Any], list[str]]]] = {}
+        for index, validation_item in valid_items_by_index.items():
+            question_ids = self._ai_plan_commit_entry_question_ids(safe_user_id, validation_item)
+            if not question_ids:
+                continue
+            due_at = str(validation_item.get("due_at") or "").strip()
+            due_date = due_at[:10] if due_at else ""
+            if not due_date:
+                continue
+            if index < 0 or index >= len(items) or not isinstance(items[index], dict):
+                continue
+            group_subject = self._clean_string(validation_item.get("subject") or subject)
+            practice_groups.setdefault((due_date, group_subject), []).append(
+                (index, items[index], validation_item, question_ids)
+            )
+
+        grouped_by_first_index: dict[int, dict[str, Any]] = {}
+        grouped_indexes: set[int] = set()
+        for (due_date, group_subject), rows in practice_groups.items():
+            if len(rows) < 2:
+                continue
+            unique_question_ids: list[str] = []
+            seen_question_ids: set[str] = set()
+            for _, _, _, row_question_ids in rows:
+                for question_id in row_question_ids:
+                    if question_id and question_id not in seen_question_ids:
+                        unique_question_ids.append(question_id)
+                        seen_question_ids.add(question_id)
+            if len(unique_question_ids) < 2:
+                continue
+            rows = sorted(rows, key=lambda row: row[0])
+            first_index, first_item, first_validation, _ = rows[0]
+            indexes = [index for index, _, _, _ in rows]
+            grouped_indexes.update(indexes)
+            total_minutes = sum(
+                self._positive_int(
+                    item.get("estimated_minutes") or item.get("minutes"),
+                    default=0,
+                    minimum=0,
+                    maximum=24 * 60,
+                )
+                for _, item, _, _ in rows
+            )
+            merged_item = dict(first_item)
+            merged_item.update(
+                {
+                    "type": "daily_question_practice",
+                    "title": f"{due_date} AI 规划练习单 · {len(unique_question_ids)} 题",
+                    "reason": f"同一天安排 {len(unique_question_ids)} 道单题，合并为练习单复习。",
+                    "date": due_date,
+                    "due_at": due_date,
+                    "estimated_minutes": total_minutes or first_item.get("estimated_minutes") or first_item.get("minutes"),
+                    "source_ids": unique_question_ids,
+                }
+            )
+            source_meta_extra = dict(first_validation.get("source_meta_extra") or {})
+            source_meta_extra.update(
+                {
+                    "task_kind": "ai_plan_daily_question_group",
+                    "merged_item_indexes": indexes,
+                    "merged_plan_item_indexes": indexes,
+                    "merged_question_ids": unique_question_ids,
+                    "merged_source_target_types": [
+                        str(validation_item.get("target_type") or "") for _, _, validation_item, _ in rows
+                    ],
+                    "merged_source_target_ids": [
+                        str(validation_item.get("target_id") or "") for _, _, validation_item, _ in rows
+                    ],
+                }
+            )
+            merged_validation = {
+                **first_validation,
+                "target_type": "practice_set",
+                "target_id": "",
+                "derived_practice_question_ids": unique_question_ids,
+                "requires_practice_set_creation": True,
+                "source_meta_extra": source_meta_extra,
+                "due_at": due_date,
+                "minutes": total_minutes,
+                "subject": group_subject,
+            }
+            grouped_by_first_index[first_index] = {
+                "item_index": first_index,
+                "item": merged_item,
+                "validation_item": merged_validation,
+                "merged_item_indexes": indexes,
+                "merged_count": len(indexes),
+            }
+
+        commit_entries: list[dict[str, Any]] = []
+        for index, item in enumerate(items):
+            if index in grouped_indexes:
+                if index in grouped_by_first_index:
+                    commit_entries.append(grouped_by_first_index[index])
+                continue
+            commit_entries.append(
+                {
+                    "item_index": index,
+                    "item": item,
+                    "validation_item": valid_items_by_index.get(index),
+                }
+            )
+        return commit_entries
+
+    def _ai_plan_commit_entry_question_ids(
+        self,
+        safe_user_id: str,
+        validation_item: dict[str, Any],
+    ) -> list[str]:
+        source_meta_extra = validation_item.get("source_meta_extra")
+        if isinstance(source_meta_extra, dict) and (
+            source_meta_extra.get("task_kind") == "continue_draft"
+            or source_meta_extra.get("resume_attempt_id")
+        ):
+            return []
+
+        target_type = str(validation_item.get("target_type") or "")
+        target_id = str(validation_item.get("target_id") or "").strip()
+        if target_type == "question" and target_id:
+            return [target_id]
+
+        if target_type != "practice_set":
+            return []
+
+        derived_question_ids = [
+            str(value).strip()
+            for value in validation_item.get("derived_practice_question_ids") or []
+            if str(value).strip()
+        ]
+        if derived_question_ids:
+            return derived_question_ids
+
+        return []
+
+    def validate_ai_review_plan_items(
+        self,
+        user_id: str,
+        *,
+        items: list[dict[str, Any]] | None = None,
+        daily_minutes: Any = None,
+        subject: str | None = None,
+    ) -> dict[str, Any]:
+        safe_user_id = resolve_user_id(user_id)
+        if items is None:
+            items = []
+        if not isinstance(items, list):
+            raise ValueError("items must be a list")
+        daily_limit = self._positive_int(daily_minutes, default=0, minimum=0, maximum=24 * 60)
+        valid_items: list[dict[str, Any]] = []
+        rejected: list[dict[str, Any]] = []
+        daily_minutes_map: dict[str, int] = {}
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
+                rejected.append(
+                    {
+                        "item_index": index,
+                        "title": "",
+                        "reason": "规划项格式无效",
+                    }
+                )
+                continue
+            title = self._clean_string(item.get("title") or item.get("action")) or "AI 规划复习任务"
+            try:
+                target_info = self._ai_plan_item_review_target_info(
+                    safe_user_id,
+                    item,
+                    index=index,
+                    allow_generic=False,
+                )
+            except (ValueError, KeyError, FileNotFoundError) as exc:
+                rejected.append(
+                    {
+                        "item_index": index,
+                        "title": title,
+                        "reason": str(exc),
+                    }
+                )
+                continue
+            due_at = self._optional_string(item.get("due_at") or item.get("date"))
+            minutes = self._positive_int(
+                item.get("estimated_minutes") or item.get("minutes"),
+                default=0,
+                minimum=0,
+                maximum=24 * 60,
+            )
+            if due_at and minutes:
+                daily_minutes_map[due_at[:10]] = daily_minutes_map.get(due_at[:10], 0) + minutes
+            valid_items.append(
+                {
+                    "item_index": index,
+                    "title": title,
+                    "target_type": target_info["target_type"],
+                    "target_id": target_info.get("target_id", ""),
+                    "derived_practice_question_ids": list(target_info.get("derived_practice_question_ids") or []),
+                    "requires_practice_set_creation": bool(target_info.get("derived_practice_question_ids")),
+                    "source_meta_extra": dict(target_info.get("source_meta_extra") or {}),
+                    "due_at": due_at,
+                    "minutes": minutes,
+                    "subject": self._clean_string(subject),
+                }
+            )
+        daily_load = [
+            {
+                "date": date,
+                "minutes": minutes,
+                "limit": daily_limit,
+                "over_limit": bool(daily_limit and minutes > daily_limit),
+            }
+            for date, minutes in sorted(daily_minutes_map.items())
+        ]
+        warnings = [
+            f"{item['date']} 已选任务预计 {item['minutes']} 分钟，超过每日上限 {item['limit']} 分钟"
+            for item in daily_load
+            if item.get("over_limit")
+        ]
+        if rejected:
+            warnings.append(f"{len(rejected)} 个规划项没有真实题目或练习单来源，已阻止写入")
+        return {
+            "valid_count": len(valid_items),
+            "rejected_count": len(rejected),
+            "valid_items": valid_items,
+            "rejected": rejected,
+            "warnings": warnings,
+            "daily_load": daily_load,
+            "can_commit": bool(valid_items),
+        }
 
     def list_review_tasks(
         self,
@@ -925,6 +1461,7 @@ class SystemPracticeReviewStore:
         safe_user_id = resolve_user_id(user_id)
         normalized_subject = self._optional_string(subject)
         safe_limit = max(1, min(int(limit or 5), 10))
+        self._materialize_submitted_attempt_items(safe_user_id)
         items = self._read_records(safe_user_id, PRACTICE_ATTEMPT_ITEM_FILENAME, "attempt_item_id")
         if normalized_subject:
             items = [
@@ -937,6 +1474,18 @@ class SystemPracticeReviewStore:
                 )
             ]
         summary = self._learning_items_summary(items)
+        attempts = self.list_practice_attempts(safe_user_id)
+        if normalized_subject:
+            attempts = [
+                attempt
+                for attempt in attempts
+                if self._matches_subject_filter(
+                    (attempt.get("source_meta") or {}).get("subject"),
+                    normalized_subject,
+                    exam_type=(attempt.get("source_meta") or {}).get("exam_type"),
+                )
+            ]
+        summary.update(self._learning_attempt_status_summary(attempts))
         topic_stats = list(self.list_user_topic_stats(safe_user_id).values())
         if normalized_subject:
             topic_stats = [stat for stat in topic_stats if self._matches_subject_filter(stat.get("subject"), normalized_subject)]
@@ -962,6 +1511,364 @@ class SystemPracticeReviewStore:
             },
         }
 
+    def build_ai_planning_context(
+        self,
+        user_id: str,
+        *,
+        subject: str | None = "math",
+        days: int = 7,
+        daily_minutes: int = 60,
+        mode: str | None = "balanced",
+        include_types: Any = None,
+        goal: str | None = "补弱",
+    ) -> dict[str, Any]:
+        safe_user_id = resolve_user_id(user_id)
+        normalized_subject = self._optional_string(subject) or "math"
+        safe_days = max(1, min(int(days or 7), 30))
+        safe_daily_minutes = max(15, min(int(daily_minutes or 60), 240))
+        policy = build_ai_review_plan_policy(mode, include_types)
+        normalized_goal = self._clean_string(goal) or "补弱"
+
+        limits = build_ai_candidate_limits(
+            policy,
+            days=safe_days,
+            daily_minutes=safe_daily_minutes,
+        )
+        ui_weak_topic_limit = int(limits["ui_weak_topic_limit"])
+        ui_action_limit = int(limits["ui_action_limit"])
+        ai_weak_topic_limit = int(limits["ai_weak_topic_limit"])
+        ai_wrong_question_limit = int(limits["ai_wrong_question_limit"])
+        ai_pending_review_limit = int(limits["ai_pending_review_limit"])
+        ai_review_task_limit = int(limits["ai_review_task_limit"])
+        ai_draft_attempt_limit = int(limits["ai_draft_attempt_limit"])
+        ai_unstarted_question_limit = int(limits["ai_unstarted_question_limit"])
+        ai_startup_candidate_limit = int(limits["ai_startup_candidate_limit"])
+        ai_favorite_unmastered_limit = int(limits["ai_favorite_unmastered_limit"])
+
+        ui_insights = self.build_learning_insights(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ui_weak_topic_limit,
+        )
+        ai_insights = self.build_learning_insights(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_weak_topic_limit,
+        )
+        wrong_pool = self.list_wrong_question_pool(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_wrong_question_limit,
+        )
+        pending_review = self.list_pending_review_items(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_pending_review_limit,
+        )
+        review_tasks = self._ai_planning_review_tasks(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_review_task_limit,
+        )
+        plan_feedback = self._ai_planning_feedback_summary(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=50,
+        )
+        draft_attempts = self._ai_planning_draft_attempts(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_draft_attempt_limit,
+        )
+        startup_candidates = self._ai_planning_startup_questions(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_startup_candidate_limit,
+            candidate_type="startup_question",
+        )
+        unstarted_questions = self._ai_planning_startup_questions(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_unstarted_question_limit,
+            candidate_type="unstarted_question",
+        )
+        favorite_unmastered = self._ai_planning_favorite_unmastered_questions(
+            safe_user_id,
+            subject=normalized_subject,
+            limit=ai_favorite_unmastered_limit,
+        )
+        all_candidates = {
+            "weak_topics": [
+                self._compact_ai_weak_topic(item)
+                for item in (ai_insights.get("weak_topics") or [])[:ai_weak_topic_limit]
+            ],
+            "wrong_questions": [
+                self._compact_ai_wrong_question(item)
+                for item in (wrong_pool.get("items") or [])[:ai_wrong_question_limit]
+            ],
+            "pending_review_items": [
+                self._compact_ai_pending_review_item(item)
+                for item in (pending_review.get("items") or [])[:ai_pending_review_limit]
+            ],
+            "review_tasks": [
+                self._compact_ai_review_task(item)
+                for item in review_tasks[:ai_review_task_limit]
+            ],
+            "draft_attempts": [
+                self._compact_ai_draft_attempt(item)
+                for item in draft_attempts[:ai_draft_attempt_limit]
+            ],
+            "unstarted_questions": unstarted_questions,
+            "startup_candidates": startup_candidates,
+            "favorite_unmastered": favorite_unmastered,
+        }
+        filtered_candidates = filter_ai_review_plan_candidates(all_candidates, policy)
+        filtered_candidates = self._enrich_ai_planning_candidates(
+            safe_user_id,
+            filtered_candidates,
+            days=safe_days,
+            daily_minutes=safe_daily_minutes,
+        )
+        raw_counts = {
+            key: len(value) if isinstance(value, list) else 0
+            for key, value in all_candidates.items()
+        }
+        filtered_counts = {
+            key: len(value) if isinstance(value, list) else 0
+            for key, value in filtered_candidates.items()
+        }
+        readiness = assess_ai_review_plan_readiness(
+            filtered_candidates,
+            policy,
+            days=safe_days,
+            daily_minutes=safe_daily_minutes,
+            practice_volume=(ai_insights.get("summary") or {}).get("question_attempt_count"),
+        )
+        return {
+            "user_id": safe_user_id,
+            "generated_at": self._utc_now(),
+            "constraints": {
+                "subject": normalized_subject,
+                "days": safe_days,
+                "daily_minutes": safe_daily_minutes,
+                "mode": policy["mode"],
+                "include_types": policy.get("requested_types") or [],
+                "goal": normalized_goal,
+            },
+            "policy": policy,
+            "limits": limits,
+            "summary": ai_insights.get("summary") or {},
+            "review_summary": ai_insights.get("review_summary") or {},
+            "plan_feedback": plan_feedback,
+            "score_weights": ai_insights.get("score_weights") or {},
+            "candidate_summary": {
+                "raw_counts": raw_counts,
+                "filtered_counts": filtered_counts,
+                "raw_total": sum(raw_counts.values()),
+                "filtered_total": sum(filtered_counts.values()),
+            },
+            "readiness": readiness,
+            "ui_snapshot": {
+                "weak_topics": ui_insights.get("weak_topics") or [],
+                "next_actions": ui_insights.get("next_actions") or [],
+            },
+            "ai_candidates": filtered_candidates,
+        }
+
+    def _enrich_ai_planning_candidates(
+        self,
+        safe_user_id: str,
+        candidates: dict[str, list[dict[str, Any]]],
+        *,
+        days: int,
+        daily_minutes: int,
+    ) -> dict[str, list[dict[str, Any]]]:
+        enriched: dict[str, list[dict[str, Any]]] = {}
+        for candidate_type, values in candidates.items():
+            if not isinstance(values, list):
+                enriched[candidate_type] = []
+                continue
+            rows: list[dict[str, Any]] = []
+            for value in values:
+                if not isinstance(value, dict):
+                    continue
+                prepared = self._prepare_ai_load_candidate(safe_user_id, value, candidate_type)
+                planned_segments, _pending_segments = split_candidate_into_plan_segments(
+                    prepared,
+                    days=days,
+                    daily_minutes=daily_minutes,
+                    candidate_type=candidate_type,
+                )
+                rows.extend(self._strip_ai_candidate_payload(segment) for segment in planned_segments)
+            enriched[candidate_type] = rows
+        return enriched
+
+    def _prepare_ai_load_candidate(
+        self,
+        safe_user_id: str,
+        candidate: dict[str, Any],
+        candidate_type: str,
+    ) -> dict[str, Any]:
+        prepared = dict(candidate)
+        existing_question_rows = [
+            dict(item)
+            for item in (candidate.get("questions") if isinstance(candidate.get("questions"), list) else [])
+            if isinstance(item, dict)
+        ]
+        question_ids = [
+            str(question_id).strip()
+            for question_id in (
+                candidate.get("planned_question_ids")
+                or candidate.get("question_ids")
+                or []
+            )
+            if str(question_id).strip()
+        ]
+        if not question_ids and existing_question_rows:
+            question_ids = [
+                str(item.get("question_id") or item.get("id") or "").strip()
+                for item in existing_question_rows
+                if str(item.get("question_id") or item.get("id") or "").strip()
+            ]
+        if not question_ids:
+            single_question_id = str(candidate.get("question_id") or "").strip()
+            if single_question_id:
+                question_ids = [single_question_id]
+        if not question_ids and str(candidate.get("target_type") or "") == "practice_set":
+            practice_set_id = str(candidate.get("target_id") or candidate.get("practice_set_id") or "").strip()
+            if practice_set_id:
+                try:
+                    practice_set = self.get_practice_set(safe_user_id, practice_set_id)
+                    question_ids = [
+                        str(question_id).strip()
+                        for question_id in practice_set.get("question_ids") or []
+                        if str(question_id).strip()
+                    ]
+                except (ValueError, KeyError, FileNotFoundError):
+                    question_ids = []
+        if question_ids:
+            prepared["question_ids"] = question_ids
+            if existing_question_rows:
+                existing_by_id = {
+                    str(item.get("question_id") or item.get("id") or "").strip(): item
+                    for item in existing_question_rows
+                    if str(item.get("question_id") or item.get("id") or "").strip()
+                }
+                prepared["questions"] = [
+                    self._merge_ai_load_question_detail(
+                        question_id,
+                        existing_by_id.get(question_id) or {},
+                        candidate,
+                    )
+                    for question_id in question_ids[:200]
+                ]
+            else:
+                prepared["questions"] = [
+                    self._ai_load_question_detail(question_id, candidate)
+                    for question_id in question_ids[:200]
+                ]
+        source_id = self._ai_candidate_source_id(prepared)
+        if source_id:
+            prepared.setdefault("source_id", source_id)
+            prepared.setdefault("candidate_id", source_id)
+        prepared.setdefault("candidate_type", candidate_type)
+        prepared["candidate_pool_type"] = candidate_type
+        return prepared
+
+    def _merge_ai_load_question_detail(
+        self,
+        question_id: str,
+        existing: dict[str, Any],
+        candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        base = self._ai_load_question_detail(question_id, candidate)
+        merged = {**base, **existing, "question_id": question_id}
+        for key in ("question_type", "difficulty", "topics"):
+            if not merged.get(key):
+                merged[key] = base.get(key)
+        return merged
+
+    def _ai_load_question_detail(self, question_id: str, candidate: dict[str, Any]) -> dict[str, Any]:
+        try:
+            question = self.library.get_question(question_id)
+        except (KeyError, FileNotFoundError, OSError, UnicodeDecodeError, ValueError):
+            question = {}
+        return {
+            "question_id": question_id,
+            "question_type": str(question.get("question_type") or candidate.get("question_type") or "unknown"),
+            "difficulty": str(question.get("difficulty") or candidate.get("difficulty") or "unknown"),
+            "topics": [
+                str(topic)
+                for topic in (question.get("topics") or candidate.get("topics") or [])
+                if str(topic).strip()
+            ][:8],
+        }
+
+    def _ai_candidate_source_id(self, candidate: dict[str, Any]) -> str:
+        for key in (
+            "source_id",
+            "candidate_id",
+            "plan_segment_id",
+            "question_id",
+            "task_id",
+            "attempt_id",
+            "set_id",
+            "practice_set_id",
+            "target_id",
+            "topic",
+        ):
+            value = str(candidate.get(key) or "").strip()
+            if value:
+                return value
+        return ""
+
+    def _strip_ai_candidate_payload(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        blocked_keys = {
+            "question_details",
+            "items",
+            "answer",
+            "explanation",
+            "standard_answer",
+            "user_answer",
+            "content",
+            "markdown",
+            "raw_markdown",
+        }
+        stripped = {
+            key: value
+            for key, value in candidate.items()
+            if key not in blocked_keys
+        }
+        if isinstance(candidate.get("questions"), list):
+            stripped["questions"] = self._lightweight_ai_candidate_questions(candidate["questions"])
+        return stripped
+
+    def _lightweight_ai_candidate_questions(self, questions: list[Any]) -> list[dict[str, Any]]:
+        blocked_keys = {
+            "answer",
+            "answer_markdown",
+            "content",
+            "explanation",
+            "markdown",
+            "question_markdown",
+            "raw_markdown",
+            "solution",
+            "standard_answer",
+            "user_answer",
+        }
+        rows: list[dict[str, Any]] = []
+        for item in questions[:200]:
+            if not isinstance(item, dict):
+                continue
+            rows.append(
+                {
+                    str(key): value
+                    for key, value in item.items()
+                    if str(key).strip() and key not in blocked_keys
+                }
+            )
+        return rows
+
     def update_review_task(self, user_id: str, review_task_id: str, patch: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(patch, dict):
             raise ValueError("review task patch must be a JSON object")
@@ -972,6 +1879,9 @@ class SystemPracticeReviewStore:
             if record.get("task_id") != safe_task_id:
                 continue
             updated = dict(record)
+            previous_status = str(updated.get("status") or "")
+            previous_due_at = self._optional_string(updated.get("due_at"))
+            now = self._utc_now()
             if "title" in patch:
                 updated["title"] = self._clean_string(patch.get("title"))
             if "due_at" in patch:
@@ -982,14 +1892,83 @@ class SystemPracticeReviewStore:
                 updated["note"] = self._clean_string(patch.get("note"))
             if "status" in patch:
                 updated["status"] = self._normalize_review_status(patch.get("status"))
-                now = self._utc_now()
                 updated["completed_at"] = now if updated["status"] == "completed" else None
                 updated["cancelled_at"] = now if updated["status"] == "cancelled" else None
-            updated["updated_at"] = self._utc_now()
+            feedback_action = self._review_task_feedback_action(
+                patch,
+                previous_status=previous_status,
+                next_status=str(updated.get("status") or ""),
+                previous_due_at=previous_due_at,
+                next_due_at=self._optional_string(updated.get("due_at")),
+            )
+            if feedback_action:
+                if feedback_action == "started" and not updated.get("started_at"):
+                    updated["started_at"] = now
+                updated["feedback_events"] = self._append_review_task_feedback_event(
+                    updated,
+                    feedback_action,
+                    at=now,
+                    previous_status=previous_status,
+                    previous_due_at=previous_due_at,
+                )
+                updated["last_review_action"] = feedback_action
+                updated["last_review_action_at"] = now
+            updated["updated_at"] = now
             records[index] = updated
             self._write_records(safe_user_id, REVIEW_TASK_FILENAME, records)
             return dict(updated)
         raise KeyError(f"review task not found: {safe_task_id}")
+
+    def _review_task_feedback_action(
+        self,
+        patch: dict[str, Any],
+        *,
+        previous_status: str,
+        next_status: str,
+        previous_due_at: str | None,
+        next_due_at: str | None,
+    ) -> str:
+        raw_action = self._clean_string(patch.get("feedback_action"))
+        if raw_action:
+            allowed = {"started", "completed", "postponed", "cancelled", "restored"}
+            if raw_action not in allowed:
+                raise ValueError("invalid review task feedback_action")
+            return raw_action
+        if previous_status != next_status:
+            if next_status == "completed":
+                return "completed"
+            if next_status == "cancelled":
+                return "cancelled"
+            if previous_status == "cancelled" and next_status == "pending":
+                return "restored"
+        if previous_due_at != next_due_at and next_due_at:
+            return "postponed"
+        return ""
+
+    def _append_review_task_feedback_event(
+        self,
+        task: dict[str, Any],
+        action: str,
+        *,
+        at: str,
+        previous_status: str,
+        previous_due_at: str | None,
+    ) -> list[dict[str, Any]]:
+        current_events = task.get("feedback_events") if isinstance(task.get("feedback_events"), list) else []
+        event = {
+            "event": action,
+            "at": at,
+            "from_status": previous_status,
+            "to_status": str(task.get("status") or ""),
+            "from_due_at": previous_due_at,
+            "to_due_at": self._optional_string(task.get("due_at")),
+            "target_type": str(task.get("target_type") or ""),
+            "target_id": str(task.get("target_id") or ""),
+            "plan_id": self._clean_string(task.get("plan_id")),
+            "plan_mode": self._clean_string(task.get("plan_mode")),
+            "created_from": self._clean_string(task.get("created_from")),
+        }
+        return [dict(item) for item in current_events[-49:] if isinstance(item, dict)] + [event]
 
     def delete_review_task(self, user_id: str, review_task_id: str) -> bool:
         safe_user_id = resolve_user_id(user_id)
@@ -1660,7 +2639,10 @@ class SystemPracticeReviewStore:
         }
         attempt_id = validate_safe_id(str(attempt.get("attempt_id") or ""), "attempt_id")
         safe_question_id = validate_safe_id(question_id, "question_id")
-        final_status = str(result.get("final_status") or result.get("status") or "pending_review")
+        try:
+            final_status = self._normalize_final_status(result.get("final_status") or result.get("status") or "pending_review")
+        except ValueError:
+            final_status = "pending_review"
         return {
             "attempt_item_id": f"{attempt_id}__{safe_question_id}",
             "attempt_id": attempt_id,
@@ -1691,6 +2673,52 @@ class SystemPracticeReviewStore:
             "graded_at": result.get("graded_at"),
             "grading_version": str(result.get("grading_version") or "local_v1"),
         }
+
+    def _materialize_submitted_attempt_items(self, safe_user_id: str) -> int:
+        attempts = self._read_records(safe_user_id, PRACTICE_ATTEMPT_FILENAME, "attempt_id")
+        if not attempts:
+            return 0
+        existing_items = self._read_records(safe_user_id, PRACTICE_ATTEMPT_ITEM_FILENAME, "attempt_item_id")
+        existing_ids = {str(item.get("attempt_item_id") or "") for item in existing_items}
+        materialized_count = 0
+        for attempt in attempts:
+            if str(attempt.get("status") or "") != "submitted":
+                continue
+            results = attempt.get("results") if isinstance(attempt.get("results"), dict) else {}
+            if not results:
+                continue
+            attempt_id = str(attempt.get("attempt_id") or "")
+            try:
+                safe_attempt_id = validate_safe_id(attempt_id, "attempt_id")
+            except ValueError:
+                continue
+            expected_item_ids: list[str] = []
+            for question_id in results:
+                try:
+                    safe_question_id = validate_safe_id(str(question_id), "question_id")
+                except ValueError:
+                    continue
+                expected_item_ids.append(f"{safe_attempt_id}__{safe_question_id}")
+            if expected_item_ids and all(item_id in existing_ids for item_id in expected_item_ids):
+                continue
+            practice_set_id = str(attempt.get("practice_set_id") or "")
+            if not practice_set_id:
+                continue
+            try:
+                practice_set = self.get_practice_set(safe_user_id, practice_set_id)
+            except (ValueError, KeyError, FileNotFoundError):
+                continue
+            materialized = self._write_attempt_items_for_attempt(
+                safe_user_id,
+                self._backfill_practice_attempt_result(attempt),
+                practice_set,
+            )
+            for item in materialized:
+                existing_ids.add(str(item.get("attempt_item_id") or ""))
+            materialized_count += len(materialized)
+        if materialized_count:
+            self.rebuild_user_learning_stats(safe_user_id)
+        return materialized_count
 
     def _write_attempt_items_for_attempt(
         self,
@@ -1840,6 +2868,7 @@ class SystemPracticeReviewStore:
         latest_pending_at = ""
         attempt_ids: set[str] = set()
         question_ids: set[str] = set()
+        wrong_question_ids: set[str] = set()
         pending_review_question_ids: set[str] = set()
         for item in items:
             attempt_id = str(item.get("attempt_id") or "")
@@ -1851,6 +2880,8 @@ class SystemPracticeReviewStore:
             status = str(item.get("final_status") or item.get("status") or "pending_review")
             count_key = self._status_count_key(status)
             status_counts[count_key] = status_counts.get(count_key, 0) + 1
+            if count_key in {"incorrect_count", "partial_count"} and question_id:
+                wrong_question_ids.add(question_id)
             practiced_at = str(item.get("submitted_at") or item.get("graded_at") or "")
             if practiced_at and practiced_at > latest_practiced_at:
                 latest_practiced_at = practiced_at
@@ -1870,9 +2901,34 @@ class SystemPracticeReviewStore:
             "latest_practiced_at": latest_practiced_at,
             "latest_attempt_id": latest_attempt_id,
             "latest_pending_attempt_id": latest_pending_attempt_id,
+            "unique_wrong_question_count": len(wrong_question_ids),
             "pending_review_question_count": len(pending_review_question_ids),
             **status_counts,
         }
+
+    def _learning_attempt_status_summary(self, attempts: list[dict[str, Any]]) -> dict[str, Any]:
+        counts = {
+            "draft_attempt_count": 0,
+            "submitted_attempt_count": 0,
+            "abandoned_attempt_count": 0,
+        }
+        latest_draft_at = ""
+        latest_draft_attempt_id = ""
+        for attempt in attempts:
+            status = str(attempt.get("status") or "")
+            if status == "draft":
+                counts["draft_attempt_count"] += 1
+                updated_at = str(attempt.get("last_saved_at") or attempt.get("started_at") or "")
+                if updated_at and updated_at >= latest_draft_at:
+                    latest_draft_at = updated_at
+                    latest_draft_attempt_id = str(attempt.get("attempt_id") or "")
+            elif status == "submitted":
+                counts["submitted_attempt_count"] += 1
+            elif status == "abandoned":
+                counts["abandoned_attempt_count"] += 1
+        counts["latest_draft_at"] = latest_draft_at
+        counts["latest_draft_attempt_id"] = latest_draft_attempt_id
+        return counts
 
     def _learning_review_summary(self, review_tasks: list[dict[str, Any]]) -> dict[str, Any]:
         counts = {
@@ -1947,12 +3003,16 @@ class SystemPracticeReviewStore:
         review_summary: dict[str, Any],
     ) -> list[dict[str, Any]]:
         actions: list[dict[str, Any]] = []
-        wrong_total = int(summary.get("incorrect_count") or 0) + int(summary.get("partial_count") or 0)
+        draft_total = int(summary.get("draft_attempt_count") or 0)
+        wrong_attempt_total = int(summary.get("incorrect_count") or 0) + int(summary.get("partial_count") or 0)
+        wrong_total = int(summary.get("unique_wrong_question_count") or wrong_attempt_total)
         pending_total = int(summary.get("pending_review_count") or 0)
         pending_question_total = int(summary.get("pending_review_question_count") or 0)
         due_total = int(review_summary.get("due_count") or 0)
         if due_total:
             actions.append({"type": "review_due", "label": f"处理 {due_total} 个到期复习", "status": "due"})
+        if draft_total:
+            actions.append({"type": "continue_draft", "label": f"继续 {draft_total} 份未提交练习", "status": "draft"})
         if wrong_total:
             actions.append({"type": "review_wrong", "label": f"复习 {wrong_total} 道错题", "status": "incorrect"})
         if pending_question_total:
@@ -1969,6 +3029,424 @@ class SystemPracticeReviewStore:
         if not actions:
             actions.append({"type": "keep_practicing", "label": "暂无明显风险，保持当前节奏"})
         return actions[:4]
+
+    def _ai_planning_review_tasks(
+        self,
+        safe_user_id: str,
+        *,
+        subject: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        tasks = self.list_review_tasks(safe_user_id, status="pending", subject=subject)
+        date_rank = {"overdue": 0, "today": 1, "future": 2, "unscheduled": 3}
+        tasks.sort(
+            key=lambda task: (
+                date_rank.get(self._review_date_group(task), 9),
+                str(task.get("due_at") or "9999-99-99"),
+                -int(task.get("priority") or 0),
+                str(task.get("created_at") or ""),
+            )
+        )
+        return [dict(task) for task in tasks[: max(1, min(int(limit or 30), 100))]]
+
+    def _ai_planning_feedback_summary(
+        self,
+        safe_user_id: str,
+        *,
+        subject: str,
+        limit: int,
+    ) -> dict[str, Any]:
+        records = self.list_review_tasks(safe_user_id, subject=subject)
+        events: list[dict[str, Any]] = []
+        by_action: dict[str, int] = {}
+        by_mode: dict[str, int] = {}
+        for task in records:
+            task_events = task.get("feedback_events") if isinstance(task.get("feedback_events"), list) else []
+            for raw_event in task_events:
+                if not isinstance(raw_event, dict):
+                    continue
+                event_name = self._clean_string(raw_event.get("event"))
+                if not event_name:
+                    continue
+                event = {
+                    "event": event_name,
+                    "at": self._clean_string(raw_event.get("at")),
+                    "task_id": self._clean_string(task.get("task_id")),
+                    "title": self._clean_string(task.get("title")),
+                    "target_type": self._clean_string(raw_event.get("target_type") or task.get("target_type")),
+                    "target_id": self._clean_string(raw_event.get("target_id") or task.get("target_id")),
+                    "plan_id": self._clean_string(raw_event.get("plan_id") or task.get("plan_id")),
+                    "plan_mode": self._clean_string(raw_event.get("plan_mode") or task.get("plan_mode")),
+                    "to_status": self._clean_string(raw_event.get("to_status") or task.get("status")),
+                    "to_due_at": self._clean_string(raw_event.get("to_due_at") or task.get("due_at")),
+                }
+                events.append(event)
+                by_action[event_name] = by_action.get(event_name, 0) + 1
+                if event["plan_mode"]:
+                    by_mode[event["plan_mode"]] = by_mode.get(event["plan_mode"], 0) + 1
+        events.sort(key=lambda item: item.get("at") or "")
+        safe_limit = max(1, min(int(limit or 50), 100))
+        return {
+            "total_events": len(events),
+            "by_action": by_action,
+            "by_mode": by_mode,
+            "recent_events": events[-safe_limit:],
+        }
+
+    def _ai_planning_draft_attempts(
+        self,
+        safe_user_id: str,
+        *,
+        subject: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        attempts = [
+            attempt
+            for attempt in self.list_practice_attempts(safe_user_id)
+            if str(attempt.get("status") or "") == "draft"
+            and self._matches_subject_filter(
+                (attempt.get("source_meta") or {}).get("subject"),
+                subject,
+                exam_type=(attempt.get("source_meta") or {}).get("exam_type"),
+            )
+        ]
+        attempts.sort(
+            key=lambda attempt: str(attempt.get("last_saved_at") or attempt.get("started_at") or ""),
+            reverse=True,
+        )
+        return [dict(attempt) for attempt in attempts[: max(1, min(int(limit or 20), 100))]]
+
+    def _ai_planning_startup_questions(
+        self,
+        safe_user_id: str,
+        *,
+        subject: str,
+        limit: int,
+        candidate_type: str,
+    ) -> list[dict[str, Any]]:
+        questions = self._ai_planning_question_rows(subject=subject)
+        if not questions:
+            return []
+        question_ids = [str(question.get("question_id") or "") for question in questions if str(question.get("question_id") or "")]
+        states = self.state_store.list_question_states(safe_user_id, question_ids) if question_ids else {}
+        stats = self.list_user_question_stats(safe_user_id)
+        candidates: list[dict[str, Any]] = []
+        for question in questions:
+            question_id = str(question.get("question_id") or "")
+            if not question_id:
+                continue
+            state = states.get(question_id) or {}
+            stat = stats.get(question_id) or {}
+            if str(state.get("mastery_status") or "not_started") == "mastered":
+                continue
+            if self._to_int(stat.get("attempt_count")) > 0:
+                continue
+            candidates.append(
+                self._compact_ai_startup_question(
+                    question,
+                    state,
+                    stat,
+                    candidate_type=candidate_type,
+                )
+            )
+        candidates.sort(
+            key=lambda item: (
+                -self._startup_topic_score(item.get("topics") or []),
+                -self._to_int(item.get("year")),
+                self._to_int(item.get("question_number")),
+                str(item.get("question_id") or ""),
+            )
+        )
+        return candidates[: max(1, min(int(limit or 50), 200))]
+
+    def _ai_planning_favorite_unmastered_questions(
+        self,
+        safe_user_id: str,
+        *,
+        subject: str,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        questions = self._ai_planning_question_rows(subject=subject)
+        if not questions:
+            return []
+        question_ids = [str(question.get("question_id") or "") for question in questions if str(question.get("question_id") or "")]
+        states = self.state_store.list_question_states(safe_user_id, question_ids) if question_ids else {}
+        stats = self.list_user_question_stats(safe_user_id)
+        candidates: list[dict[str, Any]] = []
+        for question in questions:
+            question_id = str(question.get("question_id") or "")
+            state = states.get(question_id) or {}
+            if not bool(state.get("is_favorite")):
+                continue
+            if str(state.get("mastery_status") or "not_started") == "mastered":
+                continue
+            candidates.append(
+                self._compact_ai_startup_question(
+                    question,
+                    state,
+                    stats.get(question_id) or {},
+                    candidate_type="favorite_unmastered",
+                )
+            )
+        candidates.sort(
+            key=lambda item: (
+                -self._to_int(item.get("wrong_count")),
+                -self._to_int(item.get("pending_review_count")),
+                -self._to_int(item.get("year")),
+                self._to_int(item.get("question_number")),
+            )
+        )
+        return candidates[: max(1, min(int(limit or 20), 100))]
+
+    def _ai_planning_question_rows(self, *, subject: str) -> list[dict[str, Any]]:
+        normalized_subject = self._optional_string(subject) or "math"
+        if normalized_subject not in {"math", "all"} and not self._matches_subject_filter("math", normalized_subject):
+            return []
+        try:
+            _, questions = self.library.list_all_questions(subject="math", exam_type="all")
+        except (OSError, UnicodeDecodeError, ValueError, TypeError):
+            return []
+        return [dict(question) for question in questions]
+
+    def _compact_ai_startup_question(
+        self,
+        question: dict[str, Any],
+        state: dict[str, Any],
+        stat: dict[str, Any],
+        *,
+        candidate_type: str,
+    ) -> dict[str, Any]:
+        return {
+            "candidate_type": candidate_type,
+            "question_id": str(question.get("question_id") or ""),
+            "title": self._question_candidate_title(question),
+            "subject": str(question.get("subject") or "math"),
+            "exam_type": str(question.get("exam_type") or ""),
+            "library_name": str(question.get("library_name") or ""),
+            "year": question.get("year"),
+            "question_number": question.get("question_number"),
+            "question_type": str(question.get("question_type") or ""),
+            "question_type_label": str(question.get("question_type_label") or ""),
+            "topics": [str(topic) for topic in (question.get("topics") or []) if str(topic).strip()][:8],
+            "mastery_status": str(state.get("mastery_status") or "not_started"),
+            "is_favorite": bool(state.get("is_favorite")),
+            "in_wrong_book": bool(state.get("in_wrong_book")),
+            "attempt_count": self._to_int(stat.get("attempt_count")),
+            "wrong_count": self._to_int(stat.get("incorrect_count")) + self._to_int(stat.get("partial_count")),
+            "pending_review_count": self._to_int(stat.get("pending_review_count")),
+            "reason": "unpracticed question in selected scope",
+        }
+
+    def _question_candidate_title(self, question: dict[str, Any]) -> str:
+        year = self._to_int(question.get("year"))
+        exam_type_label = str(question.get("exam_type_label") or question.get("exam_type") or "").strip()
+        question_number = self._to_int(question.get("question_number"))
+        if year and question_number:
+            return f"{year} {exam_type_label} Q{question_number}"
+        return str(question.get("question_id") or "").strip()
+
+    def _startup_topic_score(self, topics: list[Any]) -> int:
+        joined = " ".join(str(topic).lower() for topic in topics)
+        basic_keywords = (
+            "limit",
+            "continu",
+            "deriv",
+            "integral",
+            "series",
+            "matrix",
+            "linear",
+            "probab",
+            "极限",
+            "连续",
+            "导数",
+            "积分",
+            "级数",
+            "矩阵",
+            "向量",
+            "概率",
+        )
+        return sum(1 for keyword in basic_keywords if keyword in joined)
+
+    def _to_int(self, value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    def _compact_ai_weak_topic(self, item: dict[str, Any]) -> dict[str, Any]:
+        reasons = item.get("priority_reasons") if isinstance(item.get("priority_reasons"), list) else []
+        return {
+            "topic": str(item.get("topic") or ""),
+            "subject": str(item.get("subject") or ""),
+            "priority_score": item.get("priority_score"),
+            "attempt_count": item.get("attempt_count"),
+            "wrong_count": item.get("wrong_count"),
+            "pending_review_count": item.get("pending_review_count"),
+            "unanswered_count": item.get("unanswered_count"),
+            "confidence": item.get("confidence"),
+            "latest_practiced_at": item.get("latest_practiced_at") or "",
+            "primary_reason": str((reasons[0] or {}).get("label") or "") if reasons else "",
+            "reason_types": [str(reason.get("type") or "") for reason in reasons if isinstance(reason, dict)][:6],
+            "representative_wrong_question_ids": [
+                str(question_id)
+                for question_id in (item.get("representative_wrong_question_ids") or [])
+                if str(question_id).strip()
+            ][:8],
+        }
+
+    def _compact_ai_wrong_question(self, item: dict[str, Any]) -> dict[str, Any]:
+        reasons = item.get("priority_reasons") if isinstance(item.get("priority_reasons"), list) else []
+        return {
+            "question_id": str(item.get("question_id") or ""),
+            "title": str(item.get("title") or ""),
+            "subject": str(item.get("subject") or ""),
+            "exam_type": str(item.get("exam_type") or ""),
+            "library_name": str(item.get("library_name") or ""),
+            "year": item.get("year"),
+            "question_number": item.get("question_number"),
+            "question_type": str(item.get("question_type") or ""),
+            "question_type_label": str(item.get("question_type_label") or ""),
+            "topics": [str(topic) for topic in (item.get("topics") or []) if str(topic).strip()][:8],
+            "attempt_count": item.get("attempt_count"),
+            "wrong_count": item.get("wrong_count"),
+            "pending_review_count": item.get("pending_review_count"),
+            "unanswered_count": item.get("unanswered_count"),
+            "risk_count": item.get("risk_count"),
+            "latest_status": str(item.get("latest_status") or ""),
+            "latest_practiced_at": str(item.get("latest_practiced_at") or ""),
+            "wrong_streak": item.get("wrong_streak"),
+            "confidence": item.get("confidence"),
+            "priority_score": item.get("priority_score"),
+            "primary_reason": str((reasons[0] or {}).get("label") or "") if reasons else "",
+            "reason_types": [str(reason.get("type") or "") for reason in reasons if isinstance(reason, dict)][:6],
+        }
+
+    def _compact_ai_pending_review_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        source_meta = item.get("source_meta") if isinstance(item.get("source_meta"), dict) else {}
+        return {
+            "attempt_item_id": str(item.get("attempt_item_id") or ""),
+            "attempt_id": str(item.get("attempt_id") or ""),
+            "practice_set_id": str(item.get("practice_set_id") or ""),
+            "question_id": str(item.get("question_id") or ""),
+            "question_title": str(item.get("question_title") or ""),
+            "subject": str(source_meta.get("subject") or ""),
+            "exam_type": str(source_meta.get("exam_type") or ""),
+            "library_name": str(source_meta.get("library_name") or ""),
+            "year": source_meta.get("year"),
+            "question_number": source_meta.get("question_number"),
+            "question_type": str(item.get("question_type") or ""),
+            "question_type_label": str(item.get("question_type_label") or ""),
+            "answer_type": str(item.get("answer_type") or ""),
+            "topics": [str(topic) for topic in (item.get("topics") or []) if str(topic).strip()][:8],
+            "user_answer": str(item.get("user_answer") or ""),
+            "standard_answer": str(item.get("standard_answer") or ""),
+            "submitted_at": str(item.get("submitted_at") or ""),
+        }
+
+    def _compact_ai_review_task(self, item: dict[str, Any]) -> dict[str, Any]:
+        source_meta = item.get("source_meta") if isinstance(item.get("source_meta"), dict) else {}
+        reasons = item.get("learning_reasons") if isinstance(item.get("learning_reasons"), list) else []
+        return {
+            "task_id": str(item.get("task_id") or ""),
+            "target_type": str(item.get("target_type") or ""),
+            "target_id": str(item.get("target_id") or ""),
+            "title": str(item.get("title") or ""),
+            "due_at": str(item.get("due_at") or ""),
+            "date_group": self._review_date_group(item),
+            "priority": item.get("priority"),
+            "status": str(item.get("status") or ""),
+            "subject": str(item.get("subject") or source_meta.get("subject") or ""),
+            "exam_type": str(item.get("exam_type") or source_meta.get("exam_type") or ""),
+            "library_name": str(item.get("library_name") or source_meta.get("library_name") or ""),
+            "source_title": str(item.get("source_title") or source_meta.get("source_title") or ""),
+            "question_count": source_meta.get("question_count"),
+            "topics": [str(topic) for topic in (source_meta.get("topics") or source_meta.get("matching_topics") or []) if str(topic).strip()][:8],
+            "reason_types": [str(reason.get("type") or "") for reason in reasons if isinstance(reason, dict)][:6],
+            "last_review_action": str(item.get("last_review_action") or ""),
+            "last_review_action_at": str(item.get("last_review_action_at") or ""),
+        }
+
+    def _compact_ai_draft_attempt(self, item: dict[str, Any]) -> dict[str, Any]:
+        source_meta = item.get("source_meta") if isinstance(item.get("source_meta"), dict) else {}
+        summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
+        safe_user_id = str(item.get("user_id") or "").strip()
+        practice_set_id = str(item.get("practice_set_id") or "").strip()
+        answers = item.get("answers") if isinstance(item.get("answers"), dict) else {}
+        practice_set: dict[str, Any] = {}
+        question_ids: list[str] = []
+        if safe_user_id and practice_set_id:
+            try:
+                safe_user_id = resolve_user_id(safe_user_id)
+                practice_set = self.get_practice_set(safe_user_id, practice_set_id)
+                question_ids = [
+                    str(question_id)
+                    for question_id in practice_set.get("question_ids") or []
+                    if str(question_id).strip()
+                ]
+            except (ValueError, KeyError, FileNotFoundError):
+                question_ids = [
+                    str(question_id)
+                    for question_id in source_meta.get("question_ids") or []
+                    if str(question_id).strip()
+                ]
+        else:
+            question_ids = [
+                str(question_id)
+                for question_id in source_meta.get("question_ids") or []
+                if str(question_id).strip()
+            ]
+
+        def _answered(question_id: str) -> bool:
+            raw_answer = answers.get(question_id)
+            value = raw_answer.get("value") if isinstance(raw_answer, dict) else raw_answer
+            return bool(self._clean_answer_value(value))
+
+        states = self.state_store.list_question_states(safe_user_id, question_ids) if safe_user_id and question_ids else {}
+        stats = self.list_user_question_stats(safe_user_id) if safe_user_id else {}
+        questions: list[dict[str, Any]] = []
+        for question_id in question_ids[:20]:
+            try:
+                question = self.library.get_question(question_id)
+            except (KeyError, FileNotFoundError, OSError, UnicodeDecodeError, ValueError):
+                question = {"question_id": question_id}
+            state = states.get(question_id) or {}
+            stat = stats.get(question_id) or {}
+            raw_answer = answers.get(question_id)
+            answer_type = raw_answer.get("answer_type") if isinstance(raw_answer, dict) else ""
+            questions.append(
+                {
+                    "question_id": question_id,
+                    "title": self._question_candidate_title(question),
+                    "question_type": str(question.get("question_type") or ""),
+                    "question_type_label": str(question.get("question_type_label") or ""),
+                    "answer_type": str(answer_type or ""),
+                    "topics": [str(topic) for topic in (question.get("topics") or []) if str(topic).strip()][:8],
+                    "answered": _answered(question_id),
+                    "latest_status": str(stat.get("latest_status") or ""),
+                    "attempt_count": self._to_int(stat.get("attempt_count")),
+                    "wrong_count": self._to_int(stat.get("incorrect_count")) + self._to_int(stat.get("partial_count")),
+                    "pending_review_count": self._to_int(stat.get("pending_review_count")),
+                    "unanswered_count": self._to_int(stat.get("unanswered_count")),
+                    "mastery_status": str(state.get("mastery_status") or "not_started"),
+                    "is_favorite": bool(state.get("is_favorite")),
+                    "in_wrong_book": bool(state.get("in_wrong_book")),
+                }
+            )
+        question_count = len(question_ids) or self._to_int(source_meta.get("question_count")) or summary.get("total_count")
+        answered_count = sum(1 for question_id in question_ids if _answered(question_id))
+        return {
+            "attempt_id": str(item.get("attempt_id") or ""),
+            "practice_set_id": practice_set_id,
+            "title": str(source_meta.get("source_title") or item.get("practice_title") or item.get("practice_set_id") or ""),
+            "subject": str(source_meta.get("subject") or ""),
+            "exam_type": str(source_meta.get("exam_type") or ""),
+            "library_name": str(source_meta.get("library_name") or ""),
+            "question_count": question_count,
+            "answered_count": answered_count,
+            "unanswered_count": max(0, self._to_int(question_count) - answered_count),
+            "last_saved_at": str(item.get("last_saved_at") or item.get("started_at") or ""),
+            "questions": questions,
+        }
 
     def _learning_recent_weight(self, value: Any, *, has_risk: bool) -> float:
         if not has_risk:
@@ -2329,6 +3807,389 @@ class SystemPracticeReviewStore:
                 return dict(record)
         return None
 
+    def _ai_plan_item_review_target(
+        self,
+        safe_user_id: str,
+        item: dict[str, Any],
+        *,
+        index: int,
+        allow_generic: bool = True,
+    ) -> tuple[str, str]:
+        target_info = self._ai_plan_item_review_target_info(
+            safe_user_id,
+            item,
+            index=index,
+            allow_generic=allow_generic,
+        )
+        target_id = str(target_info.get("target_id") or "")
+        if not target_id:
+            raise ValueError("ai plan target requires derived practice set creation")
+        return str(target_info["target_type"]), target_id
+
+    def _ai_plan_item_review_target_info(
+        self,
+        safe_user_id: str,
+        item: dict[str, Any],
+        *,
+        index: int,
+        allow_generic: bool = True,
+    ) -> dict[str, Any]:
+        raw_source_ids = self._ai_plan_item_source_ids(item)
+        safe_source_ids: list[str] = []
+        for raw_source_id in raw_source_ids:
+            try:
+                safe_source_ids.append(validate_safe_id(raw_source_id, "source_id"))
+            except ValueError:
+                continue
+        planned_question_ids = self._ai_plan_item_planned_question_ids(item)
+        if planned_question_ids:
+            for question_id in planned_question_ids:
+                self.library.get_question(question_id)
+            source_meta_extra = self._ai_plan_item_segment_source_meta(item)
+            if safe_source_ids:
+                source_meta_extra["source_ids"] = list(safe_source_ids)
+            return {
+                "target_type": "practice_set",
+                "target_id": "",
+                "derived_practice_question_ids": planned_question_ids,
+                "requires_practice_set_creation": True,
+                "source_meta_extra": source_meta_extra,
+            }
+        question_ids: list[str] = []
+        practice_set_ids: list[str] = []
+        draft_attempts: list[dict[str, Any]] = []
+        unsupported_source_ids: list[str] = []
+        for source_id in safe_source_ids:
+            if source_id.startswith("kaoyan_"):
+                self.library.get_question(source_id)
+                question_ids.append(source_id)
+                continue
+            if source_id.startswith("ps_"):
+                self.get_practice_set(safe_user_id, source_id)
+                practice_set_ids.append(source_id)
+                continue
+            try:
+                attempt = self.get_practice_attempt(safe_user_id, source_id)
+            except (ValueError, KeyError, FileNotFoundError):
+                unsupported_source_ids.append(source_id)
+                continue
+            practice_set_id = str(attempt.get("practice_set_id") or "")
+            if str(attempt.get("status") or "") != "draft" or not practice_set_id:
+                unsupported_source_ids.append(source_id)
+                continue
+            self.get_practice_set(safe_user_id, practice_set_id)
+            draft_attempts.append(attempt)
+            continue
+            unsupported_source_ids.append(source_id)
+        if self._ai_plan_item_prefers_knowledge_placeholder(
+            item,
+            question_ids=question_ids,
+        ):
+            return self._ai_plan_item_knowledge_placeholder_target_info(
+                safe_user_id,
+                item,
+                index=index,
+                raw_source_ids=raw_source_ids,
+                safe_source_ids=safe_source_ids,
+                question_ids=question_ids,
+                practice_set_ids=practice_set_ids,
+                unsupported_source_ids=unsupported_source_ids,
+            )
+        if len(safe_source_ids) == 1:
+            source_id = safe_source_ids[0]
+            if question_ids:
+                return {"target_type": "question", "target_id": source_id}
+            if practice_set_ids:
+                return {"target_type": "practice_set", "target_id": source_id}
+            if draft_attempts:
+                attempt = draft_attempts[0]
+                return {
+                    "target_type": "practice_set",
+                    "target_id": str(attempt.get("practice_set_id") or ""),
+                    "source_meta_extra": {
+                        "resume_attempt_id": str(attempt.get("attempt_id") or ""),
+                        "source_attempt_id": str(attempt.get("attempt_id") or ""),
+                        "task_kind": "continue_draft",
+                        "draft_status": str(attempt.get("status") or ""),
+                    },
+                }
+        if (
+            len(question_ids) >= 2
+            and len(question_ids) == len(safe_source_ids)
+            and not practice_set_ids
+            and not unsupported_source_ids
+        ):
+            return {
+                "target_type": "practice_set",
+                "target_id": "",
+                "derived_practice_question_ids": question_ids,
+            }
+
+        if not allow_generic:
+            raise ValueError("规划项缺少可追踪的真实题目或练习单来源，暂不能写入复习规划")
+
+        title = self._clean_string(item.get("title") or item.get("action")) or "AI 规划复习任务"
+        due_at = self._clean_string(item.get("due_at") or item.get("date"))
+        item_type = self._clean_string(item.get("type")) or "review"
+        raw_key = "|".join([item_type, title, due_at, ",".join(raw_source_ids), str(index)])
+        digest = hashlib.sha1(raw_key.encode("utf-8")).hexdigest()[:16]
+        return {"target_type": "knowledge_point", "target_id": f"kp_ai_{digest}"}
+
+    def _ai_plan_item_planned_question_ids(self, item: dict[str, Any]) -> list[str]:
+        values = item.get("planned_question_ids") or item.get("question_ids")
+        if not isinstance(values, list):
+            return []
+        question_ids: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            raw_value = str(value or "").strip()
+            if not raw_value:
+                continue
+            try:
+                question_id = validate_safe_id(raw_value, "question_id")
+            except ValueError:
+                continue
+            if question_id in seen:
+                continue
+            seen.add(question_id)
+            question_ids.append(question_id)
+        return question_ids
+
+    def _ai_plan_item_segment_source_meta(self, item: dict[str, Any]) -> dict[str, Any]:
+        source_meta_extra: dict[str, Any] = {"task_kind": "ai_plan_practice_segment"}
+        for key in (
+            "parent_practice_set_id",
+            "parent_source_id",
+            "plan_segment_id",
+            "part_index",
+            "part_count",
+            "load_units",
+            "question_count",
+        ):
+            value = item.get(key)
+            if value not in (None, ""):
+                source_meta_extra[key] = value
+        return source_meta_extra
+
+    def _ai_plan_item_prefers_knowledge_placeholder(
+        self,
+        item: dict[str, Any],
+        *,
+        question_ids: list[str] | None = None,
+    ) -> bool:
+        item_type = self._clean_string(item.get("type")).lower()
+        question_task_types = {
+            "daily_question_practice",
+            "practice_set",
+            "question",
+            "single_question",
+            "wrong_question",
+            "pending_review_item",
+            "unstarted_question",
+            "draft_attempt",
+            "continue_draft",
+        }
+        if item_type in question_task_types:
+            return False
+        explicit_types = {
+            "topic_review",
+            "weak_topic",
+            "weak_topics",
+            "knowledge_point",
+            "knowledge_review",
+            "concept_review",
+            "topic_focus",
+            "topic_task",
+        }
+        if (
+            item_type in explicit_types
+            or item_type.startswith("topic_")
+            or item_type.endswith("_topic")
+            or "knowledge" in item_type
+        ):
+            return True
+        if (
+            self._clean_string(item.get("topic"))
+            or self._clean_string(item.get("knowledge_point"))
+            or self._clean_string(item.get("topic_title"))
+        ):
+            return True
+        title = self._clean_string(item.get("title") or item.get("action"))
+        if not title or not question_ids:
+            return False
+        return self._ai_plan_title_matches_representative_topic(title, question_ids)
+
+    def _ai_plan_title_matches_representative_topic(
+        self,
+        title: str,
+        question_ids: list[str],
+    ) -> bool:
+        normalized_title = self._normalize_ai_plan_topic_text(title)
+        if not normalized_title:
+            return False
+        # Titles that clearly name individual tasks should remain question tasks.
+        task_markers = {
+            "question",
+            "practice",
+            "wrongquestion",
+            "pendingquestion",
+            "unstartedquestion",
+            "draft",
+            "q",
+            "ps",
+        }
+        if normalized_title in task_markers or normalized_title.startswith("q"):
+            return False
+        for question_id in question_ids:
+            try:
+                question = self.library.get_question(question_id)
+            except (ValueError, KeyError, FileNotFoundError):
+                continue
+            topic_values: list[Any] = []
+            for key in ("topics", "topic_names", "knowledge_points", "tags"):
+                value = question.get(key)
+                if isinstance(value, list):
+                    topic_values.extend(value)
+                elif value:
+                    topic_values.append(value)
+            for topic in topic_values:
+                if normalized_title == self._normalize_ai_plan_topic_text(topic):
+                    return True
+        return False
+
+    @staticmethod
+    def _normalize_ai_plan_topic_text(value: Any) -> str:
+        text = str(value or "").strip().lower()
+        return "".join(ch for ch in text if ch.isalnum() or "\u4e00" <= ch <= "\u9fff")
+
+    def _ai_plan_item_knowledge_placeholder_target_info(
+        self,
+        safe_user_id: str,
+        item: dict[str, Any],
+        *,
+        index: int,
+        raw_source_ids: list[str],
+        safe_source_ids: list[str],
+        question_ids: list[str],
+        practice_set_ids: list[str],
+        unsupported_source_ids: list[str],
+    ) -> dict[str, Any]:
+        title = (
+            self._clean_string(item.get("title"))
+            or self._clean_string(item.get("topic"))
+            or self._clean_string(item.get("knowledge_point"))
+            or self._clean_string(item.get("action"))
+            or (raw_source_ids[0] if raw_source_ids else "")
+            or "AI \u89c4\u5212\u77e5\u8bc6\u70b9\u590d\u4e60"
+        )
+        due_at = self._clean_string(item.get("due_at") or item.get("date"))
+        item_type = self._clean_string(item.get("type")) or "topic_review"
+        raw_key = "|".join([item_type, title, due_at, ",".join(raw_source_ids), str(index)])
+        digest = hashlib.sha1(raw_key.encode("utf-8")).hexdigest()[:16]
+
+        representative_question_ids: list[str] = []
+        seen_question_ids: set[str] = set()
+        for question_id in question_ids:
+            if question_id and question_id not in seen_question_ids:
+                representative_question_ids.append(question_id)
+                seen_question_ids.add(question_id)
+        for practice_set_id in practice_set_ids:
+            try:
+                practice_set = self.get_practice_set(safe_user_id, practice_set_id)
+            except (ValueError, KeyError, FileNotFoundError):
+                continue
+            for question_id in practice_set.get("question_ids") or []:
+                normalized_question_id = str(question_id).strip()
+                if normalized_question_id and normalized_question_id not in seen_question_ids:
+                    representative_question_ids.append(normalized_question_id)
+                    seen_question_ids.add(normalized_question_id)
+
+        source_meta_extra = {
+            "task_kind": "ai_plan_knowledge_point_placeholder",
+            "knowledge_placeholder": True,
+            "topic_title": title,
+            "source_title": title,
+            "representative_question_ids": representative_question_ids,
+            "representative_practice_set_ids": list(practice_set_ids),
+            "representative_source_ids": list(safe_source_ids),
+        }
+        if unsupported_source_ids:
+            source_meta_extra["unsupported_source_ids"] = list(unsupported_source_ids)
+
+        return {
+            "target_type": "knowledge_point",
+            "target_id": f"kp_ai_{digest}",
+            "source_meta_extra": source_meta_extra,
+        }
+
+    def _ai_plan_item_source_ids(self, item: dict[str, Any]) -> list[str]:
+        raw_source_ids = [str(value).strip() for value in item.get("source_ids") or [] if str(value).strip()]
+        if raw_source_ids:
+            return raw_source_ids
+        for field in ("target_id", "source_id", "attempt_id", "practice_set_id", "title", "action"):
+            value = self._clean_string(item.get(field))
+            if self._is_exact_recoverable_ai_plan_source_id(value):
+                return [value]
+        return []
+
+    def _is_exact_recoverable_ai_plan_source_id(self, value: str | None) -> bool:
+        if not value:
+            return False
+        candidate = str(value).strip()
+        if not (
+            candidate.startswith("kaoyan_")
+            or candidate.startswith("ps_")
+            or candidate.startswith("pa_")
+        ):
+            return False
+        try:
+            return validate_safe_id(candidate, "source_id") == candidate
+        except ValueError:
+            return False
+
+    def _ai_plan_practice_source_type(self, item: dict[str, Any]) -> str:
+        item_type = self._clean_string(item.get("type")) or "review"
+        safe_item_type = "".join(ch if ch.isalnum() or ch == "_" else "_" for ch in item_type.lower()).strip("_")
+        return f"ai_plan_{safe_item_type or 'review'}"
+
+    def _get_or_create_ai_plan_practice_set(
+        self,
+        safe_user_id: str,
+        *,
+        plan_id: str | None,
+        item_index: int,
+        item: dict[str, Any],
+        question_ids: list[str],
+        title: str,
+        subject: str | None,
+        source_type: str,
+    ) -> dict[str, Any]:
+        safe_plan_id = self._clean_string(plan_id)
+        selected_ids = [validate_safe_id(str(question_id), "question_id") for question_id in question_ids]
+        records = self._read_records(safe_user_id, PRACTICE_SET_FILENAME, "set_id")
+        for record in records:
+            criteria = record.get("criteria") if isinstance(record.get("criteria"), dict) else {}
+            filters = criteria.get("filters") if isinstance(criteria.get("filters"), dict) else {}
+            if (
+                record.get("source_type") == source_type
+                and filters.get("source_plan_id") == safe_plan_id
+                and filters.get("source_plan_item_index") == item_index
+            ):
+                return dict(record)
+        return self.create_practice_set_from_question_ids(
+            safe_user_id,
+            question_ids=selected_ids,
+            title=title,
+            subject=self._clean_string(subject) or "math",
+            source_type=source_type,
+            filters={
+                "source_plan_id": safe_plan_id,
+                "source_plan_item_index": item_index,
+                "source_plan_item_type": self._clean_string(item.get("type")),
+                "source_plan_reason": self._clean_string(item.get("reason") or item.get("description")),
+            },
+        )
+
     def _review_task_learning_reasons(self, safe_user_id: str, task: dict[str, Any]) -> list[dict[str, str]]:
         target_type = str(task.get("target_type") or "")
         target_id = str(task.get("target_id") or "")
@@ -2451,6 +4312,22 @@ class SystemPracticeReviewStore:
         if count < 1:
             raise ValueError("count must be at least 1")
         return min(count, 50)
+
+    def _positive_int(
+        self,
+        value: Any,
+        *,
+        default: int,
+        minimum: int,
+        maximum: int,
+    ) -> int:
+        if value in (None, ""):
+            return default
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("value must be an integer") from exc
+        return max(minimum, min(maximum, parsed))
 
     def _normalize_topic_filters(self, value: Any) -> list[str]:
         if value in (None, ""):
